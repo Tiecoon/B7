@@ -1,0 +1,6 @@
+[package]
+name = "B7"
+version = "0.1.0"
+authors = ["Luke Biery <luke@bierysbargainbarn.com>"]
+
+[dependencies]
