@@ -1,6 +1,7 @@
 extern crate libc;
 extern crate nix;
 
+use libc::{c_int, c_void, pid_t};
 use nix::sys::{ptrace, wait};
 use nix::unistd::{execve, fork, ForkResult, Pid};
 use std::ffi::CString;
@@ -36,11 +37,11 @@ fn parent(child: Pid) {
 
     // setup perf_event_open and return file descriptor to be read from
     extern "C" {
-        fn b77(input: libc::pid_t) -> libc::c_int;
+        fn b77(input: pid_t) -> c_int;
     }
-    let mut _test: libc::c_int = 0;
+    let mut _test: c_int = 0;
     unsafe {
-        _test = b77(libc::pid_t::from(child));
+        _test = b77(pid_t::from(child));
     }
 
     // continue execution
@@ -51,7 +52,7 @@ fn parent(child: Pid) {
 
     // read in number of unstructions
     let mut count: i64 = 0; // long long
-    let count_ptr: *mut libc::c_void = &mut count as *mut _ as *mut libc::c_void;
+    let count_ptr: *mut c_void = &mut count as *mut _ as *mut c_void;
     unsafe {
         libc::read(_test, count_ptr, 8);
     }

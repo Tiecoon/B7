@@ -15,7 +15,7 @@ static long perf_event_open(struct perf_event_attr *hw_event, pid_t pid,
 }
 
 int b77(pid_t pid) {
-    printf("WORKING 1\n");
+    printf("CCODE: running c code\n");
     fflush(NULL);
     struct perf_event_attr pe;
     int fd;
@@ -28,18 +28,15 @@ int b77(pid_t pid) {
     pe.exclude_kernel = 1;
     pe.exclude_hv = 1;
 
-    printf("PID: %d\n", pid);
+    printf("CCODE: PID: %d\n", pid);
     fd = perf_event_open(&pe, pid, -1, -1, 0);
     if (fd == -1) {
-        perror("perf_event_open");
-        fprintf(stderr, "Error opening leader %llx\n", pe.config);
+        perror("CCODE: perf_event_open");
         exit(EXIT_FAILURE);
     }
 
     ioctl(fd, PERF_EVENT_IOC_RESET, 0);
     ioctl(fd, PERF_EVENT_IOC_ENABLE, 0);
-
-    printf("Measuring instruction count for this printf\n");
 
     return fd;
 }
