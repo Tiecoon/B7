@@ -6,3 +6,6 @@ authors = ["Luke Biery <luke@bierysbargainbarn.com>"]
 [dependencies]
 nix = "0.11.0"
 libc = "*"
+
+[build-dependencies]
+cc = "*"
