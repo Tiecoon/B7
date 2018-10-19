@@ -5,6 +5,7 @@
 
 extern crate libc;
 extern crate nix;
+extern crate threadpool;
 
 use libc::{c_int, c_void, pid_t};
 use nix::sys::{ptrace, wait};
@@ -14,25 +15,28 @@ use std::ffi::CString;
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 fn main() {
+    let mut x = 0;
     match fork() {
-        Ok(ForkResult::Parent { child, .. }) => parent(child),
+        Ok(ForkResult::Parent { child, .. }) => x = parent(child),
         Ok(ForkResult::Child) => child(),
         Err(_) => println!("Fork failed"),
     }
+    println!("{}", x);
 }
 
 fn child() {
     assert!(ptrace::traceme().is_ok());
     println!("CHILD: execve");
     execve(
-        &CString::new("/bin/ls").expect("1"),
+        &CString::new("/bin/true").expect("1"),
         &[CString::new("a").expect("2")],
         &[CString::new("a").expect("3")],
-    ).expect("CHILD: execve failed");
+    )
+    .expect("CHILD: execve failed");
     println!("CHILD: forking done");
 }
 
-fn parent(child: Pid) {
+fn parent(child: Pid) -> i64 {
     println!(
         "Continuing execution in parent process, new child has pid: {}",
         child
@@ -66,4 +70,39 @@ fn parent(child: Pid) {
 
     println!("PARENT: instructions: {}", count);
     println!("PARENT: waitpid done");
+    return count;
+}
+
+#[test]
+fn test() {
+    use std::sync::mpsc;
+    use std::thread;
+    use std::time::Duration;
+    use threadpool::ThreadPool;
+    let (tx, rx) = mpsc::channel();
+    let n_jobs = 10;
+    let n_workers = 20;
+    let pool = ThreadPool::new(n_workers);
+    for i in 0..n_jobs {
+        let tx = tx.clone();
+        pool.execute(move || {
+            println!("exec {}", i);
+            let mut x: i64 = 0;
+            match fork() {
+                Ok(ForkResult::Parent { child, .. }) => x = parent(child),
+                Ok(ForkResult::Child) => child(),
+                Err(_) => println!("Fork failed"),
+            }
+            thread::sleep(Duration::from_secs(1));
+            tx.send(x)
+                .expect("channel will be there waiting for the pool");
+        });
+        println!("queued {}", i);
+    }
+
+    for _ in 0..n_jobs {
+        let j = rx.recv().unwrap();
+        println!("Got: {:#6?} {:#20b}", j, j);
+    }
+    println!("END");
 }
