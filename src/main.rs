@@ -1,3 +1,8 @@
+// Needed for bindgen bindings
+#![allow(non_upper_case_globals)]
+#![allow(non_camel_case_types)]
+#![allow(non_snake_case)]
+
 extern crate libc;
 extern crate nix;
 
@@ -5,6 +10,8 @@ use libc::{c_int, c_void, pid_t};
 use nix::sys::{ptrace, wait};
 use nix::unistd::{execve, fork, ForkResult, Pid};
 use std::ffi::CString;
+
+include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 fn main() {
     match fork() {

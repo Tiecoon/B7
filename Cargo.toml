@@ -8,4 +8,5 @@ nix = "0.11.0"
 libc = "*"
 
 [build-dependencies]
+bindgen = "0.42.2"
 cc = "*"
