@@ -14,6 +14,9 @@ use nix::unistd::Pid;
 use spawn_ptrace::CommandPtraceSpawn;
 use std::process::Command;
 
+mod binary;
+use binary::Binary;
+
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 fn main() {
