@@ -38,7 +38,10 @@ impl Process {
 
     pub fn start(&mut self) -> Result<()> {
         if let Some(_) = self.child {
-            return Err(Error::new(ErrorKind::Other, "child process already running"));
+            return Err(Error::new(
+                ErrorKind::Other,
+                "child process already running",
+            ));
         }
         self.cmd.stdin(Stdio::piped());
         self.cmd.stdout(Stdio::piped());
@@ -60,7 +63,7 @@ impl Process {
         let mut child = self.child.as_mut().unwrap();
         match child.stdin.as_mut() {
             Some(stdin) => stdin.write_all(buf),
-            None => Err(Error::last_os_error())
+            None => Err(Error::last_os_error()),
         }
     }
 
