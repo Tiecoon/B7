@@ -28,6 +28,8 @@ int get_perf_fd(pid_t pid) {
     pe.disabled = 1;
     pe.exclude_kernel = 1;
     pe.exclude_hv = 1;
+	pe.exclude_idle = 1;
+	pe.exclude_callchain_kernel = 1;
 
     printf("CCODE: PID: %d\n", pid);
     fd = perf_event_open(&pe, pid, -1, -1, 0);
