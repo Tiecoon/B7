@@ -15,7 +15,7 @@ static long perf_event_open(struct perf_event_attr *hw_event, pid_t pid,
     return ret;
 }
 
-int b77(pid_t pid) {
+int get_perf_fd(pid_t pid) {
     printf("CCODE: running c code\n");
     fflush(NULL);
     struct perf_event_attr pe;

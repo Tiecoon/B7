@@ -23,7 +23,15 @@ use process::Process;
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 fn main() {
-    test();
+    let mut proc = Process::new("/bin/ls");
+    println!("proc: {:?}", proc);
+    println!("args: {:?}", proc.args(&["ls", "-al"]));
+    println!("start: {:?}", proc.start());
+    println!("init_perf: {:?}", proc.init_perf());
+    println!("finish: {:?}", proc.finish());
+    let inst_count = proc.get_inst_count();
+    println!("inst_count: {:?}", inst_count);
+    //test();
 }
 
 fn proc_test() -> (i64) {
@@ -31,11 +39,11 @@ fn proc_test() -> (i64) {
         .spawn_ptrace()
         .expect("process creation failed");
     extern "C" {
-        fn b77(input: pid_t) -> c_int;
+        fn get_perf_fd(input: pid_t) -> c_int;
     }
     let mut _test: c_int = 0;
     unsafe {
-        _test = b77(pid_t::from(child.id() as i32));
+        _test = get_perf_fd(pid_t::from(child.id() as i32));
     }
 
     // continue execution
