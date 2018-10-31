@@ -8,7 +8,7 @@ pub struct Process {
 }
 
 impl Process {
-    pub fn new<S>(path: &str) -> Process {
+    pub fn new(path: &str) -> Process {
         Process {
             binary: Binary::new(path),
             program: Command::new(path)

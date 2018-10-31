@@ -12,12 +12,12 @@ use libc::{c_int, c_void, pid_t};
 use nix::sys::{ptrace, wait};
 use nix::unistd::Pid;
 use spawn_ptrace::CommandPtraceSpawn;
-pub use std::process::Command;
+use std::process::Command;
 
 pub mod binary;
 use binary::Binary;
 
-mod process;
+pub mod process;
 use process::Process;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
