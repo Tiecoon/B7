@@ -37,6 +37,9 @@ impl Process {
     }
 
     pub fn start(&mut self) -> Result<()> {
+        if let Some(_) = self.child {
+            return Err(Error::new(ErrorKind::Other, "child process already running"));
+        }
         self.cmd.stdin(Stdio::piped());
         self.cmd.stdout(Stdio::piped());
         self.cmd.stderr(Stdio::piped());
