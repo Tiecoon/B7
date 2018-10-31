@@ -7,7 +7,7 @@ use nix::sys::{ptrace, wait};
 use nix::unistd::Pid;
 use spawn_ptrace::CommandPtraceSpawn;
 use std::ffi::OsStr;
-use std::io::{Error, ErrorKind, Result};
+use std::io::{Error, ErrorKind, Result, Write};
 use std::process::{Child, Command, Stdio};
 
 #[derive(Debug)]
@@ -50,6 +50,17 @@ impl Process {
                 Ok(())
             }
             Err(c) => Err(c),
+        }
+    }
+
+    pub fn write_stdin(&mut self, buf: &[u8]) -> Result<()> {
+        if let None = self.child {
+            return Err(Error::new(ErrorKind::Other, "child process not running"));
+        }
+        let mut child = self.child.as_mut().unwrap();
+        match child.stdin.as_mut() {
+            Some(stdin) => stdin.write_all(buf),
+            None => Err(Error::last_os_error())
         }
     }
 
