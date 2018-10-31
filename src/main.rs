@@ -29,12 +29,12 @@ fn proc_test() -> (i64) {
     }
     let mut _test: c_int = 0;
     unsafe {
-        _test = b77(pid_t::from(child.id() as u16));
+        _test = b77(pid_t::from(child.id() as i32));
     }
 
     // continue execution
     println!("{}", _test);
-    let PID = Pid::from_raw(pid_t::from(child.id() as u16));
+    let PID = Pid::from_raw(pid_t::from(child.id() as i32));
     ptrace::cont(PID, None).expect("ptrace cont failed");
 
     let _ = wait::waitpid(PID, Some(wait::WaitPidFlag::empty()));
