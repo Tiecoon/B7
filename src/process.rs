@@ -1,21 +1,21 @@
 use binary::Binary;
-use std::process::{Command, Child, Stdio};
-use std::ffi::OsStr;
-use std::io::{Result, Error, ErrorKind};
-use spawn_ptrace::CommandPtraceSpawn;
 use libc;
-use libc::{c_int, pid_t, c_void};
+use libc::{c_int, c_void, pid_t};
 use nix;
-use nix::sys::{ptrace, wait};
 use nix::sys::wait::{waitpid, WaitStatus};
+use nix::sys::{ptrace, wait};
 use nix::unistd::Pid;
+use spawn_ptrace::CommandPtraceSpawn;
+use std::ffi::OsStr;
+use std::io::{Error, ErrorKind, Result};
+use std::process::{Child, Command, Stdio};
 
 #[derive(Debug)]
 pub struct Process {
     binary: Binary,
     cmd: Command,
     child: Option<Child>,
-    perf_fd: c_int
+    perf_fd: c_int,
 }
 
 impl Process {
@@ -24,12 +24,14 @@ impl Process {
             binary: Binary::new(path),
             cmd: Command::new(path),
             child: None,
-            perf_fd: -1
+            perf_fd: -1,
         }
     }
 
     pub fn args<I, S>(&mut self, args: I)
-        where I: IntoIterator<Item = S>, S: AsRef<OsStr>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
     {
         self.cmd.args(args);
     }
@@ -40,8 +42,11 @@ impl Process {
         self.cmd.stderr(Stdio::piped());
         let child = self.cmd.spawn_ptrace();
         match child {
-            Ok(c) => {self.child = Some(c); Ok(())},
-            Err(c) => Err(c)
+            Ok(c) => {
+                self.child = Some(c);
+                Ok(())
+            }
+            Err(c) => Err(c),
         }
     }
 
@@ -54,7 +59,7 @@ impl Process {
             Some(ref child) => unsafe {
                 self.perf_fd = get_perf_fd(pid_t::from(child.id() as i32));
                 Ok(())
-            }
+            },
         }
     }
 
@@ -66,7 +71,7 @@ impl Process {
         let res = ptrace::cont(Pid::from_raw(pid_t::from(child.id() as i32)), None);
         match res {
             Ok(x) => Ok(x),
-            Err(x) => Err(Error::new(ErrorKind::Other, format!("{:?}", x)))
+            Err(x) => Err(Error::new(ErrorKind::Other, format!("{:?}", x))),
         }
     }
 
@@ -77,7 +82,7 @@ impl Process {
         let child = self.child.as_ref().unwrap();
         match waitpid(Pid::from_raw(pid_t::from(child.id() as i32)), None) {
             Err(x) => Err(Error::new(ErrorKind::Other, format!("{:?}", x))),
-            Ok(x) => Ok(x)
+            Ok(x) => Ok(x),
         }
     }
 
@@ -91,7 +96,7 @@ impl Process {
             match wret {
                 Ok(WaitStatus::Exited(_, _)) => return Ok(()),
                 Err(x) => return Err(x),
-                _ => ()
+                _ => (),
             }
         }
     }
@@ -106,7 +111,7 @@ impl Process {
         match nread {
             8 => Ok(count),
             x if x >= 0 => Err(Error::new(ErrorKind::Other, nread.to_string())),
-            _ => Err(Error::new(ErrorKind::Other, nix::Error::last()))
+            _ => Err(Error::new(ErrorKind::Other, nix::Error::last())),
         }
     }
 }
