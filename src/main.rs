@@ -12,6 +12,9 @@ use libc::{c_int, c_void, pid_t};
 use nix::sys::{ptrace, wait};
 use nix::unistd::Pid;
 use spawn_ptrace::CommandPtraceSpawn;
+use std::ffi::OsStr;
+use std::io::Read;
+use std::os::unix::ffi::OsStrExt;
 use std::process::Command;
 
 pub mod binary;
@@ -25,11 +28,59 @@ use generators::*;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
+fn get_inst_count_perf(path: &str, inp: Input) -> i64 {
+    // TODO: error checking...
+    let mut proc = Process::new(path);
+    for arg in inp.argv.iter() {
+        proc.arg(OsStr::from_bytes(arg));
+    }
+    proc.start();
+    proc.write_stdin(&inp.stdin);
+    proc.init_perf();
+    proc.finish();
+    proc.get_inst_count();
+    0
+}
+
+fn find_outlier(counts: &Vec<i64>) -> usize {
+    let mut max: i64 = -1;
+    let mut max_idx: usize = 0;
+    for (i, count) in counts.iter().enumerate() {
+        if *count > max {
+            max = *count;
+            max_idx = i;
+        }
+    }
+    max_idx
+}
+
+fn brute<G: Generate<I>, I>(path: &str, gen: &mut G, get_inst_count: fn(&str, Input) -> i64) {
+    loop {
+        let mut ids: Vec<I> = Vec::new();
+        let mut inst_counts: Vec<i64> = Vec::new();
+        loop {
+            let inp_opt = gen.next();
+            if let None = inp_opt {
+                break;
+            }
+            let inp_pair = inp_opt.unwrap();
+            ids.push(inp_pair.0);
+            let inp = inp_pair.1;
+
+            let inst_count = get_inst_count(path, inp);
+            inst_counts.push(inst_count);
+        }
+        let good_idx = find_outlier(&inst_counts);
+        if !gen.update(&ids[good_idx]) {
+            break;
+        }
+    }
+}
+
 fn main() {
-    let mut gen = StdinLenGenerator::new(1, 2);
-    println!("bb: {:?}", gen);
-    foo(&mut gen);
-    println!("bb: {:?}", gen);
+    let mut gen = StdinLenGenerator::new(0, 51);
+    brute("/bin/true", &mut gen, get_inst_count_perf);
+    println!("gen: {:?}", gen);
     /*let mut proc = Process::new("/bin/ls");
     println!("proc: {:?}", proc);
     println!("args: {:?}", proc.args(&["ls", "-al"]));

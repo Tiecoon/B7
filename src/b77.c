@@ -16,8 +16,8 @@ static long perf_event_open(struct perf_event_attr *hw_event, pid_t pid,
 }
 
 int get_perf_fd(pid_t pid) {
-    printf("CCODE: running c code\n");
-    fflush(NULL);
+    //printf("CCODE: running c code\n");
+    //fflush(NULL);
     struct perf_event_attr pe;
     int fd;
 
@@ -31,7 +31,7 @@ int get_perf_fd(pid_t pid) {
 	pe.exclude_idle = 1;
 	pe.exclude_callchain_kernel = 1;
 
-    printf("CCODE: PID: %d\n", pid);
+    //printf("CCODE: PID: %d\n", pid);
     fd = perf_event_open(&pe, pid, -1, -1, 0);
     if (fd == -1) {
         perror("CCODE: perf_event_open");

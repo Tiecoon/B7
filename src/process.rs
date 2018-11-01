@@ -2,8 +2,8 @@ use binary::Binary;
 use libc;
 use libc::{c_int, c_void, pid_t};
 use nix;
+use nix::sys::ptrace;
 use nix::sys::wait::{waitpid, WaitStatus};
-use nix::sys::{ptrace, wait};
 use nix::unistd::Pid;
 use spawn_ptrace::CommandPtraceSpawn;
 use std::ffi::OsStr;
@@ -36,6 +36,10 @@ impl Process {
         self.cmd.args(args);
     }
 
+    pub fn arg<S: AsRef<OsStr>>(&mut self, arg: S) {
+        self.cmd.arg(arg);
+    }
+
     pub fn start(&mut self) -> Result<()> {
         if let Some(_) = self.child {
             return Err(Error::new(
@@ -60,7 +64,7 @@ impl Process {
         if let None = self.child {
             return Err(Error::new(ErrorKind::Other, "child process not running"));
         }
-        let mut child = self.child.as_mut().unwrap();
+        let child = self.child.as_mut().unwrap();
         match child.stdin.as_mut() {
             Some(stdin) => stdin.write_all(buf),
             None => Err(Error::last_os_error()),
