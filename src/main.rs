@@ -20,17 +20,24 @@ use binary::Binary;
 pub mod process;
 use process::Process;
 
+pub mod generators;
+use generators::*;
+
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 fn main() {
-    let mut proc = Process::new("/bin/ls");
+    let mut gen = StdinLenGenerator::new(1, 2);
+    println!("bb: {:?}", gen);
+    foo(&mut gen);
+    println!("bb: {:?}", gen);
+    /*let mut proc = Process::new("/bin/ls");
     println!("proc: {:?}", proc);
     println!("args: {:?}", proc.args(&["ls", "-al"]));
     println!("start: {:?}", proc.start());
     println!("init_perf: {:?}", proc.init_perf());
     println!("finish: {:?}", proc.finish());
     let inst_count = proc.get_inst_count();
-    println!("inst_count: {:?}", inst_count);
+    println!("inst_count: {:?}", inst_count);*/
     //test();
 }
 
