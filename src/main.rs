@@ -45,33 +45,16 @@ fn get_inst_count_perf(path: &str, inp: Input) -> i64 {
     }
 }
 
-// Find the most distant point from the average.
-// Returns (index, value) of this point.
-fn find_outlier(counts: &Vec<i64>) -> (usize, i64) {
-    // Calculate the average
-    let mut avg: i64 = 0;
-    for (i, count) in counts.iter().enumerate() {
-        avg = avg + *count;
-    }
-    if counts.len() != 0 {
-        avg = avg / counts.len() as i64;
-    }
-    else {  // Handle division by zero
-        avg = 0;
-    }
-    // and then find the most distant point
-    let mut max_dist: i64 = -1;
+fn find_outlier(counts: &Vec<i64>) -> usize {
+    let mut max: i64 = -1;
     let mut max_idx: usize = 0;
-    let mut max_val: i64 = 0;
     for (i, count) in counts.iter().enumerate() {
-        let dist: i64 = (*count - avg).abs();
-        if dist > max_dist {
-            max_dist = dist;
+        if *count > max {
+            max = *count;
             max_idx = i;
-            max_val = *count;
         }
     }
-    (max_idx, max_val)
+    max_idx
 }
 
 fn brute<G: Generate<I>, I>(path: &str, gen: &mut G, get_inst_count: fn(&str, Input) -> i64) {
