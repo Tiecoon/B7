@@ -61,19 +61,16 @@ fn brute<G: Generate<I>, I>(path: &str, gen: &mut G, get_inst_count: fn(&str, In
     loop {
         let mut ids: Vec<I> = Vec::new();
         let mut inst_counts: Vec<i64> = Vec::new();
-        loop {
-            let inp_opt = gen.next();
-            if let None = inp_opt {
-                break;
-            }
-            let inp_pair = inp_opt.unwrap();
+        for inp_pair in gen.by_ref() {
             ids.push(inp_pair.0);
             let inp = inp_pair.1;
 
             let inst_count = get_inst_count(path, inp);
+            println!("{:?}", inst_count);
             inst_counts.push(inst_count);
         }
         let good_idx = find_outlier(&inst_counts);
+        println!("{:?}", good_idx);
         if !gen.update(&ids[good_idx]) {
             break;
         }
@@ -82,7 +79,7 @@ fn brute<G: Generate<I>, I>(path: &str, gen: &mut G, get_inst_count: fn(&str, In
 
 fn main() {
     let mut gen = StdinLenGenerator::new(0, 51);
-    brute("tests/wyvern", &mut gen, get_inst_count_perf);
+    brute("./tests/wyvern", &mut gen, get_inst_count_perf);
     println!("gen: {:?}", gen);
     /*let mut proc = Process::new("/bin/ls");
     println!("proc: {:?}", proc);
