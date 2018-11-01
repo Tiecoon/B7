@@ -36,10 +36,13 @@ fn get_inst_count_perf(path: &str, inp: Input) -> i64 {
     }
     proc.start();
     proc.write_stdin(&inp.stdin);
+    proc.close_stdin();
     proc.init_perf();
     proc.finish();
-    proc.get_inst_count();
-    0
+    match proc.get_inst_count() {
+        Ok(x) => x,
+        Err(_) => -1,
+    }
 }
 
 fn find_outlier(counts: &Vec<i64>) -> usize {
@@ -79,7 +82,7 @@ fn brute<G: Generate<I>, I>(path: &str, gen: &mut G, get_inst_count: fn(&str, In
 
 fn main() {
     let mut gen = StdinLenGenerator::new(0, 51);
-    brute("/bin/true", &mut gen, get_inst_count_perf);
+    brute("tests/wyvern", &mut gen, get_inst_count_perf);
     println!("gen: {:?}", gen);
     /*let mut proc = Process::new("/bin/ls");
     println!("proc: {:?}", proc);

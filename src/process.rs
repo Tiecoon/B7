@@ -71,6 +71,19 @@ impl Process {
         }
     }
 
+    pub fn close_stdin(&mut self) -> Result<()> {
+        if let None = self.child {
+            return Err(Error::new(ErrorKind::Other, "child process not running"));
+        }
+        match self.child.as_mut().unwrap().stdin.take() {
+            Some(stdin) => {
+                drop(stdin);
+                Ok(())
+            }
+            None => Err(Error::last_os_error()),
+        }
+    }
+
     pub fn init_perf(&mut self) -> Result<()> {
         extern "C" {
             fn get_perf_fd(input: pid_t) -> c_int;
