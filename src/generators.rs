@@ -101,6 +101,12 @@ pub struct StdinCharGenerator {
     correct: str_t,
 }
 
+impl std::fmt::Display for StdinCharGenerator {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", String::from_utf8_lossy(self.correct.as_slice()))
+    }
+}
+
 impl StdinCharGenerator {
     pub fn new(padlen: &u32) -> StdinCharGenerator {
         StdinCharGenerator {

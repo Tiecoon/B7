@@ -94,6 +94,7 @@ fn main() {
     let mut gen = StdinCharGenerator::new(&stdinlen);
     brute(path, &mut gen, get_inst_count_perf);
     println!("gen: {:?}", gen);
+    println!("gen: {}", gen);
     /*let mut proc = Process::new("/bin/ls");
     println!("proc: {:?}", proc);
     println!("args: {:?}", proc.args(&["ls", "-al"]));
