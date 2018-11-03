@@ -7,7 +7,9 @@ use nix::sys::wait::{waitpid, WaitStatus};
 use nix::unistd::Pid;
 use spawn_ptrace::CommandPtraceSpawn;
 use std::ffi::OsStr;
+use std::fs::File;
 use std::io::{Error, ErrorKind, Result, Write};
+use std::os::unix::io::FromRawFd;
 use std::process::{Child, Command, Stdio};
 
 #[derive(Debug)]
@@ -95,6 +97,13 @@ impl Process {
                 Ok(())
             },
         }
+    }
+
+    pub fn close_perf(&mut self) {
+        unsafe {
+            drop(File::from_raw_fd(self.perf_fd));
+        }
+        self.perf_fd = -1;
     }
 
     pub fn cont(&self) -> Result<()> {
