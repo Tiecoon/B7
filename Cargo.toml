@@ -8,6 +8,7 @@ nix = "0.11.0"
 libc = "*"
 threadpool = "1.0"
 spawn-ptrace = "0.1.0"
+log = "0.4.6"
 
 [build-dependencies]
 bindgen = "0.42.2"

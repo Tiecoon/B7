@@ -1,14 +1,14 @@
-type str_t = Vec<u8>;
-type argv_t = Vec<str_t>;
+type StringType = Vec<u8>;
+type ArgumentType = Vec<StringType>;
 
 #[derive(Debug)]
 pub struct Input {
-    pub argv: argv_t,
-    pub stdin: str_t,
+    pub argv: ArgumentType,
+    pub stdin: StringType,
 }
 
 impl Input {
-    pub fn new(argv: argv_t, stdin: str_t) -> Input {
+    pub fn new(argv: ArgumentType, stdin: StringType) -> Input {
         Input {
             argv: argv,
             stdin: stdin,
@@ -94,11 +94,11 @@ impl Update for StdinLenGenerator {
 pub struct StdinCharGenerator {
     padlen: u32,
     padchr: u8,
-    prefix: str_t,
-    suffix: str_t,
+    prefix: StringType,
+    suffix: StringType,
     idx: u32,
     cur: u16,
-    correct: str_t,
+    correct: StringType,
 }
 
 impl std::fmt::Display for StdinCharGenerator {
@@ -123,14 +123,14 @@ impl StdinCharGenerator {
     pub fn set_padchr(&mut self, padchr: &u8) {
         self.padchr = *padchr;
     }
-    pub fn set_prefix(&mut self, prefix: str_t) {
+    pub fn set_prefix(&mut self, prefix: StringType) {
         self.prefix = prefix;
     }
-    pub fn set_suffix(&mut self, suffix: str_t) {
+    pub fn set_suffix(&mut self, suffix: StringType) {
         self.suffix = suffix;
     }
 
-    pub fn get_input(&self) -> &str_t {
+    pub fn get_input(&self) -> &StringType {
         &self.correct
     }
 }
@@ -144,7 +144,7 @@ impl Iterator for StdinCharGenerator {
         }
         let chr = self.cur as u8;
         self.cur += 1;
-        let mut inp: str_t = Vec::new();
+        let mut inp: StringType = Vec::new();
         inp.extend_from_slice(&self.prefix);
         inp.extend_from_slice(&self.correct);
         inp.push(chr);
