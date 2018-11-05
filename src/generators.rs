@@ -16,7 +16,8 @@ impl Input {
     }
 }
 
-/* GENERATORS:
+/*
+ * GENERATORS:
  * the brute forcer will proceed in a sequence of rounds
  * each round is composed of:
  *   collect all inputs to try from the generator
@@ -52,6 +53,12 @@ pub struct StdinLenGenerator {
     len: u32,
     max: u32,
     correct: u32,
+}
+
+impl std::fmt::Display for StdinLenGenerator {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.correct)
+    }
 }
 
 impl StdinLenGenerator {

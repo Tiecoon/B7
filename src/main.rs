@@ -3,6 +3,10 @@ extern crate nix;
 extern crate spawn_ptrace;
 extern crate threadpool;
 
+#[macro_use]
+extern crate log;
+extern crate env_logger;
+
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 
@@ -46,7 +50,7 @@ fn find_outlier(counts: &Vec<i64>) -> usize {
 }
 
 // can take out Debug trait later
-fn brute<G: Generate<I> + std::fmt::Debug, I: std::fmt::Debug>(
+fn brute<G: Generate<I> + std::fmt::Display, I: std::fmt::Debug>(
     path: &str,
     gen: &mut G,
     get_inst_count: fn(&str, Input) -> i64,
@@ -59,12 +63,11 @@ fn brute<G: Generate<I> + std::fmt::Debug, I: std::fmt::Debug>(
             let inp = inp_pair.1;
 
             let inst_count = get_inst_count(path, inp);
-            println!("inst_count: {:?}", inst_count);
+            trace!("inst_count: {:?}", inst_count);
             inst_counts.push(inst_count);
         }
         let good_idx = find_outlier(&inst_counts);
-        println!("good_idx: {:?}", good_idx);
-        println!("{:?}", gen);
+        info!("{}", gen);
         if !gen.update(&ids[good_idx]) {
             break;
         }
@@ -72,22 +75,18 @@ fn brute<G: Generate<I> + std::fmt::Debug, I: std::fmt::Debug>(
 }
 
 fn main() {
+    let env = env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "info");
+
+    env_logger::Builder::from_env(env)
+        .default_format_timestamp(false)
+        .init();
+
     let path = "./tests/wyvern";
     let mut lgen = StdinLenGenerator::new(0, 51);
     brute(path, &mut lgen, get_inst_count_perf);
-    let stdinlen = 29; //lgen.get_length();
-    println!("stdin length: {:?}", stdinlen);
+    let stdinlen = lgen.get_length();
+    info!("stdin length: {:}", stdinlen);
     let mut gen = StdinCharGenerator::new(&stdinlen);
     brute(path, &mut gen, get_inst_count_perf);
-    println!("gen: {:?}", gen);
-    println!("gen: {}", gen);
-    /*let mut proc = Process::new("/bin/ls");
-    println!("proc: {:?}", proc);
-    println!("args: {:?}", proc.args(&["ls", "-al"]));
-    println!("start: {:?}", proc.start());
-    println!("init_perf: {:?}", proc.init_perf());
-    println!("finish: {:?}", proc.finish());
-    let inst_count = proc.get_inst_count();
-    println!("inst_count: {:?}", inst_count);*/
-    //test();
+    info!("Successfully Generated: {}", gen);
 }
