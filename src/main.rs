@@ -1,3 +1,4 @@
+extern crate clap;
 extern crate libc;
 extern crate nix;
 extern crate spawn_ptrace;
@@ -7,6 +8,7 @@ extern crate threadpool;
 extern crate log;
 extern crate env_logger;
 
+use clap::{App, Arg};
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 
@@ -76,12 +78,20 @@ fn brute<G: Generate<I> + std::fmt::Display, I: std::fmt::Debug>(
 
 fn main() {
     let env = env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "info");
-
     env_logger::Builder::from_env(env)
         .default_format_timestamp(false)
         .init();
 
-    let path = "./tests/wyvern";
+    let matches = App::new("B7")
+        .version("0.1.0")
+        .arg(
+            Arg::with_name("binary")
+                .help("Binary to brute force input for")
+                .index(1)
+                .required(true),
+        ).get_matches();
+
+    let path = matches.value_of("binary").unwrap();
     let mut lgen = StdinLenGenerator::new(0, 51);
     brute(path, &mut lgen, get_inst_count_perf);
     let stdinlen = lgen.get_length();

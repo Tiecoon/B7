@@ -10,6 +10,7 @@ threadpool = "1.0"
 spawn-ptrace = "0.1.0"
 log = "0.4.6"
 env_logger = "0.5.13"
+clap = "2.32.0"
 
 [build-dependencies]
 bindgen = "0.42.2"
