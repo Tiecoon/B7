@@ -88,8 +88,7 @@ fn main() {
                 .help("Binary to brute force input for")
                 .index(1)
                 .required(true),
-        )
-        .get_matches();
+        ).get_matches();
 
     let path = matches.value_of("binary").unwrap();
     let mut lgen = StdinLenGenerator::new(0, 51);
