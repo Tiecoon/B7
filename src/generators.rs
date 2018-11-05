@@ -44,6 +44,10 @@ pub trait Update: Iterator {
 // Generate trait: has iteration and updating with right Id type
 pub trait Generate<T>: Iterator<Item = (T, Input)> + Update<Id = T> {}
 
+pub trait Events {
+    fn on_update(&self) {}
+}
+
 // a blanket impl: any type T that implements iteration and updating with
 // the right types has an (empty) impl for Generate
 impl<T: Iterator<Item = (U, Input)> + Update<Id = U>, U> Generate<U> for T {}
@@ -88,11 +92,18 @@ impl Iterator for StdinLenGenerator {
     }
 }
 
+impl Events for StdinLenGenerator {
+    fn on_update(&self) {
+        info!("stdin length: {}", self.correct);
+    }
+}
+
 impl Update for StdinLenGenerator {
     type Id = u32;
 
     fn update(&mut self, chosen: &u32) -> bool {
         self.correct = *chosen;
+        self.on_update();
         false
     }
 }
@@ -166,6 +177,12 @@ impl Iterator for StdinCharGenerator {
     }
 }
 
+impl Events for StdinCharGenerator {
+    fn on_update(&self) {
+        info!("{}", self);
+    }
+}
+
 impl Update for StdinCharGenerator {
     type Id = u8;
 
@@ -173,6 +190,7 @@ impl Update for StdinCharGenerator {
         self.correct.push(*chosen);
         self.idx += 1;
         self.cur = 0;
+        self.on_update();
         self.idx < self.padlen
     }
 }

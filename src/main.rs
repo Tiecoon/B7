@@ -69,7 +69,6 @@ fn brute<G: Generate<I> + std::fmt::Display, I: std::fmt::Debug>(
             inst_counts.push(inst_count);
         }
         let good_idx = find_outlier(&inst_counts);
-        info!("{}", gen);
         if !gen.update(&ids[good_idx]) {
             break;
         }
@@ -89,14 +88,15 @@ fn main() {
                 .help("Binary to brute force input for")
                 .index(1)
                 .required(true),
-        ).get_matches();
+        )
+        .get_matches();
 
     let path = matches.value_of("binary").unwrap();
     let mut lgen = StdinLenGenerator::new(0, 51);
     brute(path, &mut lgen, get_inst_count_perf);
     let stdinlen = lgen.get_length();
-    info!("stdin length: {:}", stdinlen);
     let mut gen = StdinCharGenerator::new(stdinlen);
+    let mut gen = StdinCharGenerator::new(&stdinlen);
     brute(path, &mut gen, get_inst_count_perf);
     info!("Successfully Generated: {}", gen);
 }
