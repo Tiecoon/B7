@@ -96,7 +96,6 @@ fn main() {
     brute(path, &mut lgen, get_inst_count_perf);
     let stdinlen = lgen.get_length();
     let mut gen = StdinCharGenerator::new(stdinlen);
-    let mut gen = StdinCharGenerator::new(&stdinlen);
     brute(path, &mut gen, get_inst_count_perf);
     info!("Successfully Generated: {}", gen);
 }
