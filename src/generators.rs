@@ -115,9 +115,9 @@ impl std::fmt::Display for StdinCharGenerator {
 }
 
 impl StdinCharGenerator {
-    pub fn new(padlen: &u32) -> StdinCharGenerator {
+    pub fn new(padlen: u32) -> StdinCharGenerator {
         StdinCharGenerator {
-            padlen: *padlen,
+            padlen: padlen,
             padchr: 0x41,
             prefix: vec![],
             suffix: vec![],
@@ -127,8 +127,8 @@ impl StdinCharGenerator {
         }
     }
 
-    pub fn set_padchr(&mut self, padchr: &u8) {
-        self.padchr = *padchr;
+    pub fn set_padchr(&mut self, padchr: u8) {
+        self.padchr = padchr;
     }
     pub fn set_prefix(&mut self, prefix: StringType) {
         self.prefix = prefix;

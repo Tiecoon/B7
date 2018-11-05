@@ -43,7 +43,7 @@ impl Process {
     }
 
     pub fn start(&mut self) -> Result<()> {
-        if let Some(_) = self.child {
+        if self.child.is_some() {
             return Err(Error::new(
                 ErrorKind::Other,
                 "child process already running",
@@ -63,7 +63,7 @@ impl Process {
     }
 
     pub fn write_stdin(&mut self, buf: &[u8]) -> Result<()> {
-        if let None = self.child {
+        if self.child.is_none() {
             return Err(Error::new(ErrorKind::Other, "child process not running"));
         }
         let child = self.child.as_mut().unwrap();
@@ -74,7 +74,7 @@ impl Process {
     }
 
     pub fn close_stdin(&mut self) -> Result<()> {
-        if let None = self.child {
+        if self.child.is_none() {
             return Err(Error::new(ErrorKind::Other, "child process not running"));
         }
         match self.child.as_mut().unwrap().stdin.take() {
@@ -107,7 +107,7 @@ impl Process {
     }
 
     pub fn cont(&self) -> Result<()> {
-        if let None = self.child {
+        if self.child.is_none() {
             return Err(Error::new(ErrorKind::Other, "child process not running"));
         }
         let child = self.child.as_ref().unwrap();
@@ -119,7 +119,7 @@ impl Process {
     }
 
     pub fn wait(&self) -> Result<WaitStatus> {
-        if let None = self.child {
+        if self.child.is_none() {
             return Err(Error::new(ErrorKind::Other, "child process not running"));
         }
         let child = self.child.as_ref().unwrap();
@@ -132,7 +132,7 @@ impl Process {
     pub fn finish(&self) -> Result<()> {
         loop {
             let cret = self.cont();
-            if let Err(_) = cret {
+            if cret.is_err() {
                 return cret;
             }
             let wret = self.wait();

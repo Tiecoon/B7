@@ -20,7 +20,7 @@ use process::Process;
 pub mod generators;
 use generators::*;
 
-fn get_inst_count_perf(path: &str, inp: Input) -> i64 {
+fn get_inst_count_perf(path: &str, inp: &Input) -> i64 {
     // TODO: error checking...
     let mut proc = Process::new(path);
     for arg in inp.argv.iter() {
@@ -55,7 +55,7 @@ fn find_outlier(counts: &Vec<i64>) -> usize {
 fn brute<G: Generate<I> + std::fmt::Display, I: std::fmt::Debug>(
     path: &str,
     gen: &mut G,
-    get_inst_count: fn(&str, Input) -> i64,
+    get_inst_count: fn(&str, &Input) -> i64,
 ) {
     loop {
         let mut ids: Vec<I> = Vec::new();
@@ -64,7 +64,7 @@ fn brute<G: Generate<I> + std::fmt::Display, I: std::fmt::Debug>(
             ids.push(inp_pair.0);
             let inp = inp_pair.1;
 
-            let inst_count = get_inst_count(path, inp);
+            let inst_count = get_inst_count(path, &inp);
             trace!("inst_count: {:?}", inst_count);
             inst_counts.push(inst_count);
         }
@@ -96,7 +96,7 @@ fn main() {
     brute(path, &mut lgen, get_inst_count_perf);
     let stdinlen = lgen.get_length();
     info!("stdin length: {:}", stdinlen);
-    let mut gen = StdinCharGenerator::new(&stdinlen);
+    let mut gen = StdinCharGenerator::new(stdinlen);
     brute(path, &mut gen, get_inst_count_perf);
     info!("Successfully Generated: {}", gen);
 }
