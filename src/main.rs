@@ -13,12 +13,15 @@ use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 
 pub mod binary;
+pub mod bindings;
 
 pub mod process;
 use process::Process;
 
 pub mod generators;
 use generators::*;
+
+pub mod b7777;
 
 fn get_inst_count_perf(path: &str, inp: &Input) -> i64 {
     // TODO: error checking...

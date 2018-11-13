@@ -12,6 +12,8 @@ use std::io::{Error, ErrorKind, Result, Write};
 use std::os::unix::io::FromRawFd;
 use std::process::{Child, Command, Stdio};
 
+use b7777::get_perf_fd;
+
 #[derive(Debug)]
 pub struct Process {
     binary: Binary,
@@ -87,9 +89,11 @@ impl Process {
     }
 
     pub fn init_perf(&mut self) -> Result<()> {
+        /*
         extern "C" {
             fn get_perf_fd(input: pid_t) -> c_int;
         }
+        */
         match self.child {
             None => Err(Error::new(ErrorKind::Other, "child process not running")),
             Some(ref child) => unsafe {
