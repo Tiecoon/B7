@@ -96,10 +96,10 @@ impl Process {
         */
         match self.child {
             None => Err(Error::new(ErrorKind::Other, "child process not running")),
-            Some(ref child) => unsafe {
+            Some(ref child) => {
                 self.perf_fd = get_perf_fd(pid_t::from(child.id() as i32));
                 Ok(())
-            },
+            }
         }
     }
 
