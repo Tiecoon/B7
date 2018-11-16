@@ -5,9 +5,6 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
-    // Compile C source
-    cc::Build::new().file("src/b77.c").compile("b77.a");
-
     // Generate Rust bindings
     let bindings = bindgen::Builder::default()
         .header("src/bindgen.h")

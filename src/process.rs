@@ -89,11 +89,6 @@ impl Process {
     }
 
     pub fn init_perf(&mut self) -> Result<()> {
-        /*
-        extern "C" {
-            fn get_perf_fd(input: pid_t) -> c_int;
-        }
-        */
         match self.child {
             None => Err(Error::new(ErrorKind::Other, "child process not running")),
             Some(ref child) => {

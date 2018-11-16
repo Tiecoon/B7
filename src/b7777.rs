@@ -5,7 +5,7 @@ use std::process::exit;
 
 const PERF_EVENT_OPEN_SYSCALL: i64 = 298;
 
-fn perf_event_open_rs(
+fn perf_event_open(
     hw_event: *const perf_event_attr,
     pid: pid_t,
     cpu: i32,
@@ -27,7 +27,7 @@ pub fn get_perf_fd(pid: pid_t) -> i32 {
     pe.set_exclude_idle(1);
     pe.set_exclude_callchain_kernel(1);
 
-    let fd = perf_event_open_rs(&pe as *const perf_event_attr, pid, -1, -1, 0);
+    let fd = perf_event_open(&pe as *const perf_event_attr, pid, -1, -1, 0);
     if fd == -1 {
         error!("perf_event_open failed!");
         exit(-1);
