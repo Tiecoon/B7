@@ -12,11 +12,7 @@ fn perf_event_open_rs(
     group_fd: i32,
     flags: u64,
 ) -> i32 {
-    let ret: i64 = 0;
-    unsafe {
-        syscall(PERF_EVENT_OPEN_SYSCALL, hw_event, pid, cpu, group_fd, flags);
-    }
-    ret as i32
+    unsafe { syscall(PERF_EVENT_OPEN_SYSCALL, hw_event, pid, cpu, group_fd, flags) as i32 }
 }
 
 pub fn get_perf_fd(pid: pid_t) -> i32 {
