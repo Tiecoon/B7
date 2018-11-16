@@ -56,6 +56,8 @@ fn find_outlier(counts: &Vec<i64>) -> usize {
     else {  // Handle division by zero
         avg = 0;
     }
+    // FIXME: this is a dirty hack
+    avg = 0;
     // and then find the most distant point
     let mut max_dist: i64 = -1;
     let mut max_idx: usize = 0;
