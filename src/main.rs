@@ -43,23 +43,19 @@ fn get_inst_count_perf(path: &str, inp: &Input) -> i64 {
 }
 
 // Find the most distant point from the average.
-// Returns (index, value) of this point. (TODO: fix this)
+// Returns (index, value) of this point.
 fn find_outlier(counts: &Vec<i64>) -> usize {
     // Calculate the average
     let mut avg: i64 = 0;
-    for count in counts.iter() {
-        avg = avg + *count;
+    for count in counts {
+        avg = avg + count;
     }
-    /*
     if counts.len() != 0 {
         avg = avg / counts.len() as i64;
     } else {
         // Handle division by zero
         avg = 0;
     }
-    */
-    // FIXME: this is a dirty hack
-    avg = 0;
     // and then find the most distant point
     let mut max_dist: i64 = -1;
     let mut max_idx: usize = 0;
@@ -88,7 +84,6 @@ fn brute<G: Generate<I> + std::fmt::Display, I: std::fmt::Debug>(
             let inp = inp_pair.1;
 
             let inst_count = get_inst_count(path, &inp);
-            trace!("inst_count: {:?}", inst_count);
             inst_counts.push(inst_count);
         }
         let good_idx = find_outlier(&inst_counts);
@@ -117,7 +112,8 @@ fn main() {
     let mut lgen = StdinLenGenerator::new(0, 51);
     brute(path, &mut lgen, get_inst_count_perf);
     let stdinlen = lgen.get_length();
-    let mut gen = StdinCharGenerator::new(stdinlen);
+    // TODO: We should have a good way of configuring the range
+    let mut gen = StdinCharGenerator::new(stdinlen, 0x20, 0x7e);
     brute(path, &mut gen, get_inst_count_perf);
     info!("Successfully Generated: {}", gen);
 }

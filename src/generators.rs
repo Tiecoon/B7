@@ -117,6 +117,8 @@ pub struct StdinCharGenerator {
     idx: u32,
     cur: u16,
     correct: StringType,
+    min: u16,
+    max: u16,
 }
 
 impl std::fmt::Display for StdinCharGenerator {
@@ -126,15 +128,17 @@ impl std::fmt::Display for StdinCharGenerator {
 }
 
 impl StdinCharGenerator {
-    pub fn new(padlen: u32) -> StdinCharGenerator {
+    pub fn new(padlen: u32, min: u16, max: u16) -> StdinCharGenerator {
         StdinCharGenerator {
             padlen: padlen,
             padchr: 0x41,
             prefix: vec![],
             suffix: vec![],
             idx: 0,
-            cur: 0,
+            cur: min,
             correct: vec![],
+            min: min,
+            max: max,
         }
     }
 
@@ -157,7 +161,7 @@ impl Iterator for StdinCharGenerator {
     type Item = (u8, Input);
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.idx >= self.padlen || self.cur > 255 {
+        if self.idx >= self.padlen || self.cur > 255 || self.cur > self.max {
             return None;
         }
         let chr = self.cur as u8;
@@ -189,7 +193,7 @@ impl Update for StdinCharGenerator {
     fn update(&mut self, chosen: &u8) -> bool {
         self.correct.push(*chosen);
         self.idx += 1;
-        self.cur = 0;
+        self.cur = self.min as u16;
         self.on_update();
         self.idx < self.padlen
     }
