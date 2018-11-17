@@ -8,6 +8,9 @@ fn main() {
     // Generate Rust bindings
     let bindings = bindgen::Builder::default()
         .header("src/bindgen.h")
+        .whitelist_type("perf_event_attr")
+        .whitelist_type("perf_type_id")
+        .whitelist_type("perf_hw_id")
         .generate()
         .expect("Unable to generate bindings");
 
