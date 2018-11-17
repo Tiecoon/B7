@@ -1,6 +1,6 @@
 use binary::Binary;
 use libc;
-use libc::{c_int, c_void, pid_t};
+use libc::{c_int, c_void};
 use nix;
 use nix::sys::ptrace;
 use nix::sys::wait::{waitpid, WaitStatus};
@@ -92,7 +92,7 @@ impl Process {
         match self.child {
             None => Err(Error::new(ErrorKind::Other, "child process not running")),
             Some(ref child) => {
-                self.perf_fd = get_perf_fd(pid_t::from(child.id() as i32));
+                self.perf_fd = get_perf_fd(child.id() as i32);
                 Ok(())
             }
         }
@@ -110,9 +110,9 @@ impl Process {
             return Err(Error::new(ErrorKind::Other, "child process not running"));
         }
         let child = self.child.as_ref().unwrap();
-        let res = ptrace::cont(Pid::from_raw(pid_t::from(child.id() as i32)), None);
+        let res = ptrace::cont(Pid::from_raw(child.id() as i32), None);
         match res {
-            Ok(x) => Ok(x),
+            Ok(_) => Ok(()),
             Err(x) => Err(Error::new(ErrorKind::Other, format!("{:?}", x))),
         }
     }
@@ -122,7 +122,7 @@ impl Process {
             return Err(Error::new(ErrorKind::Other, "child process not running"));
         }
         let child = self.child.as_ref().unwrap();
-        match waitpid(Pid::from_raw(pid_t::from(child.id() as i32)), None) {
+        match waitpid(Pid::from_raw(child.id() as i32), None) {
             Err(x) => Err(Error::new(ErrorKind::Other, format!("{:?}", x))),
             Ok(x) => Ok(x),
         }

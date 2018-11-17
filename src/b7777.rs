@@ -20,7 +20,7 @@ pub fn get_perf_fd(pid: pid_t) -> i32 {
 
     pe.type_ = perf_type_id_PERF_TYPE_HARDWARE;
     pe.size = mem::size_of::<perf_event_attr>() as u32;
-    pe.config = perf_hw_id_PERF_COUNT_HW_INSTRUCTIONS as u64;
+    pe.config = u64::from(perf_hw_id_PERF_COUNT_HW_INSTRUCTIONS);
     pe.set_disabled(1);
     pe.set_exclude_kernel(1);
     pe.set_exclude_hv(1);

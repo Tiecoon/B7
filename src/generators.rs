@@ -9,10 +9,7 @@ pub struct Input {
 
 impl Input {
     pub fn new(argv: ArgumentType, stdin: StringType) -> Input {
-        Input {
-            argv: argv,
-            stdin: stdin,
-        }
+        Input { argv, stdin }
     }
 }
 
@@ -69,7 +66,7 @@ impl StdinLenGenerator {
     pub fn new(min: u32, max: u32) -> StdinLenGenerator {
         StdinLenGenerator {
             len: min,
-            max: max,
+            max,
             correct: 0,
         }
     }
@@ -130,15 +127,15 @@ impl std::fmt::Display for StdinCharGenerator {
 impl StdinCharGenerator {
     pub fn new(padlen: u32, min: u16, max: u16) -> StdinCharGenerator {
         StdinCharGenerator {
-            padlen: padlen,
+            padlen,
             padchr: 0x41,
             prefix: vec![],
             suffix: vec![],
             idx: 0,
             cur: min,
             correct: vec![],
-            min: min,
-            max: max,
+            min,
+            max,
         }
     }
 

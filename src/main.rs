@@ -44,14 +44,14 @@ fn get_inst_count_perf(path: &str, inp: &Input) -> i64 {
 
 // Find the most distant point from the average.
 // Returns (index, value) of this point.
-fn find_outlier(counts: &Vec<i64>) -> usize {
+fn find_outlier(counts: &[i64]) -> usize {
     // Calculate the average
     let mut avg: i64 = 0;
     for count in counts {
-        avg = avg + count;
+        avg += count;
     }
-    if counts.len() != 0 {
-        avg = avg / counts.len() as i64;
+    if counts.is_empty() {
+        avg /= counts.len() as i64;
     } else {
         // Handle division by zero
         avg = 0;
