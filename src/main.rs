@@ -12,6 +12,9 @@ use clap::{App, Arg};
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 
+use std::sync::mpsc::channel;
+use threadpool::ThreadPool;
+
 pub mod binary;
 pub mod bindings;
 
@@ -43,51 +46,64 @@ fn get_inst_count_perf(path: &str, inp: &Input) -> i64 {
 }
 
 // Find the most distant point from the average.
-// Returns (index, value) of this point.
-fn find_outlier(counts: &[i64]) -> usize {
+
+// Returns (index, value) of this point. (TODO: fix this)
+fn find_outlier<I: std::fmt::Debug>(counts: &[(I, i64)]) -> &(I, i64) {
     // Calculate the average
     let mut avg: i64 = 0;
-    for count in counts {
+    for (_, count) in counts.iter() {
         avg += count;
     }
-    if counts.is_empty() {
+    if !counts.is_empty() {
         avg /= counts.len() as i64;
     } else {
         // Handle division by zero
-        avg = 0;
+        warn!("WWWWWWWW {:?}", counts);
     }
     // and then find the most distant point
     let mut max_dist: i64 = -1;
     let mut max_idx: usize = 0;
-    for (i, count) in counts.iter().enumerate() {
-        let dist: i64 = (*count - avg).abs();
+    for (i, (_, count)) in counts.iter().enumerate() {
+        let dist: i64 = (count - avg).abs();
         if dist > max_dist {
             max_dist = dist;
             max_idx = i;
         }
     }
     //(max_idx, max_val)
-    max_idx
+    &counts[max_idx]
 }
 
 // can take out Debug trait later
-fn brute<G: Generate<I> + std::fmt::Display, I: std::fmt::Debug>(
+fn brute<G: Generate<I> + std::fmt::Display, I: 'static + std::fmt::Debug + std::marker::Send>(
     path: &str,
     gen: &mut G,
     get_inst_count: fn(&str, &Input) -> i64,
 ) {
     loop {
-        let mut ids: Vec<I> = Vec::new();
-        let mut inst_counts: Vec<i64> = Vec::new();
-        for inp_pair in gen.by_ref() {
-            ids.push(inp_pair.0);
-            let inp = inp_pair.1;
+        let n_workers = 8;
+        let mut num_jobs: i64 = 0;
+        let mut results: Vec<(I, i64)> = Vec::new();
 
-            let inst_count = get_inst_count(path, &inp);
-            inst_counts.push(inst_count);
+        let pool = ThreadPool::new(n_workers);
+        let (tx, rx) = channel();
+
+        for inp_pair in gen.by_ref() {
+            num_jobs += 1;
+            let tx = tx.clone();
+            let test = String::from(path);
+            pool.execute(move || {
+                let inp = inp_pair.1;
+                let inst_count = get_inst_count(&test, &inp);
+                trace!("inst_count: {:?}", inst_count);
+                let _ = tx.send((inp_pair.0, inst_count));
+            });
         }
-        let good_idx = find_outlier(&inst_counts);
-        if !gen.update(&ids[good_idx]) {
+        for _ in 0..num_jobs {
+            results.push(rx.recv().unwrap());
+        }
+        let good_idx = find_outlier(&results);
+        if !gen.update(&good_idx.0) {
             break;
         }
     }
