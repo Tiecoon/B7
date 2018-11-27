@@ -16,7 +16,9 @@ use std::io;
 use clap::{App, Arg};
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
+use termion::event::Key;
 use termion::input::MouseTerminal;
+use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::screen::AlternateScreen;
 use tui::backend::TermionBackend;
@@ -160,7 +162,7 @@ fn brute<
                                     (&*s.0, aaaaaa)
                                 }).collect::<Vec<(&str, u64)>>();
                             &graph2
-                        }).bar_width(1)
+                        }).bar_width(2)
                         .style(Style::default().fg(Color::Yellow))
                         .value_style(Style::default().fg(Color::Black).bg(Color::Yellow))
                         .render(&mut f, chunks[0]);
@@ -176,8 +178,13 @@ fn brute<
                 }).unwrap();
         }
         // artificial delay to help see gui
-        let ten_millis = time::Duration::from_millis(1000);
-        thread::sleep(ten_millis);
+        let stdin = io::stdin();
+        for evt in stdin.keys() {
+            match evt {
+                Ok(Key::Char('q')) => panic!("quitting"),
+                _ => break,
+            }
+        }
         let good_idx = find_outlier(results.as_slice());
         if !gen.update(&good_idx.0) {
             break;
