@@ -102,6 +102,7 @@ fn brute<
     B: tui::backend::Backend,
 >(
     path: &str,
+    repeat: u32,
     gen: &mut G,
     get_inst_count: fn(&str, &Input) -> i64,
     terminal: &mut tui::terminal::Terminal<B>,
@@ -123,9 +124,16 @@ fn brute<
             let test = String::from(path);
             pool.execute(move || {
                 let inp = inp_pair.1;
-                let inst_count = get_inst_count(&test, &inp);
-                trace!("inst_count: {:?}", inst_count);
-                let _ = tx.send((inp_pair.0, inst_count));
+                let mut avg: f64 = 0.0;
+                let mut count: f64 = 0.0;
+                for _ in 0..repeat {
+                    let inst_count = get_inst_count(&test, &inp);
+                    avg += inst_count as f64;
+                    count += 1.0;
+                    trace!("inst_count: {:?}", inst_count);
+                }
+                avg = avg/count;
+                let _ = tx.send((inp_pair.0, avg as i64));
             });
         }
         let mut min: u64 = std::i64::MAX as u64;
@@ -212,30 +220,30 @@ fn main() {
     // Set default level for unknown targets to Trace
     let stdout = io::stdout().into_raw_mode().unwrap();
     let stdout = MouseTerminal::from(stdout);
-    let stdout = AlternateScreen::from(stdout);
+    // let stdout = AlternateScreen::from(stdout);
     let backend = TermionBackend::new(stdout);
     let mut terminal = Terminal::new(backend).unwrap();
 
     terminal.hide_cursor().unwrap();
 
     let mut argcgen = ArgcGenerator::new(0, 51);
-    brute(path, &mut argcgen, get_inst_count_perf, &mut terminal);
+    brute(path, 1, &mut argcgen, get_inst_count_perf, &mut terminal);
     let argc = argcgen.get_length();
-    let mut argvlengen = ArgvLenGenerator::new(argc, 0, 51);
-    brute(path, &mut argvlengen, get_inst_count_perf, &mut terminal);
+    let mut argvlengen = ArgvLenGenerator::new(argc, 0, 15);
+    brute(path, 5, &mut argvlengen, get_inst_count_perf, &mut terminal);
     let argvlens = argvlengen.get_lengths();
 
     let mut argvgen = ArgvGenerator::new(argc, argvlens, 0x20, 0x7e);
-    brute(path, &mut argvgen, get_inst_count_perf, &mut terminal);
+    brute(path, 5, &mut argvgen, get_inst_count_perf, &mut terminal);
     //let argvlens = argvlengen.get_lengths();
 
     let mut lgen = StdinLenGenerator::new(0, 51);
-    brute(path, &mut lgen, get_inst_count_perf, &mut terminal);
+    brute(path, 1, &mut lgen, get_inst_count_perf, &mut terminal);
     let stdinlen = lgen.get_length();
     // TODO: We should have a good way of configuring the range
     let mut gen = StdinCharGenerator::new(stdinlen, 0x20, 0x7e);
 
-    brute(path, &mut gen, get_inst_count_perf, &mut terminal);
+    brute(path, 1, &mut gen, get_inst_count_perf, &mut terminal);
     info!("Successfully Generated: A{}A", gen);
     println!("Successfully Generated: A{}A", gen);
 }
