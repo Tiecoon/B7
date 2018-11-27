@@ -132,7 +132,7 @@ fn brute<
                     count += 1.0;
                     trace!("inst_count: {:?}", inst_count);
                 }
-                avg = avg/count;
+                avg = avg / count;
                 let _ = tx.send((inp_pair.0, avg as i64));
             });
         }

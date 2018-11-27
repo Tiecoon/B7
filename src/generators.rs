@@ -210,7 +210,6 @@ impl std::fmt::Display for ArgcGenerator {
     }
 }
 
-
 impl ArgcGenerator {
     pub fn new(min: u32, max: u32) -> ArgcGenerator {
         ArgcGenerator {
@@ -261,7 +260,6 @@ pub struct ArgvLenGenerator {
     pos: usize,
     argc: u32,
     correct: Vec<u32>,
-
 }
 
 impl std::fmt::Display for ArgvLenGenerator {
@@ -272,7 +270,6 @@ impl std::fmt::Display for ArgvLenGenerator {
         write!(f, "done argv")
     }
 }
-
 
 impl ArgvLenGenerator {
     pub fn new(argc: u32, min: u32, max: u32) -> ArgvLenGenerator {
@@ -303,8 +300,7 @@ impl Iterator for ArgvLenGenerator {
         for i in 0..self.argc {
             if i == self.pos as u32 {
                 argv.push(vec![0x41; sz as usize]);
-            }
-            else{
+            } else {
                 argv.push(vec![0x41; self.correct[i as usize] as usize]);
             }
         }
@@ -344,7 +340,6 @@ pub struct ArgvGenerator {
     correct: ArgumentType,
     current: StringType,
     cur: u16,
-
 }
 
 impl std::fmt::Display for ArgvGenerator {
@@ -355,7 +350,6 @@ impl std::fmt::Display for ArgvGenerator {
         write!(f, "done argv")
     }
 }
-
 
 impl ArgvGenerator {
     pub fn new(argc: u32, len: &Vec<u32>, min: u16, max: u16) -> ArgvGenerator {
@@ -405,11 +399,9 @@ impl Iterator for ArgvGenerator {
         for i in 0..self.argc {
             if i == self.pos as u32 {
                 argv.push(inp.clone());
-            }
-            else if i < self.pos as u32{
+            } else if i < self.pos as u32 {
                 argv.push(self.correct[i as usize].clone());
-            }
-            else {
+            } else {
                 argv.push(vec![self.padchr as u8; self.len[i as usize] as usize]);
             }
         }
@@ -445,5 +437,3 @@ impl Update for ArgvGenerator {
         (self.pos as u32) < self.argc
     }
 }
-
-
