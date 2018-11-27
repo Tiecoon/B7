@@ -195,3 +195,255 @@ impl Update for StdinCharGenerator {
         self.idx < self.padlen
     }
 }
+
+/* code for argv */
+#[derive(Debug)]
+pub struct ArgcGenerator {
+    len: u32,
+    max: u32,
+    correct: u32,
+}
+
+impl std::fmt::Display for ArgcGenerator {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.correct)
+    }
+}
+
+
+impl ArgcGenerator {
+    pub fn new(min: u32, max: u32) -> ArgcGenerator {
+        ArgcGenerator {
+            len: min,
+            max,
+            correct: 0,
+        }
+    }
+
+    pub fn get_length(&self) -> u32 {
+        self.correct
+    }
+}
+impl Iterator for ArgcGenerator {
+    type Item = (u32, Input);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.len > self.max {
+            return None;
+        }
+        let sz = self.len;
+        self.len += 1;
+        Some((sz, Input::new(vec![vec![]; sz as usize], vec![])))
+    }
+}
+
+impl Events for ArgcGenerator {
+    fn on_update(&self) {
+        info!("argc: {}", self.correct);
+    }
+}
+
+impl Update for ArgcGenerator {
+    type Id = u32;
+
+    fn update(&mut self, chosen: &u32) -> bool {
+        self.correct = *chosen;
+        self.on_update();
+        false
+    }
+}
+
+#[derive(Debug)]
+pub struct ArgvLenGenerator {
+    len: u32,
+    min: u32,
+    max: u32,
+    pos: usize,
+    argc: u32,
+    correct: Vec<u32>,
+
+}
+
+impl std::fmt::Display for ArgvLenGenerator {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        for val in &self.correct {
+            write!(f, "argv {}", val);
+        }
+        write!(f, "done argv")
+    }
+}
+
+
+impl ArgvLenGenerator {
+    pub fn new(argc: u32, min: u32, max: u32) -> ArgvLenGenerator {
+        ArgvLenGenerator {
+            len: min,
+            min,
+            max,
+            pos: 0,
+            argc,
+            correct: vec![0; argc as usize],
+        }
+    }
+
+    pub fn get_lengths(&self) -> &Vec<u32> {
+        &self.correct
+    }
+}
+impl Iterator for ArgvLenGenerator {
+    type Item = (u32, Input);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.len > self.max {
+            return None;
+        }
+        let sz = self.len;
+        self.len += 1;
+        let mut argv: ArgumentType = Vec::new();
+        for i in 0..self.argc {
+            if i == self.pos as u32 {
+                argv.push(vec![0x41; sz as usize]);
+            }
+            else{
+                argv.push(vec![0x41; self.correct[i as usize] as usize]);
+            }
+        }
+        Some((sz, Input::new(argv, vec![])))
+    }
+}
+
+impl Events for ArgvLenGenerator {
+    fn on_update(&self) {
+        for val in &self.correct {
+            info!("argv {}", val);
+        }
+    }
+}
+
+impl Update for ArgvLenGenerator {
+    type Id = u32;
+
+    fn update(&mut self, chosen: &u32) -> bool {
+        self.correct[self.pos] = *chosen;
+        self.pos += 1;
+        self.len = self.min;
+        self.on_update();
+        (self.pos as u32) < self.argc
+    }
+}
+
+#[derive(Debug)]
+pub struct ArgvGenerator {
+    len: Vec<u32>,
+    padchr: u8,
+    idx: u32,
+    min: u16,
+    max: u16,
+    pos: usize,
+    argc: u32,
+    correct: ArgumentType,
+    current: StringType,
+    cur: u16,
+
+}
+
+impl std::fmt::Display for ArgvGenerator {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        for val in &self.correct {
+            write!(f, "argv {}", String::from_utf8_lossy(val.as_slice()));
+        }
+        write!(f, "done argv")
+    }
+}
+
+
+impl ArgvGenerator {
+    pub fn new(argc: u32, len: &Vec<u32>, min: u16, max: u16) -> ArgvGenerator {
+        ArgvGenerator {
+            len: len.clone(),
+            padchr: 0x41,
+            idx: 0,
+            min,
+            max,
+            pos: 0,
+            argc,
+            correct: vec![vec![]; argc as usize],
+            current: vec![],
+            cur: min,
+        }
+    }
+
+    pub fn get_argv(&self) -> &ArgumentType {
+        &self.correct
+    }
+}
+impl Iterator for ArgvGenerator {
+    type Item = (u8, Input);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.len[self.pos] == 0 {
+            self.pos += 1;
+        }
+        let len: u32 = self.len[self.pos];
+        if self.idx >= len || self.cur > 255 || self.cur > self.max {
+            return None;
+        }
+        let chr = self.cur as u8;
+        self.cur += 1;
+        //info!("Hello {}", chr);
+        let mut argv: ArgumentType = Vec::new();
+        let mut inp: StringType = Vec::new();
+        inp.extend_from_slice(&self.current);
+        inp.push(chr);
+        while inp.len() > len as usize {
+            inp.pop();
+        }
+        while inp.len() < len as usize {
+            inp.push(self.padchr);
+        }
+        //info!("argv {}", String::from_utf8_lossy(inp.as_slice()));
+        for i in 0..self.argc {
+            if i == self.pos as u32 {
+                argv.push(inp.clone());
+            }
+            else if i < self.pos as u32{
+                argv.push(self.correct[i as usize].clone());
+            }
+            else {
+                argv.push(vec![self.padchr as u8; self.len[i as usize] as usize]);
+            }
+        }
+        Some((chr, Input::new(argv, vec![])))
+    }
+}
+
+impl Events for ArgvGenerator {
+    fn on_update(&self) {
+        for val in &self.correct {
+            info!("argv {}", String::from_utf8_lossy(val.as_slice()));
+        }
+    }
+}
+
+impl Update for ArgvGenerator {
+    type Id = u8;
+
+    fn update(&mut self, chosen: &u8) -> bool {
+        info!("FUCK");
+        self.correct[self.pos].push(*chosen);
+        self.current.push(*chosen);
+        self.cur = self.min as u16;
+        self.idx += 1;
+        self.on_update();
+        //info!("pos {}", self.pos);
+        //info!("len {}", self.len[self.pos as usize]);
+        //info!("idx {}", self.idx);
+        if self.idx >= self.len[self.pos as usize] {
+            self.pos += 1;
+        }
+        //info!("pos {}", self.pos);
+        (self.pos as u32) < self.argc
+    }
+}
+
+

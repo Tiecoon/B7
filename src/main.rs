@@ -125,6 +125,18 @@ fn main() {
         ).get_matches();
 
     let path = matches.value_of("binary").unwrap();
+
+    let mut argcgen = ArgcGenerator::new(0, 51);
+    brute(path, &mut argcgen, get_inst_count_perf);
+    let argc = argcgen.get_length();
+    let mut argvlengen = ArgvLenGenerator::new(argc, 0, 51);
+    brute(path, &mut argvlengen, get_inst_count_perf);
+    let argvlens = argvlengen.get_lengths();
+
+    let mut argvgen = ArgvGenerator::new(argc, argvlens, 0x20, 0x7e);
+    brute(path, &mut argvgen, get_inst_count_perf);
+    //let argvlens = argvlengen.get_lengths();
+
     let mut lgen = StdinLenGenerator::new(0, 51);
     brute(path, &mut lgen, get_inst_count_perf);
     let stdinlen = lgen.get_length();
