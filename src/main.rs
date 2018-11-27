@@ -16,7 +16,9 @@ use std::io;
 use clap::{App, Arg};
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
+use termion::event::Key;
 use termion::input::MouseTerminal;
+use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::screen::AlternateScreen;
 use tui::backend::TermionBackend;
@@ -160,7 +162,7 @@ fn brute<
                                     (&*s.0, aaaaaa)
                                 }).collect::<Vec<(&str, u64)>>();
                             &graph2
-                        }).bar_width(1)
+                        }).bar_width(2)
                         .style(Style::default().fg(Color::Yellow))
                         .value_style(Style::default().fg(Color::Black).bg(Color::Yellow))
                         .render(&mut f, chunks[0]);
@@ -176,8 +178,13 @@ fn brute<
                 }).unwrap();
         }
         // artificial delay to help see gui
-        let ten_millis = time::Duration::from_millis(10000);
-        thread::sleep(ten_millis);
+        let stdin = io::stdin();
+        for evt in stdin.keys() {
+            match evt {
+                Ok(Key::Char('q')) => panic!("quitting"),
+                _ => break,
+            }
+        }
         let good_idx = find_outlier(results.as_slice());
         if !gen.update(&good_idx.0) {
             break;
@@ -202,7 +209,6 @@ fn main() {
 
     let path = matches.value_of("binary").unwrap();
 
-
     // Set default level for unknown targets to Trace
     let stdout = io::stdout().into_raw_mode().unwrap();
     let stdout = MouseTerminal::from(stdout);
@@ -222,7 +228,6 @@ fn main() {
     let mut argvgen = ArgvGenerator::new(argc, argvlens, 0x20, 0x7e);
     brute(path, &mut argvgen, get_inst_count_perf, &mut terminal);
     //let argvlens = argvlengen.get_lengths();
-
 
     let mut lgen = StdinLenGenerator::new(0, 51);
     brute(path, &mut lgen, get_inst_count_perf, &mut terminal);
