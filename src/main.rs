@@ -176,7 +176,7 @@ fn brute<
                 }).unwrap();
         }
         // artificial delay to help see gui
-        let ten_millis = time::Duration::from_millis(1000);
+        let ten_millis = time::Duration::from_millis(10000);
         thread::sleep(ten_millis);
         let good_idx = find_outlier(results.as_slice());
         if !gen.update(&good_idx.0) {
@@ -202,18 +202,6 @@ fn main() {
 
     let path = matches.value_of("binary").unwrap();
 
-    let mut argcgen = ArgcGenerator::new(0, 51);
-    brute(path, &mut argcgen, get_inst_count_perf);
-    let argc = argcgen.get_length();
-    let mut argvlengen = ArgvLenGenerator::new(argc, 0, 51);
-    brute(path, &mut argvlengen, get_inst_count_perf);
-    let argvlens = argvlengen.get_lengths();
-
-    let mut argvgen = ArgvGenerator::new(argc, argvlens, 0x20, 0x7e);
-    brute(path, &mut argvgen, get_inst_count_perf);
-    //let argvlens = argvlengen.get_lengths();
-
-    let mut lgen = StdinLenGenerator::new(0, 51);
 
     // Set default level for unknown targets to Trace
     let stdout = io::stdout().into_raw_mode().unwrap();
@@ -224,6 +212,19 @@ fn main() {
 
     terminal.hide_cursor().unwrap();
 
+    let mut argcgen = ArgcGenerator::new(0, 51);
+    brute(path, &mut argcgen, get_inst_count_perf, &mut terminal);
+    let argc = argcgen.get_length();
+    let mut argvlengen = ArgvLenGenerator::new(argc, 0, 51);
+    brute(path, &mut argvlengen, get_inst_count_perf, &mut terminal);
+    let argvlens = argvlengen.get_lengths();
+
+    let mut argvgen = ArgvGenerator::new(argc, argvlens, 0x20, 0x7e);
+    brute(path, &mut argvgen, get_inst_count_perf, &mut terminal);
+    //let argvlens = argvlengen.get_lengths();
+
+
+    let mut lgen = StdinLenGenerator::new(0, 51);
     brute(path, &mut lgen, get_inst_count_perf, &mut terminal);
     let stdinlen = lgen.get_length();
     // TODO: We should have a good way of configuring the range
