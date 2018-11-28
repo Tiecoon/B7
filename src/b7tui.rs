@@ -125,7 +125,7 @@ impl Ui for Tui {
         let stdin = io::stdin();
         for evt in stdin.keys() {
             match evt {
-                Ok(Key::Char('q')) => std::process::exit(0),
+                Ok(Key::Char('q')) => panic!{"Quitting"},
                 Ok(Key::Right) => {
                     break;
                 }
@@ -138,7 +138,7 @@ impl Ui for Tui {
         let stdin = io::stdin();
         for evt in stdin.keys() {
             match evt {
-                Ok(Key::Char('q')) => std::process::exit(0),
+                Ok(Key::Char('q')) => panic!{"Quitting"},
                 Ok(Key::Char('p')) => panic!("Force Closing"),
                 _ => {}
             }
