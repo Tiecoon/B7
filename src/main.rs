@@ -1,49 +1,47 @@
 extern crate clap;
+extern crate env_logger;
 extern crate libc;
-extern crate nix;
-extern crate spawn_ptrace;
-extern crate threadpool;
-
 #[macro_use]
 extern crate log;
-extern crate env_logger;
-
+extern crate nix;
+extern crate spawn_ptrace;
 extern crate termion;
+extern crate threadpool;
 extern crate tui;
+extern crate tui_logger;
 
 use b7tui::Ui;
 use clap::{App, Arg};
+use generators::*;
+use process::Process;
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
-extern crate tui_logger;
-
 use std::sync::mpsc::channel;
 use threadpool::ThreadPool;
 
+pub mod b7777;
+pub mod b7tui;
 pub mod binary;
 pub mod bindings;
-
-pub mod process;
-use process::Process;
-
 pub mod generators;
-use generators::*;
+pub mod process;
 
-pub mod b7777;
-
-pub mod b7tui;
-
+// Handles basic proc spawning and running under perf
 fn get_inst_count_perf(path: &str, inp: &Input) -> i64 {
     // TODO: error checking...
     let mut proc = Process::new(path);
     for arg in inp.argv.iter() {
         proc.arg(OsStr::from_bytes(arg));
     }
+
+    // Start Process run it to completion with all arguements
     proc.start().unwrap();
     proc.write_stdin(&inp.stdin).unwrap();
     proc.close_stdin().unwrap();
     proc.init_perf().unwrap();
     proc.finish().unwrap();
+
+    // Process instruction count
     let ret = match proc.get_inst_count() {
         Ok(x) => x,
         Err(_) => -1,
@@ -61,12 +59,14 @@ fn find_outlier<I: std::fmt::Debug>(counts: &[(I, i64)]) -> &(I, i64) {
     for (_, count) in counts.iter() {
         avg += count;
     }
+
     if !counts.is_empty() {
         avg /= counts.len() as i64;
     } else {
         // Handle division by zero
         warn!("WWWWWWWW {:?}", counts);
     }
+
     // and then find the most distant point
     let mut max_dist: i64 = -1;
     let mut max_idx: usize = 0;
@@ -77,11 +77,12 @@ fn find_outlier<I: std::fmt::Debug>(counts: &[(I, i64)]) -> &(I, i64) {
             max_idx = i;
         }
     }
-    //(max_idx, max_val)
+
     &counts[max_idx]
 }
 
 // can take out Debug trait later
+// Combines the generators with the instruction counters to deduce the next step
 fn brute<
     G: Generate<I> + std::fmt::Display,
     I: 'static + std::fmt::Display + Clone + std::fmt::Debug + std::marker::Send + std::cmp::Ord,
@@ -93,7 +94,9 @@ fn brute<
     get_inst_count: fn(&str, &Input) -> i64,
     terminal: &mut B,
 ) {
+    // Loop until generator says we are done
     loop {
+        // Number of threads to spawn
         let n_workers = 8;
         let mut num_jobs: i64 = 0;
         let mut results: Vec<(I, i64)> = Vec::new();
@@ -101,10 +104,12 @@ fn brute<
         let pool = ThreadPool::new(n_workers);
         let (tx, rx) = channel();
 
+        // run each case of the generators
         for inp_pair in gen.by_ref() {
             num_jobs += 1;
             let tx = tx.clone();
             let test = String::from(path);
+            // give it to a thread to handle
             pool.execute(move || {
                 let inp = inp_pair.1;
                 let mut avg: f64 = 0.0;
@@ -119,7 +124,9 @@ fn brute<
                 let _ = tx.send((inp_pair.0, avg as i64));
             });
         }
+        // Track the minimum for stats later
         let mut min: u64 = std::i64::MAX as u64;
+        // Get results from the threads
         for _ in 0..num_jobs {
             let tmp = rx.recv().unwrap();
             if (tmp.1 as u64) < min {
@@ -133,6 +140,7 @@ fn brute<
 
         terminal.wait();
 
+        // inform generator of the result
         let good_idx = find_outlier(results.as_slice());
         if !gen.update(&good_idx.0) {
             break;
@@ -141,6 +149,7 @@ fn brute<
 }
 
 fn main() {
+    // handle command line arguements
     let matches = App::new("B7")
         .version("0.1.0")
         .arg(
@@ -154,23 +163,31 @@ fn main() {
 
     let mut terminal = b7tui::Tui::new();
 
+    // Solve for argc
     let mut argcgen = ArgcGenerator::new(0, 51);
     brute(path, 1, &mut argcgen, get_inst_count_perf, &mut terminal);
     let argc = argcgen.get_length();
+
+    // solve argv
     let mut argvlengen = ArgvLenGenerator::new(argc, 0, 15);
     brute(path, 5, &mut argvlengen, get_inst_count_perf, &mut terminal);
     let argvlens = argvlengen.get_lengths();
 
+    // solve argv length
     let mut argvgen = ArgvGenerator::new(argc, argvlens, 0x20, 0x7e);
     brute(path, 5, &mut argvgen, get_inst_count_perf, &mut terminal);
     //let argvlens = argvlengen.get_lengths();
 
+    //solve stdin len
     let mut lgen = StdinLenGenerator::new(0, 51);
     brute(path, 1, &mut lgen, get_inst_count_perf, &mut terminal);
     let stdinlen = lgen.get_length();
 
+    //solve strin
     // TODO: We should have a good way of configuring the range
     let mut gen = StdinCharGenerator::new(stdinlen, 0x20, 0x7e);
     brute(path, 1, &mut gen, get_inst_count_perf, &mut terminal);
+
+    // let terminal decide if it should wait for user
     terminal.done();
 }
