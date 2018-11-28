@@ -352,9 +352,9 @@ impl std::fmt::Display for ArgvGenerator {
 }
 
 impl ArgvGenerator {
-    pub fn new(argc: u32, len: &Vec<u32>, min: u16, max: u16) -> ArgvGenerator {
+    pub fn new(argc: u32, len: &[u32], min: u16, max: u16) -> ArgvGenerator {
         ArgvGenerator {
-            len: len.clone(),
+            len: len.to_vec(),
             padchr: 0x41,
             idx: 0,
             min,
@@ -421,7 +421,6 @@ impl Update for ArgvGenerator {
     type Id = u8;
 
     fn update(&mut self, chosen: &u8) -> bool {
-        info!("FUCK");
         self.correct[self.pos].push(*chosen);
         self.current.push(*chosen);
         self.cur = self.min as u16;

@@ -11,25 +11,11 @@ extern crate env_logger;
 extern crate termion;
 extern crate tui;
 
-use std::io;
-
+use b7tui::Ui;
 use clap::{App, Arg};
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
-use termion::event::Key;
-use termion::input::MouseTerminal;
-use termion::input::TermRead;
-use termion::raw::IntoRawMode;
-use termion::screen::AlternateScreen;
-use tui::backend::TermionBackend;
-use tui::layout::{Constraint, Direction, Layout};
-use tui::style::{Color, Style};
-use tui::widgets::{BarChart, Block, Borders, Widget};
-use tui::Terminal;
 extern crate tui_logger;
-
-use log::LevelFilter;
-use tui_logger::*;
 
 use std::sync::mpsc::channel;
 use threadpool::ThreadPool;
@@ -45,7 +31,7 @@ use generators::*;
 
 pub mod b7777;
 
-use std::{thread, time};
+pub mod b7tui;
 
 fn get_inst_count_perf(path: &str, inp: &Input) -> i64 {
     // TODO: error checking...
@@ -99,22 +85,19 @@ fn find_outlier<I: std::fmt::Debug>(counts: &[(I, i64)]) -> &(I, i64) {
 fn brute<
     G: Generate<I> + std::fmt::Display,
     I: 'static + std::fmt::Display + Clone + std::fmt::Debug + std::marker::Send + std::cmp::Ord,
-    B: tui::backend::Backend,
+    B: b7tui::Ui,
 >(
     path: &str,
     repeat: u32,
     gen: &mut G,
     get_inst_count: fn(&str, &Input) -> i64,
-    terminal: &mut tui::terminal::Terminal<B>,
+    terminal: &mut B,
 ) {
     loop {
-        let size = terminal.size().unwrap();
         let n_workers = 8;
         let mut num_jobs: i64 = 0;
         let mut results: Vec<(I, i64)> = Vec::new();
 
-        let graph: Vec<(String, u64)>;
-        let mut graph2: Vec<(&str, u64)> = Vec::new();
         let pool = ThreadPool::new(n_workers);
         let (tx, rx) = channel();
 
@@ -132,7 +115,7 @@ fn brute<
                     count += 1.0;
                     trace!("inst_count: {:?}", inst_count);
                 }
-                avg = avg / count;
+                avg /= count;
                 let _ = tx.send((inp_pair.0, avg as i64));
             });
         }
@@ -143,56 +126,13 @@ fn brute<
                 min = tmp.1 as u64;
             }
             results.push(tmp);
-            // graph2.push((&mut graph.last().unwrap().0, tmp.1 as u64));
         }
         results.sort();
-        graph = results
-            .iter()
-            .map(|s| (format!("{}", s.0), s.1 as u64))
-            .collect();
-        if !graph.is_empty() {
-            terminal
-                .draw(|mut f| {
-                    let chunks = Layout::default()
-                        .direction(Direction::Vertical)
-                        .margin(1)
-                        .constraints(
-                            [Constraint::Percentage(70), Constraint::Percentage(100)].as_ref(),
-                        ).split(size);
 
-                    BarChart::default()
-                        .block(Block::default().title("Data1").borders(Borders::ALL))
-                        .data({
-                            graph2 = graph
-                                .iter()
-                                .map(|s| {
-                                    let aaaaaa = s.1 - min;
-                                    (&*s.0, aaaaaa)
-                                }).collect::<Vec<(&str, u64)>>();
-                            &graph2
-                        }).bar_width(2)
-                        .style(Style::default().fg(Color::Yellow))
-                        .value_style(Style::default().fg(Color::Black).bg(Color::Yellow))
-                        .render(&mut f, chunks[0]);
-                    TuiLoggerWidget::default()
-                        .block(
-                            Block::default()
-                                .title("Independent Tui Logger View")
-                                .title_style(Style::default().fg(Color::White).bg(Color::Black))
-                                .border_style(Style::default().fg(Color::White).bg(Color::Black))
-                                .borders(Borders::ALL),
-                        ).style(Style::default().fg(Color::White))
-                        .render(&mut f, chunks[1]);
-                }).unwrap();
-        }
-        // artificial delay to help see gui
-        let stdin = io::stdin();
-        for evt in stdin.keys() {
-            match evt {
-                Ok(Key::Char('q')) => panic!("quitting"),
-                _ => break,
-            }
-        }
+        terminal.update(&results, &min);
+
+        terminal.wait();
+
         let good_idx = find_outlier(results.as_slice());
         if !gen.update(&good_idx.0) {
             break;
@@ -201,11 +141,6 @@ fn brute<
 }
 
 fn main() {
-    init_logger(LevelFilter::Trace).unwrap();
-
-    // Set default level for unknown targets to Trace
-    set_default_level(LevelFilter::Info);
-
     let matches = App::new("B7")
         .version("0.1.0")
         .arg(
@@ -217,14 +152,7 @@ fn main() {
 
     let path = matches.value_of("binary").unwrap();
 
-    // Set default level for unknown targets to Trace
-    let stdout = io::stdout().into_raw_mode().unwrap();
-    let stdout = MouseTerminal::from(stdout);
-    // let stdout = AlternateScreen::from(stdout);
-    let backend = TermionBackend::new(stdout);
-    let mut terminal = Terminal::new(backend).unwrap();
-
-    terminal.hide_cursor().unwrap();
+    let mut terminal = b7tui::Tui::new();
 
     let mut argcgen = ArgcGenerator::new(0, 51);
     brute(path, 1, &mut argcgen, get_inst_count_perf, &mut terminal);
@@ -240,10 +168,9 @@ fn main() {
     let mut lgen = StdinLenGenerator::new(0, 51);
     brute(path, 1, &mut lgen, get_inst_count_perf, &mut terminal);
     let stdinlen = lgen.get_length();
+
     // TODO: We should have a good way of configuring the range
     let mut gen = StdinCharGenerator::new(stdinlen, 0x20, 0x7e);
-
     brute(path, 1, &mut gen, get_inst_count_perf, &mut terminal);
-    info!("Successfully Generated: A{}A", gen);
-    println!("Successfully Generated: A{}A", gen);
+    terminal.done();
 }
