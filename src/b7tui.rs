@@ -74,7 +74,7 @@ impl Ui for Tui {
     ) -> bool {
         let size = self.terminal.size().unwrap();
         if self.size != size {
-            self.terminal.resize(self.size).unwrap();
+            self.terminal.resize(size).unwrap();
             self.size = size;
         }
         let graph: Vec<(String, u64)>;
