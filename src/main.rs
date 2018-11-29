@@ -57,9 +57,9 @@ fn get_inst_count_perf(path: &str, inp: &Input) -> i64 {
 // Handles basic proc spawning and running under dino
 // only works on 32 bit for now
 fn get_inst_count_dino(path: &str, inp: &Input) -> i64 {
-    let mut proc = Process::new("/home/jack2/git/dynamorio/build/bin64/drrun");
+    let mut proc = Process::new("/home/luke/build/dynamorio/build/bin64/drrun");
     proc.arg("-c");
-    proc.arg("/home/jack2/git/dynamorio/build/api/bin/libinscount.so");
+    proc.arg("/home/luke/build/dynamorio/build/api/bin/libinscount.so");
     proc.arg("--");
     proc.arg(path);
     for arg in inp.argv.iter() {
@@ -159,15 +159,39 @@ fn main() {
                 .help("Binary to brute force input for")
                 .index(1)
                 .required(true),
+        ).arg(
+            Arg::with_name("solver")
+                .short("s")
+                .long("solver")
+                .value_name("solver")
+                .help("Sets which solver to use (default perf)")
+                .takes_value(true),
+        ).arg(
+            Arg::with_name("ui")
+                .short("u")
+                .long("ui")
+                .value_name("ui_type")
+                .help("Sets which interface to use (default Tui)")
+                .takes_value(true),
         ).get_matches();
 
     let path = matches.value_of("binary").unwrap();
 
+    let solvername = matches.value_of("solver").unwrap_or("perf");
+    let solver: fn(&str, &Input) -> i64;
+
+    match solvername {
+        "perf" => solver = get_inst_count_perf,
+        "dynamario" => solver = get_inst_count_dino,
+        _ => panic!("unknown solver"),
+    }
+
     let mut terminal = b7tui::Tui::new();
+    info!("using {}", solvername);
 
     // Solve for argc
     let mut argcgen = ArgcGenerator::new(0, 5);
-    brute(path, 1, &mut argcgen, get_inst_count_dino, &mut terminal);
+    brute(path, 1, &mut argcgen, solver, &mut terminal);
     let argc = argcgen.get_length();
 
     let mut file = File::create(format!("{}.cache", path)).unwrap();
@@ -175,12 +199,12 @@ fn main() {
     if argc > 0 {
         // solve argv length
         let mut argvlengen = ArgvLenGenerator::new(argc, 0, 20);
-        brute(path, 5, &mut argvlengen, get_inst_count_perf, &mut terminal);
+        brute(path, 5, &mut argvlengen, solver, &mut terminal);
         let argvlens = argvlengen.get_lengths();
 
         // solve argv values
         let mut argvgen = ArgvGenerator::new(argc, argvlens, 0x20, 0x7e);
-        brute(path, 5, &mut argvgen, get_inst_count_perf, &mut terminal);
+        brute(path, 5, &mut argvgen, solver, &mut terminal);
         let argv = argvgen.get_argv();
         // TODO: error handling could be improved here
         file.write_all(b"[").unwrap();
@@ -192,13 +216,13 @@ fn main() {
     }
     //solve stdin len
     let mut lgen = StdinLenGenerator::new(0, 51);
-    brute(path, 1, &mut lgen, get_inst_count_perf, &mut terminal);
+    brute(path, 1, &mut lgen, solver, &mut terminal);
     let stdinlen = lgen.get_length();
     //solve strin if there is stuff to solve
     if stdinlen > 0 {
         // TODO: We should have a good way of configuring the range
         let mut gen = StdinCharGenerator::new(stdinlen, 0x20, 0x7e);
-        brute(path, 1, &mut gen, get_inst_count_perf, &mut terminal);
+        brute(path, 1, &mut gen, solver, &mut terminal);
         let std = gen.get_input().clone();
         file.write_all(String::from_utf8_lossy(std.as_slice()).as_bytes())
             .unwrap();

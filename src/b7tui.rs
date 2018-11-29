@@ -48,6 +48,7 @@ pub struct Tui {
     numrun: u64,
     currun: u64,
     format: Format,
+    cont: bool,
 }
 
 // constructor
@@ -73,6 +74,7 @@ impl Tui {
             numrun: 0,
             currun: 0,
             format: Format::Hex,
+            cont: false,
         }
     }
     pub fn redraw(&mut self) -> bool {
@@ -198,27 +200,35 @@ impl Ui for Tui {
     // pause for user input before continuing
     fn wait(&mut self) -> bool {
         let stdin = io::stdin();
-        for evt in stdin.keys() {
-            match evt {
-                Ok(Key::Char('q')) => panic!{"Quitting"},
-                Ok(Key::Char('h')) => self.format = Format::Hex,
-                Ok(Key::Char('d')) => self.format = Format::Decimal,
-                Ok(Key::Char('s')) => self.format = Format::String,
-                Ok(Key::Right) => {
-                    if self.currun < self.numrun {
-                        self.currun += 1;
-                    } else {
-                        break;
+        if !self.cont {
+            for evt in stdin.keys() {
+                match evt {
+                    Ok(Key::Char('q')) => panic!{"Quitting"},
+                    Ok(Key::Char('h')) => self.format = Format::Hex,
+                    Ok(Key::Char('d')) => self.format = Format::Decimal,
+                    Ok(Key::Char('s')) => self.format = Format::String,
+                    Ok(Key::Char('c')) => {
+                        self.cont ^= true;
+                        if self.cont {
+                            break;
+                        }
                     }
-                }
-                Ok(Key::Left) => {
-                    if self.currun > 1 {
-                        self.currun -= 1;
+                    Ok(Key::Right) => {
+                        if self.currun < self.numrun {
+                            self.currun += 1;
+                        } else {
+                            break;
+                        }
                     }
+                    Ok(Key::Left) => {
+                        if self.currun > 1 {
+                            self.currun -= 1;
+                        }
+                    }
+                    _ => {}
                 }
-                _ => {}
+                let _ = self.redraw();
             }
-            let _ = self.redraw();
         }
         let _ = self.redraw();
         true
