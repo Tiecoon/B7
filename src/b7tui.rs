@@ -39,6 +39,9 @@ pub struct Tui {
         >,
     >,
     size: tui::layout::Rect,
+    cache: Vec<(Vec<(u64, u64)>, u64)>,
+    numrun: u64,
+    currun: u64,
 }
 
 // constructor
@@ -56,46 +59,30 @@ impl Tui {
 
         terminal.hide_cursor().unwrap();
         let size = terminal.size().unwrap();
-        Tui { terminal, size }
+        let cache = Vec::new();
+        Tui {
+            terminal,
+            size,
+            cache,
+            numrun: 0,
+            currun: 0,
+        }
     }
-}
-
-// default constructor for syntax sugar
-impl Default for Tui {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-// implement Tuis Ui trait
-impl Ui for Tui {
-    // draw bargraph for new input
-    fn update<
-        I: 'static + std::fmt::Display + Clone + std::fmt::Debug + std::marker::Send + std::cmp::Ord,
-    >(
-        &mut self,
-        results: &[(I, i64)],
-        min: &u64,
-    ) -> bool {
+    pub fn redraw(&mut self) -> bool {
         // resize terminal if needed
         let size = self.terminal.size().unwrap();
         if self.size != size {
             self.terminal.resize(size).unwrap();
             self.size = size;
         }
-        // convert stuff for barchart
-        let graph: Vec<(String, u64)>;
-        let mut graph2: Vec<(&str, u64)> = Vec::new();
-
-        // TODO implement multiple formats
-        graph = results
-            .iter()
-            .map(|s| (format!("{}", s.0), s.1 as u64))
-            .collect();
-
-        let size = self.size;
-        if !graph.is_empty() {
-            // redraw terminal
+        if !self.cache.is_empty() {
+            let graph = &self.cache[(self.currun - 1) as usize];
+            let graph3: Vec<(String, u64)> = graph
+                .0
+                .iter()
+                .map(|s| (format!("{}", s.0), s.1 as u64))
+                .collect();
+            let mut graph2: Vec<(&str, u64)> = Vec::new();
             self.terminal
                 .draw(|mut f| {
                     let chunks = Layout::default()
@@ -109,10 +96,10 @@ impl Ui for Tui {
                         .block(Block::default().title("B7").borders(Borders::ALL))
                         .data({
                             // convert String to &str and chop off uneccesary instructions
-                            graph2 = graph
+                            graph2 = graph3
                                 .iter()
                                 .map(|s| {
-                                    let aaaaaa = s.1 - min;
+                                    let aaaaaa = s.1 - graph.1;
                                     (&*s.0, aaaaaa)
                                 }).collect::<Vec<(&str, u64)>>();
                             &graph2
@@ -135,6 +122,48 @@ impl Ui for Tui {
         }
         true
     }
+}
+
+// default constructor for syntax sugar
+impl Default for Tui {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// implement Tuis Ui trait
+impl Ui for Tui {
+    // draw bargraph for new input
+    fn update<
+        I: 'static + std::fmt::Display + Clone + std::fmt::Debug + std::marker::Send + std::cmp::Ord,
+    >(
+        &mut self,
+        results: &[(I, i64)],
+        min: &u64,
+    ) -> bool {
+        // convertcachefor barchart
+
+        // TODO implement multiple formats
+        let graph: Vec<(String, u64)>;
+        graph = results
+            .iter()
+            .map(|s| (format!("{}", s.0), s.1 as u64))
+            .collect();
+        self.cache.push((
+            graph
+                .iter()
+                .map(|s| ((s.0.parse::<u64>().unwrap()), s.1))
+                .collect::<Vec<(u64, u64)>>(),
+            *min,
+        ));
+        if self.currun == self.numrun {
+            self.currun += 1;
+        }
+        self.numrun += 1;
+        let _ = self.redraw();
+
+        true
+    }
     // pause for user input before continuing
     fn wait(&mut self) -> bool {
         let stdin = io::stdin();
@@ -142,9 +171,22 @@ impl Ui for Tui {
             match evt {
                 Ok(Key::Char('q')) => panic!{"Quitting"},
                 Ok(Key::Right) => {
-                    break;
+                    if self.currun < self.numrun {
+                        self.currun += 1;
+                    } else {
+                        break;
+                    }
+                    self.redraw();
                 }
-                _ => {}
+                Ok(Key::Left) => {
+                    if self.currun > 1 {
+                        self.currun -= 1;
+                    }
+                    self.redraw();
+                }
+                _ => {
+                    let _ = self.redraw();
+                }
             }
         }
         true
@@ -156,7 +198,21 @@ impl Ui for Tui {
             match evt {
                 Ok(Key::Char('q')) => panic!{"Quitting"},
                 Ok(Key::Char('p')) => panic!("Force Closing"),
-                _ => {}
+                Ok(Key::Right) => {
+                    if self.currun < self.numrun {
+                        self.currun += 1;
+                    }
+                    self.redraw();
+                }
+                Ok(Key::Left) => {
+                    if self.currun > 1 {
+                        self.currun -= 1;
+                    }
+                    self.redraw();
+                }
+                _ => {
+                    let _ = self.redraw();
+                }
             }
         }
         true
