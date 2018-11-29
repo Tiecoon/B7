@@ -51,6 +51,12 @@ fn main() {
                 .value_name("ui_type")
                 .help("Sets which interface to use (default Tui)")
                 .takes_value(true),
+        ).arg(
+            Arg::with_name("start")
+                .long("start")
+                .value_name("start")
+                .help("Start with a premade input")
+                .takes_value(true),
         ).get_matches();
 
     let path = matches.value_of("binary").unwrap();
@@ -63,6 +69,8 @@ fn main() {
         "dynamorio" => solver = dynamorio::get_inst_count,
         _ => panic!("unknown solver"),
     }
+
+    let stdin_input = matches.value_of("start").unwrap_or("");
 
     let mut terminal = b7tui::Tui::new();
     info!("using {}", solvername);
@@ -99,7 +107,12 @@ fn main() {
     //solve strin if there is stuff to solve
     if stdinlen > 0 {
         // TODO: We should have a good way of configuring the range
-        let mut gen = StdinCharGenerator::new(stdinlen, 0x20, 0x7e);
+        let mut gen;
+        if stdin_input == "" {
+            gen = StdinCharGenerator::new(stdinlen, 0x20, 0x7e);
+        } else {
+            gen = StdinCharGenerator::new_start(stdinlen, 0x20, 0x7e, stdin_input.as_bytes());
+        }
         brute(path, 1, &mut gen, solver, &mut terminal);
         let std = gen.get_input().clone();
         file.write_all(String::from_utf8_lossy(std.as_slice()).as_bytes())
