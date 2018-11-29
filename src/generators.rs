@@ -146,13 +146,13 @@ impl StdinCharGenerator {
     }
 
     pub fn new_start(padlen: u32, min: u16, max: u16, start: &[u8]) -> StdinCharGenerator {
-        warn!("aaaa {:?}", start);
+        warn!("{:?}", start);
         StdinCharGenerator {
-            padlen: padlen - start.len() as u32,
+            padlen: padlen,
             padchr: 0x41,
             prefix: start.to_vec(),
             suffix: vec![],
-            idx: 0,
+            idx: start.len() as u32,
             cur: min,
             correct: vec![],
             min,
