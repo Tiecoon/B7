@@ -12,6 +12,11 @@ use tui::widgets::{BarChart, Block, Borders, Widget};
 use tui::Terminal;
 use tui_logger::*;
 
+enum Format {
+    Hex,
+    String,
+    Decimal,
+}
 // Trait that all Uis will implement to ensure genericness
 pub trait Ui {
     // handle a new ui check
@@ -42,6 +47,7 @@ pub struct Tui {
     cache: Vec<(Vec<(u64, u64)>, u64)>,
     numrun: u64,
     currun: u64,
+    format: Format,
 }
 
 // constructor
@@ -66,6 +72,7 @@ impl Tui {
             cache,
             numrun: 0,
             currun: 0,
+            format: Format::Hex,
         }
     }
     pub fn redraw(&mut self) -> bool {
@@ -77,11 +84,35 @@ impl Tui {
         }
         if !self.cache.is_empty() {
             let graph = &self.cache[(self.currun - 1) as usize];
-            let graph3: Vec<(String, u64)> = graph
-                .0
-                .iter()
-                .map(|s| (format!("{}", s.0), s.1 as u64))
-                .collect();
+            let graph3: Vec<(String, u64)>;
+            match self.format {
+                Format::Decimal => {
+                    graph3 = graph
+                        .0
+                        .iter()
+                        .map(|s| (format!("{}", s.0), s.1 as u64))
+                        .collect();
+                }
+                Format::Hex => {
+                    graph3 = graph
+                        .0
+                        .iter()
+                        .map(|s| (format!("{:x}", s.0), s.1 as u64))
+                        .collect();
+                }
+                Format::String => {
+                    graph3 = graph
+                        .0
+                        .iter()
+                        .map(|s| {
+                            (
+                                format!("{}", String::from_utf8_lossy(&[s.0 as u8])),
+                                s.1 as u64,
+                            )
+                        }).collect();
+                }
+            }
+
             let mut graph2: Vec<(&str, u64)> = Vec::new();
             self.terminal
                 .draw(|mut f| {
@@ -99,8 +130,8 @@ impl Tui {
                             graph2 = graph3
                                 .iter()
                                 .map(|s| {
-                                    let aaaaaa = s.1 - graph.1;
-                                    (&*s.0, aaaaaa)
+                                    let adjusted = s.1 - graph.1;
+                                    (&*s.0, adjusted)
                                 }).collect::<Vec<(&str, u64)>>();
                             &graph2
                         }).bar_width(2)
@@ -170,25 +201,26 @@ impl Ui for Tui {
         for evt in stdin.keys() {
             match evt {
                 Ok(Key::Char('q')) => panic!{"Quitting"},
+                Ok(Key::Char('h')) => self.format = Format::Hex,
+                Ok(Key::Char('d')) => self.format = Format::Decimal,
+                Ok(Key::Char('s')) => self.format = Format::String,
                 Ok(Key::Right) => {
                     if self.currun < self.numrun {
                         self.currun += 1;
                     } else {
                         break;
                     }
-                    self.redraw();
                 }
                 Ok(Key::Left) => {
                     if self.currun > 1 {
                         self.currun -= 1;
                     }
-                    self.redraw();
                 }
-                _ => {
-                    let _ = self.redraw();
-                }
+                _ => {}
             }
+            let _ = self.redraw();
         }
+        let _ = self.redraw();
         true
     }
     // wait at the end of the program to show results
@@ -198,23 +230,24 @@ impl Ui for Tui {
             match evt {
                 Ok(Key::Char('q')) => panic!{"Quitting"},
                 Ok(Key::Char('p')) => panic!("Force Closing"),
+                Ok(Key::Char('h')) => self.format = Format::Hex,
+                Ok(Key::Char('d')) => self.format = Format::Decimal,
+                Ok(Key::Char('s')) => self.format = Format::String,
                 Ok(Key::Right) => {
                     if self.currun < self.numrun {
                         self.currun += 1;
                     }
-                    self.redraw();
                 }
                 Ok(Key::Left) => {
                     if self.currun > 1 {
                         self.currun -= 1;
                     }
-                    self.redraw();
                 }
-                _ => {
-                    let _ = self.redraw();
-                }
+                _ => {}
             }
+            let _ = self.redraw();
         }
+        let _ = self.redraw();
         true
     }
 }
