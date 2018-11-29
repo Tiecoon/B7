@@ -185,7 +185,8 @@ fn main() {
         // TODO: error handling could be improved here
         file.write_all(b"[").unwrap();
         for arg in argv {
-            file.write_all(String::from_utf8_lossy(arg.as_slice()).as_bytes()).unwrap();
+            file.write_all(String::from_utf8_lossy(arg.as_slice()).as_bytes())
+                .unwrap();
         }
         file.write_all(b"]\n").unwrap();
     }
@@ -199,7 +200,8 @@ fn main() {
         let mut gen = StdinCharGenerator::new(stdinlen, 0x20, 0x7e);
         brute(path, 1, &mut gen, get_inst_count_perf, &mut terminal);
         let std = gen.get_input().clone();
-        file.write_all(String::from_utf8_lossy(std.as_slice()).as_bytes()).unwrap();
+        file.write_all(String::from_utf8_lossy(std.as_slice()).as_bytes())
+            .unwrap();
     }
 
     // let terminal decide if it should wait for user
