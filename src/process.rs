@@ -8,7 +8,7 @@ use nix::unistd::Pid;
 use spawn_ptrace::CommandPtraceSpawn;
 use std::ffi::OsStr;
 use std::fs::File;
-use std::io::{Error, ErrorKind, Result, Write};
+use std::io::{Error, ErrorKind, Read, Result, Write};
 use std::os::unix::io::FromRawFd;
 use std::process::{Child, Command, Stdio};
 
@@ -75,6 +75,18 @@ impl Process {
         let child = self.child.as_mut().unwrap();
         match child.stdin.as_mut() {
             Some(stdin) => stdin.write_all(buf),
+            None => Err(Error::last_os_error()),
+        }
+    }
+
+    // read buf to process then close it
+    pub fn read_stdout(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
+        if self.child.is_none() {
+            return Err(Error::new(ErrorKind::Other, "child process not running"));
+        }
+        let child = self.child.as_mut().unwrap();
+        match child.stdout.as_mut() {
+            Some(stdout) => stdout.read_to_end(buf),
             None => Err(Error::last_os_error()),
         }
     }

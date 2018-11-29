@@ -4,6 +4,7 @@ extern crate libc;
 #[macro_use]
 extern crate log;
 extern crate nix;
+extern crate regex;
 extern crate spawn_ptrace;
 extern crate termion;
 extern crate threadpool;
@@ -28,6 +29,8 @@ pub mod bindings;
 pub mod generators;
 pub mod process;
 
+static mut R: i64 = 5;
+
 // Handles basic proc spawning and running under perf
 fn get_inst_count_perf(path: &str, inp: &Input) -> i64 {
     // TODO: error checking...
@@ -50,6 +53,37 @@ fn get_inst_count_perf(path: &str, inp: &Input) -> i64 {
     };
     proc.close_perf();
     ret
+}
+
+// Handles basic proc spawning and running under dino
+// only works on 32 bit for now
+fn get_inst_count_dino(path: &str, inp: &Input) -> i64 {
+
+    let mut proc = Process::new("/home/jack2/git/dynamorio/build/bin64/drrun");
+    proc.arg("-c");
+    proc.arg("/home/jack2/git/dynamorio/build/api/bin/libinscount.so");
+    proc.arg("--");
+    proc.arg(path);
+    for arg in inp.argv.iter() {
+        proc.arg(OsStr::from_bytes(arg));
+    }
+
+    // Start Process run it to completion with all arguements
+    proc.start().unwrap();
+    proc.write_stdin(&inp.stdin).unwrap();
+    proc.close_stdin().unwrap();
+    proc.finish().unwrap();
+
+    let mut buf: Vec<u8> = Vec::new();
+    proc.read_stdout(&mut buf);
+
+    let stdout = String::from_utf8_lossy(buf.as_slice());
+
+    let re = regex::Regex::new("(\\d+)").unwrap();
+    let m = re.find(&stdout).unwrap().as_str();
+    let num2: i64 = m.parse().unwrap();
+
+    num2
 }
 
 // Find the most distant point from the average.
@@ -167,7 +201,7 @@ fn main() {
 
     // Solve for argc
     let mut argcgen = ArgcGenerator::new(0, 5);
-    brute(path, 1, &mut argcgen, get_inst_count_perf, &mut terminal);
+    brute(path, 1, &mut argcgen, get_inst_count_dino, &mut terminal);
     let argc = argcgen.get_length();
 
     let mut file = File::create(format!("{}.cache", path)).unwrap();
