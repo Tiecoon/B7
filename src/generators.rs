@@ -49,8 +49,6 @@ pub trait Events {
 // the right types has an (empty) impl for Generate
 impl<T: Iterator<Item = (U, Input)> + Update<Id = U>, U> Generate<U> for T {}
 
-
-
 /* code for stdin generators */
 #[derive(Debug)]
 pub struct StdinLenGenerator {
@@ -387,7 +385,6 @@ impl Iterator for ArgvGenerator {
             if (self.pos as u32) >= self.argc {
                 return None;
             }
-
         }
         let len: u32 = self.len[self.pos];
         if self.idx >= len || self.cur > 255 || self.cur > self.max {
@@ -433,7 +430,7 @@ impl Update for ArgvGenerator {
 
     fn update(&mut self, chosen: &u8) -> bool {
         if (self.pos as u32) >= self.argc {
-            return (self.pos as u32) < self.argc
+            return (self.pos as u32) < self.argc;
         }
         self.correct[self.pos].push(*chosen);
         self.current.push(*chosen);
@@ -441,11 +438,10 @@ impl Update for ArgvGenerator {
         self.idx += 1;
         self.on_update();
 
-
         if self.idx >= self.len[self.pos] {
             self.pos += 1;
             self.idx = 0;
-         }
+        }
 
         (self.pos as u32) < self.argc
     }

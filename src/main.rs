@@ -184,11 +184,12 @@ fn main() {
     brute(path, 1, &mut lgen, get_inst_count_perf, &mut terminal);
     let stdinlen = lgen.get_length();
 
-    //solve strin
-    // TODO: We should have a good way of configuring the range
-    let mut gen = StdinCharGenerator::new(stdinlen, 0x20, 0x7e);
-    brute(path, 1, &mut gen, get_inst_count_perf, &mut terminal);
-
+    //solve strin if there is stuff to solve
+    if stdinlen > 0 {
+        // TODO: We should have a good way of configuring the range
+        let mut gen = StdinCharGenerator::new(stdinlen, 0x20, 0x7e);
+        brute(path, 1, &mut gen, get_inst_count_perf, &mut terminal);
+    }
     // let terminal decide if it should wait for user
     terminal.done();
 }
