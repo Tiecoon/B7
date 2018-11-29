@@ -1,6 +1,10 @@
 use bindings::*;
+use generators::Input;
 use libc::{ioctl, pid_t, syscall};
+use process::Process;
+use std::ffi::OsStr;
 use std::mem;
+use std::os::unix::ffi::OsStrExt;
 use std::process::exit;
 
 // syscall number for perf syscall
@@ -43,4 +47,28 @@ pub fn get_perf_fd(pid: pid_t) -> i32 {
         ioctl(fd, 9216, 0); // PERF_EVENT_IOC_ENABLE
     }
     fd
+}
+
+// Handles basic proc spawning and running under perf
+pub fn get_inst_count(path: &str, inp: &Input) -> i64 {
+    // TODO: error checking...
+    let mut proc = Process::new(path);
+    for arg in inp.argv.iter() {
+        proc.arg(OsStr::from_bytes(arg));
+    }
+
+    // Start Process run it to completion with all arguements
+    proc.start().unwrap();
+    proc.write_stdin(&inp.stdin).unwrap();
+    proc.close_stdin().unwrap();
+    proc.init_perf().unwrap();
+    proc.finish().unwrap();
+
+    // Process instruction count
+    let ret = match proc.get_inst_count() {
+        Ok(x) => x,
+        Err(_) => -1,
+    };
+    proc.close_perf();
+    ret
 }

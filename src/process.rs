@@ -12,7 +12,7 @@ use std::io::{Error, ErrorKind, Read, Result, Write};
 use std::os::unix::io::FromRawFd;
 use std::process::{Child, Command, Stdio};
 
-use b7777::get_perf_fd;
+use perf;
 
 #[derive(Debug)]
 pub struct Process {
@@ -110,7 +110,7 @@ impl Process {
         match self.child {
             None => Err(Error::new(ErrorKind::Other, "child process not running")),
             Some(ref child) => {
-                self.perf_fd = get_perf_fd(child.id() as i32);
+                self.perf_fd = perf::get_perf_fd(child.id() as i32);
                 Ok(())
             }
         }

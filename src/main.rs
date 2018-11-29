@@ -14,75 +14,20 @@ extern crate tui_logger;
 use b7tui::Ui;
 use clap::{App, Arg};
 use generators::*;
-use process::Process;
-use std::ffi::OsStr;
 use std::fs::File;
 use std::io::prelude::*;
-use std::os::unix::ffi::OsStrExt;
 use std::sync::mpsc::channel;
 use threadpool::ThreadPool;
 
-pub mod b7777;
 pub mod b7tui;
 pub mod binary;
 pub mod bindings;
+pub mod dynamorio;
 pub mod generators;
+pub mod perf;
 pub mod process;
 pub mod statistics;
 
-// Handles basic proc spawning and running under perf
-fn get_inst_count_perf(path: &str, inp: &Input) -> i64 {
-    // TODO: error checking...
-    let mut proc = Process::new(path);
-    for arg in inp.argv.iter() {
-        proc.arg(OsStr::from_bytes(arg));
-    }
-
-    // Start Process run it to completion with all arguements
-    proc.start().unwrap();
-    proc.write_stdin(&inp.stdin).unwrap();
-    proc.close_stdin().unwrap();
-    proc.init_perf().unwrap();
-    proc.finish().unwrap();
-
-    // Process instruction count
-    let ret = match proc.get_inst_count() {
-        Ok(x) => x,
-        Err(_) => -1,
-    };
-    proc.close_perf();
-    ret
-}
-
-// Handles basic proc spawning and running under dino
-// only works on 32 bit for now
-fn get_inst_count_dino(path: &str, inp: &Input) -> i64 {
-    let mut proc = Process::new("/home/luke/build/dynamorio/build/bin64/drrun");
-    proc.arg("-c");
-    proc.arg("/home/luke/build/dynamorio/build/api/bin/libinscount.so");
-    proc.arg("--");
-    proc.arg(path);
-    for arg in inp.argv.iter() {
-        proc.arg(OsStr::from_bytes(arg));
-    }
-
-    // Start Process run it to completion with all arguements
-    proc.start().unwrap();
-    proc.write_stdin(&inp.stdin).unwrap();
-    proc.close_stdin().unwrap();
-    proc.finish().unwrap();
-
-    let mut buf: Vec<u8> = Vec::new();
-    proc.read_stdout(&mut buf).unwrap();
-
-    let stdout = String::from_utf8_lossy(buf.as_slice());
-
-    let re = regex::Regex::new("(\\d+)").unwrap();
-    let m = re.find(&stdout).unwrap().as_str();
-    let num2: i64 = m.parse().unwrap();
-
-    num2
-}
 // can take out Debug trait later
 // Combines the generators with the instruction counters to deduce the next step
 fn brute<
@@ -181,8 +126,8 @@ fn main() {
     let solver: fn(&str, &Input) -> i64;
 
     match solvername {
-        "perf" => solver = get_inst_count_perf,
-        "dynamario" => solver = get_inst_count_dino,
+        "perf" => solver = perf::get_inst_count,
+        "dynamorio" => solver = dynamorio::get_inst_count,
         _ => panic!("unknown solver"),
     }
 
