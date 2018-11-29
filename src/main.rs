@@ -28,8 +28,7 @@ pub mod binary;
 pub mod bindings;
 pub mod generators;
 pub mod process;
-
-static mut R: i64 = 5;
+pub mod statistics;
 
 // Handles basic proc spawning and running under perf
 fn get_inst_count_perf(path: &str, inp: &Input) -> i64 {
@@ -58,7 +57,6 @@ fn get_inst_count_perf(path: &str, inp: &Input) -> i64 {
 // Handles basic proc spawning and running under dino
 // only works on 32 bit for now
 fn get_inst_count_dino(path: &str, inp: &Input) -> i64 {
-
     let mut proc = Process::new("/home/jack2/git/dynamorio/build/bin64/drrun");
     proc.arg("-c");
     proc.arg("/home/jack2/git/dynamorio/build/api/bin/libinscount.so");
@@ -75,7 +73,7 @@ fn get_inst_count_dino(path: &str, inp: &Input) -> i64 {
     proc.finish().unwrap();
 
     let mut buf: Vec<u8> = Vec::new();
-    proc.read_stdout(&mut buf);
+    proc.read_stdout(&mut buf).unwrap();
 
     let stdout = String::from_utf8_lossy(buf.as_slice());
 
@@ -85,38 +83,6 @@ fn get_inst_count_dino(path: &str, inp: &Input) -> i64 {
 
     num2
 }
-
-// Find the most distant point from the average.
-
-// Returns (index, value) of this point. (TODO: fix this)
-fn find_outlier<I: std::fmt::Debug>(counts: &[(I, i64)]) -> &(I, i64) {
-    // Calculate the average
-    let mut avg: i64 = 0;
-    for (_, count) in counts.iter() {
-        avg += count;
-    }
-
-    if !counts.is_empty() {
-        avg /= counts.len() as i64;
-    } else {
-        // Handle division by zero
-        warn!("WWWWWWWW {:?}", counts);
-    }
-
-    // and then find the most distant point
-    let mut max_dist: i64 = -1;
-    let mut max_idx: usize = 0;
-    for (i, (_, count)) in counts.iter().enumerate() {
-        let dist: i64 = (count - avg).abs();
-        if dist > max_dist {
-            max_dist = dist;
-            max_idx = i;
-        }
-    }
-
-    &counts[max_idx]
-}
-
 // can take out Debug trait later
 // Combines the generators with the instruction counters to deduce the next step
 fn brute<
@@ -177,7 +143,7 @@ fn brute<
         terminal.wait();
 
         // inform generator of the result
-        let good_idx = find_outlier(results.as_slice());
+        let good_idx = statistics::find_outlier(results.as_slice());
         if !gen.update(&good_idx.0) {
             break;
         }
