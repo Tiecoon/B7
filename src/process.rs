@@ -22,6 +22,7 @@ pub struct Process {
     perf_fd: c_int,
 }
 
+// Handle running a process
 impl Process {
     pub fn new(path: &str) -> Process {
         Process {
@@ -44,6 +45,7 @@ impl Process {
         self.cmd.arg(arg);
     }
 
+    // initialize process and wait it
     pub fn start(&mut self) -> Result<()> {
         if self.child.is_some() {
             return Err(Error::new(
@@ -54,6 +56,7 @@ impl Process {
         self.cmd.stdin(Stdio::piped());
         self.cmd.stdout(Stdio::piped());
         self.cmd.stderr(Stdio::piped());
+        // spawn process and wait after fork
         let child = self.cmd.spawn_ptrace();
         match child {
             Ok(c) => {
@@ -64,6 +67,7 @@ impl Process {
         }
     }
 
+    // write buf to process then close it
     pub fn write_stdin(&mut self, buf: &[u8]) -> Result<()> {
         if self.child.is_none() {
             return Err(Error::new(ErrorKind::Other, "child process not running"));
@@ -75,6 +79,7 @@ impl Process {
         }
     }
 
+    // close stdin to prevent any reads hanging
     pub fn close_stdin(&mut self) -> Result<()> {
         if self.child.is_none() {
             return Err(Error::new(ErrorKind::Other, "child process not running"));
@@ -88,6 +93,7 @@ impl Process {
         }
     }
 
+    // initalize perf at current point in execution
     pub fn init_perf(&mut self) -> Result<()> {
         match self.child {
             None => Err(Error::new(ErrorKind::Other, "child process not running")),
@@ -98,6 +104,7 @@ impl Process {
         }
     }
 
+    // clean up the perf file descriptor
     pub fn close_perf(&mut self) {
         unsafe {
             drop(File::from_raw_fd(self.perf_fd));
@@ -105,6 +112,7 @@ impl Process {
         self.perf_fd = -1;
     }
 
+    // continue executing ptrace if it is paused
     pub fn cont(&self) -> Result<()> {
         if self.child.is_none() {
             return Err(Error::new(ErrorKind::Other, "child process not running"));
@@ -117,6 +125,7 @@ impl Process {
         }
     }
 
+    // go until next pause point
     pub fn wait(&self) -> Result<WaitStatus> {
         if self.child.is_none() {
             return Err(Error::new(ErrorKind::Other, "child process not running"));
@@ -128,6 +137,7 @@ impl Process {
         }
     }
 
+    // attempt to run the program to completion
     pub fn finish(&self) -> Result<()> {
         loop {
             let cret = self.cont();
@@ -143,6 +153,7 @@ impl Process {
         }
     }
 
+    // read the instruction count stoed if perf is establised
     pub fn get_inst_count(&self) -> Result<i64> {
         let mut count: i64 = 0;
         let count_p = &mut count as *mut i64;

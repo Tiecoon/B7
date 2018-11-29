@@ -72,11 +72,13 @@ impl StdinLenGenerator {
         }
     }
 
+    // return the number figured out so far
     pub fn get_length(&self) -> u32 {
         self.correct
     }
 }
 
+// implement an Iterator to make bruter nicer
 impl Iterator for StdinLenGenerator {
     type Item = (u32, Input);
 
@@ -90,12 +92,14 @@ impl Iterator for StdinLenGenerator {
     }
 }
 
+// setup hooks for update
 impl Events for StdinLenGenerator {
     fn on_update(&self) {
         info!("stdin length: {}", self.correct);
     }
 }
 
+// setup hook for length
 impl Update for StdinLenGenerator {
     type Id = u32;
 
@@ -119,6 +123,7 @@ pub struct StdinCharGenerator {
     max: u16,
 }
 
+// allowing printing of string in flag
 impl std::fmt::Display for StdinCharGenerator {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", String::from_utf8_lossy(self.correct.as_slice()))
@@ -140,6 +145,7 @@ impl StdinCharGenerator {
         }
     }
 
+    // Decide which character to use for padding
     pub fn set_padchr(&mut self, padchr: u8) {
         self.padchr = padchr;
     }
@@ -155,10 +161,12 @@ impl StdinCharGenerator {
     }
 }
 
+// nice Iterator wrapper for Bruter
 impl Iterator for StdinCharGenerator {
     type Item = (u8, Input);
 
     fn next(&mut self) -> Option<Self::Item> {
+        // check if we have anymore to solve
         if self.idx >= self.padlen || self.cur > 255 || self.cur > self.max {
             return None;
         }
@@ -169,6 +177,7 @@ impl Iterator for StdinCharGenerator {
         inp.extend_from_slice(&self.correct);
         inp.push(chr);
         inp.extend_from_slice(&self.suffix);
+        // add padding to reach the required length
         while inp.len() > self.padlen as usize {
             inp.pop();
         }
@@ -179,12 +188,14 @@ impl Iterator for StdinCharGenerator {
     }
 }
 
+// update on Char Generator
 impl Events for StdinCharGenerator {
     fn on_update(&self) {
         info!("{}", self);
     }
 }
 
+// update hook for stdin
 impl Update for StdinCharGenerator {
     type Id = u8;
 
@@ -205,12 +216,14 @@ pub struct ArgcGenerator {
     correct: u32,
 }
 
+// Make sure it prints correctly
 impl std::fmt::Display for ArgcGenerator {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.correct)
     }
 }
 
+// setup constructor and getters
 impl ArgcGenerator {
     pub fn new(min: u32, max: u32) -> ArgcGenerator {
         ArgcGenerator {
@@ -224,6 +237,8 @@ impl ArgcGenerator {
         self.correct
     }
 }
+
+// nice Iterator Wrapper for use in bruter
 impl Iterator for ArgcGenerator {
     type Item = (u32, Input);
 
@@ -237,12 +252,14 @@ impl Iterator for ArgcGenerator {
     }
 }
 
+// Log event hooks
 impl Events for ArgcGenerator {
     fn on_update(&self) {
         info!("argc: {}", self.correct);
     }
 }
 
+// argc generator
 impl Update for ArgcGenerator {
     type Id = u32;
 
@@ -263,6 +280,7 @@ pub struct ArgvLenGenerator {
     correct: Vec<u32>,
 }
 
+// argv length display
 impl std::fmt::Display for ArgvLenGenerator {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         for val in &self.correct {
@@ -272,6 +290,7 @@ impl std::fmt::Display for ArgvLenGenerator {
     }
 }
 
+// argv lengths generator
 impl ArgvLenGenerator {
     pub fn new(argc: u32, min: u32, max: u32) -> ArgvLenGenerator {
         ArgvLenGenerator {
@@ -288,16 +307,20 @@ impl ArgvLenGenerator {
         &self.correct
     }
 }
+
+// nice iterator wrapper to generate guesses
 impl Iterator for ArgvLenGenerator {
     type Item = (u32, Input);
 
     fn next(&mut self) -> Option<Self::Item> {
+        // check if we have any left to solve
         if self.len > self.max {
             return None;
         }
         let sz = self.len;
         self.len += 1;
         let mut argv: ArgumentType = Vec::new();
+        // add padding to meet length requirement
         for i in 0..self.argc {
             if i == self.pos as u32 {
                 argv.push(vec![0x41; sz as usize]);
@@ -309,6 +332,7 @@ impl Iterator for ArgvLenGenerator {
     }
 }
 
+// Argv length event hook
 impl Events for ArgvLenGenerator {
     fn on_update(&self) {
         for val in &self.correct {
@@ -317,6 +341,7 @@ impl Events for ArgvLenGenerator {
     }
 }
 
+// Argv length handle guess
 impl Update for ArgvLenGenerator {
     type Id = u32;
 
@@ -344,6 +369,7 @@ pub struct ArgvGenerator {
     cur: u16,
 }
 
+// properly format Argv string
 impl std::fmt::Display for ArgvGenerator {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         for val in &self.correct {
@@ -353,6 +379,7 @@ impl std::fmt::Display for ArgvGenerator {
     }
 }
 
+// argv constructor
 impl ArgvGenerator {
     pub fn new(argc: u32, len: &[u32], min: u16, max: u16) -> ArgvGenerator {
         ArgvGenerator {
@@ -373,6 +400,8 @@ impl ArgvGenerator {
         &self.correct
     }
 }
+
+// argv next guess Iterator
 impl Iterator for ArgvGenerator {
     type Item = (u8, Input);
 
@@ -417,6 +446,7 @@ impl Iterator for ArgvGenerator {
     }
 }
 
+// hook event handling
 impl Events for ArgvGenerator {
     fn on_update(&self) {
         for val in &self.correct {
@@ -425,13 +455,17 @@ impl Events for ArgvGenerator {
     }
 }
 
+// handle correct guess
 impl Update for ArgvGenerator {
     type Id = u8;
 
     fn update(&mut self, chosen: &u8) -> bool {
+        // check if we are at the end
         if (self.pos as u32) >= self.argc {
             return (self.pos as u32) < self.argc;
         }
+
+        // push new guess to state
         self.correct[self.pos].push(*chosen);
         self.current.push(*chosen);
         self.cur = self.min as u16;

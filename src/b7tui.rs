@@ -12,12 +12,9 @@ use tui::widgets::{BarChart, Block, Borders, Widget};
 use tui::Terminal;
 use tui_logger::*;
 
-pub enum UiType {
-    ENV,
-    Tui,
-}
-
+// Trait that all Uis will implement to ensure genericness
 pub trait Ui {
+    // handle a new ui check
     fn update<
         I: 'static + std::fmt::Display + Clone + std::fmt::Debug + std::marker::Send + std::cmp::Ord,
     >(
@@ -25,11 +22,15 @@ pub trait Ui {
         results: &[(I, i64)],
         min: &u64,
     ) -> bool;
+    // allow gui to pause if user doesn't want to continue
     fn wait(&mut self) -> bool;
+    // separate wait to signify all results are calculated
     fn done(&mut self) -> bool;
 }
 
+// struct for Tui-rs implementation
 pub struct Tui {
+    // TODO probably can be shortened with generics
     terminal: tui::Terminal<
         tui::backend::TermionBackend<
             termion::screen::AlternateScreen<
@@ -40,6 +41,7 @@ pub struct Tui {
     size: tui::layout::Rect,
 }
 
+// constructor
 impl Tui {
     pub fn new() -> Tui {
         init_logger(LevelFilter::Trace).unwrap();
@@ -58,13 +60,16 @@ impl Tui {
     }
 }
 
+// default constructor for syntax sugar
 impl Default for Tui {
     fn default() -> Self {
         Self::new()
     }
 }
 
+// implement Tuis Ui trait
 impl Ui for Tui {
+    // draw bargraph for new input
     fn update<
         I: 'static + std::fmt::Display + Clone + std::fmt::Debug + std::marker::Send + std::cmp::Ord,
     >(
@@ -72,19 +77,25 @@ impl Ui for Tui {
         results: &[(I, i64)],
         min: &u64,
     ) -> bool {
+        // resize terminal if needed
         let size = self.terminal.size().unwrap();
         if self.size != size {
             self.terminal.resize(size).unwrap();
             self.size = size;
         }
+        // convert stuff for barchart
         let graph: Vec<(String, u64)>;
         let mut graph2: Vec<(&str, u64)> = Vec::new();
+
+        // TODO implement multiple formats
         graph = results
             .iter()
             .map(|s| (format!("{}", s.0), s.1 as u64))
             .collect();
+
         let size = self.size;
         if !graph.is_empty() {
+            // redraw terminal
             self.terminal
                 .draw(|mut f| {
                     let chunks = Layout::default()
@@ -97,6 +108,7 @@ impl Ui for Tui {
                     BarChart::default()
                         .block(Block::default().title("B7").borders(Borders::ALL))
                         .data({
+                            // convert String to &str and chop off uneccesary instructions
                             graph2 = graph
                                 .iter()
                                 .map(|s| {
@@ -108,6 +120,8 @@ impl Ui for Tui {
                         .style(Style::default().fg(Color::Yellow))
                         .value_style(Style::default().fg(Color::Black).bg(Color::Yellow))
                         .render(&mut f, chunks[0]);
+
+                    // Widget for log levels
                     TuiLoggerWidget::default()
                         .block(
                             Block::default()
@@ -121,6 +135,7 @@ impl Ui for Tui {
         }
         true
     }
+    // pause for user input before continuing
     fn wait(&mut self) -> bool {
         let stdin = io::stdin();
         for evt in stdin.keys() {
@@ -134,6 +149,7 @@ impl Ui for Tui {
         }
         true
     }
+    // wait at the end of the program to show results
     fn done(&mut self) -> bool {
         let stdin = io::stdin();
         for evt in stdin.keys() {
@@ -151,6 +167,7 @@ impl Ui for Tui {
 pub struct Env;
 
 impl Env {
+    // initialize the logging
     pub fn new() -> Env {
         let env = env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "info");
         env_logger::Builder::from_env(env)
@@ -160,6 +177,7 @@ impl Env {
     }
 }
 
+// default do nothing just let the prints handle it
 impl Ui for Env {
     fn update<
         I: 'static + std::fmt::Display + Clone + std::fmt::Debug + std::marker::Send + std::cmp::Ord,
