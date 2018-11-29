@@ -145,6 +145,21 @@ impl StdinCharGenerator {
         }
     }
 
+    pub fn new_start(padlen: u32, min: u16, max: u16, start: &[u8]) -> StdinCharGenerator {
+        warn!("aaaa {:?}", start);
+        StdinCharGenerator {
+            padlen: padlen - start.len() as u32,
+            padchr: 0x41,
+            prefix: start.to_vec(),
+            suffix: vec![],
+            idx: 0,
+            cur: min,
+            correct: vec![],
+            min,
+            max,
+        }
+    }
+
     // Decide which character to use for padding
     pub fn set_padchr(&mut self, padchr: u8) {
         self.padchr = padchr;
