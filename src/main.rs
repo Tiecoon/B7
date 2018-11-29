@@ -15,6 +15,8 @@ use clap::{App, Arg};
 use generators::*;
 use process::Process;
 use std::ffi::OsStr;
+use std::fs::File;
+use std::io::prelude::*;
 use std::os::unix::ffi::OsStrExt;
 use std::sync::mpsc::channel;
 use threadpool::ThreadPool;
@@ -168,6 +170,7 @@ fn main() {
     brute(path, 1, &mut argcgen, get_inst_count_perf, &mut terminal);
     let argc = argcgen.get_length();
 
+    let mut file = File::create(format!("{}.cache", path)).unwrap();
     // check if there is something to be solved
     if argc > 0 {
         // solve argv length
@@ -178,18 +181,26 @@ fn main() {
         // solve argv values
         let mut argvgen = ArgvGenerator::new(argc, argvlens, 0x20, 0x7e);
         brute(path, 5, &mut argvgen, get_inst_count_perf, &mut terminal);
+        let argv = argvgen.get_argv();
+        file.write(b"[");
+        for arg in argv {
+            file.write(String::from_utf8_lossy(arg.as_slice()).as_bytes());
+        }
+        file.write(b"]\n");
     }
     //solve stdin len
     let mut lgen = StdinLenGenerator::new(0, 51);
     brute(path, 1, &mut lgen, get_inst_count_perf, &mut terminal);
     let stdinlen = lgen.get_length();
-
     //solve strin if there is stuff to solve
     if stdinlen > 0 {
         // TODO: We should have a good way of configuring the range
         let mut gen = StdinCharGenerator::new(stdinlen, 0x20, 0x7e);
         brute(path, 1, &mut gen, get_inst_count_perf, &mut terminal);
+        let std = gen.get_input().clone();
+        file.write(String::from_utf8_lossy(std.as_slice()).as_bytes());
     }
+
     // let terminal decide if it should wait for user
     terminal.done();
 }
