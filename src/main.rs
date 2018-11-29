@@ -164,20 +164,21 @@ fn main() {
     let mut terminal = b7tui::Tui::new();
 
     // Solve for argc
-    let mut argcgen = ArgcGenerator::new(0, 51);
+    let mut argcgen = ArgcGenerator::new(0, 5);
     brute(path, 1, &mut argcgen, get_inst_count_perf, &mut terminal);
     let argc = argcgen.get_length();
 
-    // solve argv
-    let mut argvlengen = ArgvLenGenerator::new(argc, 0, 15);
-    brute(path, 5, &mut argvlengen, get_inst_count_perf, &mut terminal);
-    let argvlens = argvlengen.get_lengths();
+    // check if there is something to be solved
+    if argc > 0 {
+        // solve argv length
+        let mut argvlengen = ArgvLenGenerator::new(argc, 0, 20);
+        brute(path, 5, &mut argvlengen, get_inst_count_perf, &mut terminal);
+        let argvlens = argvlengen.get_lengths();
 
-    // solve argv length
-    let mut argvgen = ArgvGenerator::new(argc, argvlens, 0x20, 0x7e);
-    brute(path, 5, &mut argvgen, get_inst_count_perf, &mut terminal);
-    //let argvlens = argvlengen.get_lengths();
-
+        // solve argv values
+        let mut argvgen = ArgvGenerator::new(argc, argvlens, 0x20, 0x7e);
+        brute(path, 5, &mut argvgen, get_inst_count_perf, &mut terminal);
+    }
     //solve stdin len
     let mut lgen = StdinLenGenerator::new(0, 51);
     brute(path, 1, &mut lgen, get_inst_count_perf, &mut terminal);

@@ -49,6 +49,9 @@ pub trait Events {
 // the right types has an (empty) impl for Generate
 impl<T: Iterator<Item = (U, Input)> + Update<Id = U>, U> Generate<U> for T {}
 
+
+
+/* code for stdin generators */
 #[derive(Debug)]
 pub struct StdinLenGenerator {
     len: u32,
@@ -196,7 +199,7 @@ impl Update for StdinCharGenerator {
     }
 }
 
-/* code for argv */
+/* code for argv generators */
 #[derive(Debug)]
 pub struct ArgcGenerator {
     len: u32,
@@ -322,6 +325,7 @@ impl Update for ArgvLenGenerator {
     fn update(&mut self, chosen: &u32) -> bool {
         self.correct[self.pos] = *chosen;
         self.pos += 1;
+
         self.len = self.min;
         self.on_update();
         (self.pos as u32) < self.argc
@@ -375,8 +379,15 @@ impl Iterator for ArgvGenerator {
     type Item = (u8, Input);
 
     fn next(&mut self) -> Option<Self::Item> {
+        if self.argc == 0 {
+            return None;
+        }
         if self.len[self.pos] == 0 {
             self.pos += 1;
+            if (self.pos as u32) >= self.argc {
+                return None;
+            }
+
         }
         let len: u32 = self.len[self.pos];
         if self.idx >= len || self.cur > 255 || self.cur > self.max {
@@ -384,7 +395,7 @@ impl Iterator for ArgvGenerator {
         }
         let chr = self.cur as u8;
         self.cur += 1;
-        //info!("Hello {}", chr);
+        //generate current string
         let mut argv: ArgumentType = Vec::new();
         let mut inp: StringType = Vec::new();
         inp.extend_from_slice(&self.current);
@@ -395,7 +406,7 @@ impl Iterator for ArgvGenerator {
         while inp.len() < len as usize {
             inp.push(self.padchr);
         }
-        //info!("argv {}", String::from_utf8_lossy(inp.as_slice()));
+        //loop and add the values to guessed argv
         for i in 0..self.argc {
             if i == self.pos as u32 {
                 argv.push(inp.clone());
@@ -421,18 +432,21 @@ impl Update for ArgvGenerator {
     type Id = u8;
 
     fn update(&mut self, chosen: &u8) -> bool {
+        if (self.pos as u32) >= self.argc {
+            return (self.pos as u32) < self.argc
+        }
         self.correct[self.pos].push(*chosen);
         self.current.push(*chosen);
         self.cur = self.min as u16;
         self.idx += 1;
         self.on_update();
-        //info!("pos {}", self.pos);
-        //info!("len {}", self.len[self.pos as usize]);
-        //info!("idx {}", self.idx);
-        if self.idx >= self.len[self.pos as usize] {
+
+
+        if self.idx >= self.len[self.pos] {
             self.pos += 1;
-        }
-        //info!("pos {}", self.pos);
+            self.idx = 0;
+         }
+
         (self.pos as u32) < self.argc
     }
 }
