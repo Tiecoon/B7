@@ -26,6 +26,7 @@ use b7tui::Ui;
 use brute::brute;
 use clap::{App, Arg};
 use generators::*;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
 use std::process::exit;
@@ -66,6 +67,10 @@ fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
             Arg::with_name("stdinstate")
                 .long("no-stdin")
                 .help("toggle running stdin checks"),
+        ).arg(
+            Arg::with_name("dynpath")
+                .long("dynpath")
+                .help("Path to DynamoRio"),
         ).get_matches()
 }
 
@@ -94,6 +99,9 @@ fn main() {
     };
 
     let stdin_input = matches.value_of("start").unwrap_or("");
+    let mut vars = HashMap::new();
+    let dynpath = matches.value_of("dynpath").unwrap_or("");
+    vars.insert(String::from("dynpath"), String::from(dynpath));
 
     let mut terminal = b7tui::Tui::new();
     info!("Using {} solver", solvername);
@@ -102,19 +110,26 @@ fn main() {
     if argstate {
         // Solve for argc
         let mut argcgen = ArgcGenerator::new(0, 5);
-        brute(path, 1, &mut argcgen, solver, &mut terminal);
+        brute(path, 1, &mut argcgen, solver, &mut terminal, vars.clone());
         let argc = argcgen.get_length();
 
         // check if there is something to be solved
         if argc > 0 {
             // solve argv length
             let mut argvlengen = ArgvLenGenerator::new(argc, 0, 20);
-            brute(path, 5, &mut argvlengen, solver, &mut terminal);
+            brute(
+                path,
+                5,
+                &mut argvlengen,
+                solver,
+                &mut terminal,
+                vars.clone(),
+            );
             let argvlens = argvlengen.get_lengths();
 
             // solve argv values
             let mut argvgen = ArgvGenerator::new(argc, argvlens, 0x20, 0x7e);
-            brute(path, 5, &mut argvgen, solver, &mut terminal);
+            brute(path, 5, &mut argvgen, solver, &mut terminal, vars.clone());
             let argv = argvgen.get_argv();
             // TODO: error handling could be improved here
             file.write_all(b"[").unwrap();
@@ -128,7 +143,7 @@ fn main() {
     if stdinstate {
         // solve stdin len
         let mut lgen = StdinLenGenerator::new(0, 51);
-        brute(path, 1, &mut lgen, solver, &mut terminal);
+        brute(path, 1, &mut lgen, solver, &mut terminal, vars.clone());
         let stdinlen = lgen.get_length();
         // solve strin if there is stuff to solve
         if stdinlen > 0 {
@@ -138,7 +153,7 @@ fn main() {
             } else {
                 StdinCharGenerator::new_start(stdinlen, 0x20, 0x7e, stdin_input.as_bytes())
             };
-            brute(path, 1, &mut gen, solver, &mut terminal);
+            brute(path, 1, &mut gen, solver, &mut terminal, vars.clone());
             let std = gen.get_input().clone();
             file.write_all(String::from_utf8_lossy(std.as_slice()).as_bytes())
                 .unwrap();

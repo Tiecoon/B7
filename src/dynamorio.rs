@@ -1,4 +1,5 @@
 use process::Process;
+use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 
@@ -6,10 +7,11 @@ use generators::Input;
 
 // Handles basic proc spawning and running under dino
 // only works on 32 bit for now
-pub fn get_inst_count(path: &str, inp: &Input) -> i64 {
-    let mut proc = Process::new("/home/jack2/git/dynamorio/build/bin64/drrun");
+pub fn get_inst_count(path: &str, inp: &Input, vars: &HashMap<String, String>) -> i64 {
+    let dynpath = vars.get("dynpath").unwrap();
+    let mut proc = Process::new(dynpath);
     proc.arg("-c");
-    proc.arg("/home/jack2/git/dynamorio/build/api/bin/libinscount.so");
+    proc.arg(dynpath);
     proc.arg("--");
     proc.arg(path);
     for arg in inp.argv.iter() {

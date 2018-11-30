@@ -2,6 +2,7 @@ use bindings::*;
 use generators::Input;
 use libc::{c_int, c_void, ioctl, pid_t, syscall};
 use process::Process;
+use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::{Error, ErrorKind, Result};
@@ -63,7 +64,7 @@ fn perf_get_inst_count(fd: c_int) -> Result<i64> {
 }
 
 // Handles basic proc spawning and running under perf
-pub fn get_inst_count(path: &str, inp: &Input) -> i64 {
+pub fn get_inst_count(path: &str, inp: &Input, _vars: &HashMap<String, String>) -> i64 {
     // TODO: error checking...
     let mut proc = Process::new(path);
     for arg in inp.argv.iter() {

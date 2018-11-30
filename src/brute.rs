@@ -1,4 +1,5 @@
 // use std::cmp::Ord;
+use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::marker::Send;
 use std::sync::mpsc::channel;
@@ -18,8 +19,9 @@ pub fn brute<
     path: &str,
     repeat: u32,
     gen: &mut G,
-    get_inst_count: fn(&str, &Input) -> i64,
+    get_inst_count: fn(&str, &Input, &HashMap<String, String>) -> i64,
     terminal: &mut B,
+    vars: HashMap<String, String>,
 ) {
     // Loop until generator says we are done
     loop {
@@ -37,12 +39,13 @@ pub fn brute<
             let tx = tx.clone();
             let test = String::from(path);
             // give it to a thread to handle
+            let vars = vars.clone();
             pool.execute(move || {
                 let inp = inp_pair.1;
                 let mut avg: f64 = 0.0;
                 let mut count: f64 = 0.0;
                 for _ in 0..repeat {
-                    let inst_count = get_inst_count(&test, &inp);
+                    let inst_count = get_inst_count(&test, &inp, &vars);
                     avg += inst_count as f64;
                     count += 1.0;
                     trace!("inst_count: {:?}", inst_count);
