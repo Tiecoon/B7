@@ -125,19 +125,18 @@ fn main() {
         }
     }
     if stdinstate {
-        //solve stdin len
+        // solve stdin len
         let mut lgen = StdinLenGenerator::new(0, 51);
         brute(path, 1, &mut lgen, solver, &mut terminal);
         let stdinlen = lgen.get_length();
-        //solve strin if there is stuff to solve
+        // solve strin if there is stuff to solve
         if stdinlen > 0 {
             // TODO: We should have a good way of configuring the range
-            let mut gen;
-            if stdin_input == "" {
-                gen = StdinCharGenerator::new(stdinlen, 0x20, 0x7e);
+            let mut gen = if stdin_input == "" {
+                StdinCharGenerator::new(stdinlen, 0x20, 0x7e)
             } else {
-                gen = StdinCharGenerator::new_start(stdinlen, 0x20, 0x7e, stdin_input.as_bytes());
-            }
+                StdinCharGenerator::new_start(stdinlen, 0x20, 0x7e, stdin_input.as_bytes())
+            };
             brute(path, 1, &mut gen, solver, &mut terminal);
             let std = gen.get_input().clone();
             file.write_all(String::from_utf8_lossy(std.as_slice()).as_bytes())
