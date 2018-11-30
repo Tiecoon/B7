@@ -27,7 +27,7 @@ impl Process {
     pub fn child_id(&self) -> Option<u32> {
         match &self.child {
             Some(a) => Some(a.id()),
-            None => None
+            None => None,
         }
     }
 
@@ -143,5 +143,4 @@ impl Process {
             }
         }
     }
-
 }
