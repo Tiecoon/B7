@@ -1,25 +1,17 @@
 use binary::Binary;
-use libc;
-use libc::{c_int, c_void};
-use nix;
 use nix::sys::ptrace;
 use nix::sys::wait::{waitpid, WaitStatus};
 use nix::unistd::Pid;
 use spawn_ptrace::CommandPtraceSpawn;
 use std::ffi::OsStr;
-use std::fs::File;
 use std::io::{Error, ErrorKind, Read, Result, Write};
-use std::os::unix::io::FromRawFd;
 use std::process::{Child, Command, Stdio};
-
-use perf;
 
 #[derive(Debug)]
 pub struct Process {
     binary: Binary,
     cmd: Command,
     child: Option<Child>,
-    perf_fd: c_int,
 }
 
 // Handle running a process
@@ -29,7 +21,13 @@ impl Process {
             binary: Binary::new(path),
             cmd: Command::new(path),
             child: None,
-            perf_fd: -1,
+        }
+    }
+
+    pub fn child_id(&self) -> Option<u32> {
+        match &self.child {
+            Some(a) => Some(a.id()),
+            None => None
         }
     }
 
@@ -105,25 +103,6 @@ impl Process {
         }
     }
 
-    // initalize perf at current point in execution
-    pub fn init_perf(&mut self) -> Result<()> {
-        match self.child {
-            None => Err(Error::new(ErrorKind::Other, "child process not running")),
-            Some(ref child) => {
-                self.perf_fd = perf::get_perf_fd(child.id() as i32);
-                Ok(())
-            }
-        }
-    }
-
-    // clean up the perf file descriptor
-    pub fn close_perf(&mut self) {
-        unsafe {
-            drop(File::from_raw_fd(self.perf_fd));
-        }
-        self.perf_fd = -1;
-    }
-
     // continue executing ptrace if it is paused
     pub fn cont(&self) -> Result<()> {
         if self.child.is_none() {
@@ -165,18 +144,4 @@ impl Process {
         }
     }
 
-    // read the instruction count stoed if perf is establised
-    pub fn get_inst_count(&self) -> Result<i64> {
-        let mut count: i64 = 0;
-        let count_p = &mut count as *mut i64;
-        let nread: i64;
-        unsafe {
-            nread = libc::read(self.perf_fd, count_p as *mut c_void, 8) as i64;
-        };
-        match nread {
-            8 => Ok(count),
-            x if x >= 0 => Err(Error::new(ErrorKind::Other, nread.to_string())),
-            _ => Err(Error::new(ErrorKind::Other, nix::Error::last())),
-        }
-    }
 }

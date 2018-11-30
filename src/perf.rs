@@ -1,10 +1,13 @@
 use bindings::*;
 use generators::Input;
-use libc::{ioctl, pid_t, syscall};
+use libc::{c_int, c_void, ioctl, pid_t, syscall};
 use process::Process;
 use std::ffi::OsStr;
+use std::fs::File;
+use std::io::{Error, ErrorKind, Result};
 use std::mem;
 use std::os::unix::ffi::OsStrExt;
+use std::os::unix::io::FromRawFd;
 use std::process::exit;
 
 // syscall number for perf syscall
@@ -22,7 +25,7 @@ fn perf_event_open(
 }
 
 // perform struct setup and clear the perf file descriptor
-pub fn get_perf_fd(pid: pid_t) -> i32 {
+fn get_perf_fd(pid: pid_t) -> i32 {
     let mut pe: perf_event_attr = unsafe { mem::zeroed() };
 
     // perf struct setup
@@ -49,6 +52,16 @@ pub fn get_perf_fd(pid: pid_t) -> i32 {
     fd
 }
 
+// read the instruction count stoed if perf is establised
+fn perf_get_inst_count(fd: c_int) -> Result<i64> {
+    let mut count: i64 = 0;
+    match unsafe { libc::read(fd, &mut count as *mut i64 as *mut c_void, 8) as i64 } {
+        8 => Ok(count),
+        x if x >= 0 => Err(Error::new(ErrorKind::Other, format!("Only read {}!", x))),
+        _ => Err(Error::new(ErrorKind::Other, nix::Error::last())),
+    }
+}
+
 // Handles basic proc spawning and running under perf
 pub fn get_inst_count(path: &str, inp: &Input) -> i64 {
     // TODO: error checking...
@@ -61,14 +74,16 @@ pub fn get_inst_count(path: &str, inp: &Input) -> i64 {
     proc.start().unwrap();
     proc.write_stdin(&inp.stdin).unwrap();
     proc.close_stdin().unwrap();
-    proc.init_perf().unwrap();
+
+    // TODO: error checking!
+    let fd = get_perf_fd(proc.child_id().unwrap() as i32);
     proc.finish().unwrap();
 
     // Process instruction count
-    let ret = match proc.get_inst_count() {
+    let ret = match perf_get_inst_count(fd) {
         Ok(x) => x,
         Err(_) => -1,
     };
-    proc.close_perf();
+    drop(unsafe { File::from_raw_fd(fd) });
     ret
 }
