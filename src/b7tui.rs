@@ -86,34 +86,17 @@ impl Tui {
         }
         if !self.cache.is_empty() {
             let graph = &self.cache[(self.currun - 1) as usize];
-            let graph3: Vec<(String, u64)>;
-            match self.format {
-                Format::Decimal => {
-                    graph3 = graph
-                        .0
-                        .iter()
-                        .map(|s| (format!("{}", s.0), s.1 as u64))
-                        .collect();
-                }
-                Format::Hex => {
-                    graph3 = graph
-                        .0
-                        .iter()
-                        .map(|s| (format!("{:x}", s.0), s.1 as u64))
-                        .collect();
-                }
-                Format::String => {
-                    graph3 = graph
-                        .0
-                        .iter()
-                        .map(|s| {
-                            (
-                                format!("{}", String::from_utf8_lossy(&[s.0 as u8])),
-                                s.1 as u64,
-                            )
-                        }).collect();
-                }
-            }
+            let graph3: Vec<(String, u64)> = graph
+                .0
+                .iter()
+                .map(|s| match self.format {
+                    Format::Decimal => (format!("{}", s.0), s.1 as u64),
+                    Format::Hex => (format!("{:x}", s.0), s.1 as u64),
+                    Format::String => (
+                        format!("{}", String::from_utf8_lossy(&[s.0 as u8])),
+                        s.1 as u64,
+                    ),
+                }).collect();
 
             let mut graph2: Vec<(&str, u64)> = Vec::new();
             self.terminal
