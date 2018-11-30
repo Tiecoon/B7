@@ -15,6 +15,7 @@ clap = "2.32.0"
 tui = "0.3.0"
 termion = "1.5.1"
 tui-logger = "0.2.0"
+num_cpus = "1.8.0"
 
 [build-dependencies]
 bindgen = "0.42.2"

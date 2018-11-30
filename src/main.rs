@@ -4,6 +4,7 @@ extern crate libc;
 #[macro_use]
 extern crate log;
 extern crate nix;
+extern crate num_cpus;
 extern crate regex;
 extern crate spawn_ptrace;
 extern crate termion;

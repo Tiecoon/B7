@@ -24,7 +24,7 @@ pub fn brute<
     // Loop until generator says we are done
     loop {
         // Number of threads to spawn
-        let n_workers = 8;
+        let n_workers = num_cpus::get();
         let mut num_jobs: i64 = 0;
         let mut results: Vec<(I, i64)> = Vec::new();
 
