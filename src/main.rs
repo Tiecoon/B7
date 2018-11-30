@@ -27,10 +27,10 @@ use clap::{App, Arg};
 use generators::*;
 use std::fs::File;
 use std::io::prelude::*;
+use std::process::exit;
 
-fn main() {
-    // handle command line arguements
-    let matches = App::new("B7")
+fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
+    App::new("B7")
         .version("0.1.0")
         .arg(
             Arg::with_name("binary")
@@ -65,25 +65,37 @@ fn main() {
             Arg::with_name("stdinstate")
                 .long("no-stdin")
                 .help("toggle running stdin checks"),
-        ).get_matches();
+        ).get_matches()
+}
 
-    let path = matches.value_of("binary").unwrap();
+fn print_usage(matches: &clap::ArgMatches) -> ! {
+    println!("{}", matches.usage());
+    exit(-1);
+}
+
+fn main() {
+    // handle command line arguements
+    let matches = handle_cli_args();
+
+    let path = match matches.value_of("binary") {
+        Some(a) => a,
+        None => print_usage(&matches),
+    };
+
     let argstate = matches.occurrences_of("argstate") < 1;
     let stdinstate = matches.occurrences_of("stdinstate") < 1;
 
     let solvername = matches.value_of("solver").unwrap_or("perf");
-    let solver: fn(&str, &Input) -> i64;
-
-    match solvername {
-        "perf" => solver = perf::get_inst_count,
-        "dynamorio" => solver = dynamorio::get_inst_count,
+    let solver = match solvername {
+        "perf" => perf::get_inst_count,
+        "dynamorio" => dynamorio::get_inst_count,
         _ => panic!("unknown solver"),
-    }
+    };
 
     let stdin_input = matches.value_of("start").unwrap_or("");
 
     let mut terminal = b7tui::Tui::new();
-    info!("using {}", solvername);
+    info!("Using {} solver", solvername);
 
     let mut file = File::create(format!("{}.cache", path)).unwrap();
     if argstate {
