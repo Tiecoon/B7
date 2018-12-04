@@ -1,5 +1,7 @@
 use log::LevelFilter;
 use std::io;
+use std::io::Read;
+use std::fs::File;
 use termion::event::Key;
 use termion::input::MouseTerminal;
 use termion::input::TermRead;
@@ -7,8 +9,8 @@ use termion::raw::IntoRawMode;
 use termion::screen::AlternateScreen;
 use tui::backend::TermionBackend;
 use tui::layout::{Constraint, Direction, Layout};
-use tui::style::{Color, Style};
-use tui::widgets::{BarChart, Block, Borders, Widget};
+use tui::style::{Color, Style, Modifier};
+use tui::widgets::{BarChart, Block, Borders, Widget, SelectableList};
 use tui::Terminal;
 use tui_logger::*;
 
@@ -21,7 +23,12 @@ enum Format {
 pub trait Ui {
     // handle a new ui check
     fn update<
-        I: 'static + std::fmt::Display + Clone + std::fmt::Debug + std::marker::Send + std::cmp::Ord,
+        I: 'static
+            + std::fmt::Display
+            + Clone
+            + std::fmt::Debug
+            + std::marker::Send
+            + std::cmp::Ord,
     >(
         &mut self,
         results: &[(I, i64)],
@@ -49,6 +56,9 @@ pub struct Tui {
     currun: u64,
     format: Format,
     cont: bool,
+    path: Option<String>,
+    history: Vec<String>,
+    selected: Option<usize>,
 }
 
 // constructor
@@ -67,6 +77,7 @@ impl Tui {
         terminal.hide_cursor().unwrap();
         let size = terminal.size().unwrap();
         let cache = Vec::new();
+        let history = Vec::new();
         Tui {
             terminal,
             size,
@@ -75,6 +86,34 @@ impl Tui {
             currun: 0,
             format: Format::Hex,
             cont: false,
+            path: None,
+            history,
+            selected: None,
+        }
+    }
+    pub fn set_path(&mut self, path: String) {
+        self.path = Some(path.to_string());
+    }
+    pub fn load_cache(&mut self) {
+        // Parse out the cache file
+        match self.path {
+            Some(ref path) => {
+                let mut file = match File::open(format!("{}.cache", path)) {
+                    Ok(file) => file,
+                    Err(_) => return,
+                };
+                let mut contents = String::new();
+                file.read_to_string(&mut contents).expect(
+                    "Could not read cache file.",
+                );
+                self.history.clear();
+                for line in contents.lines() {
+                    self.history.push(line.to_string());
+                }
+                drop(file);
+
+            }
+            None => return,
         }
     }
     pub fn redraw(&mut self) -> bool {
@@ -84,7 +123,9 @@ impl Tui {
             self.terminal.resize(size).unwrap();
             self.size = size;
         }
+        self.load_cache();
         if !self.cache.is_empty() {
+            let history = &self.history;
             let graph = &self.cache[(self.currun - 1) as usize];
             let graph3: Vec<(String, u64)> = graph
                 .0
@@ -96,7 +137,8 @@ impl Tui {
                         format!("{}", String::from_utf8_lossy(&[s.0 as u8])),
                         s.1 as u64,
                     ),
-                }).collect();
+                })
+                .collect();
 
             let mut graph2: Vec<(&str, u64)> = Vec::new();
             self.terminal
@@ -105,8 +147,13 @@ impl Tui {
                         .direction(Direction::Vertical)
                         .margin(1)
                         .constraints(
-                            [Constraint::Percentage(70), Constraint::Percentage(30)].as_ref(),
-                        ).split(size);
+                            [
+                                Constraint::Percentage(60),
+                                Constraint::Percentage(25),
+                                Constraint::Percentage(15),
+                            ].as_ref(),
+                        )
+                        .split(size);
 
                     BarChart::default()
                         .block(Block::default().title("B7").borders(Borders::ALL))
@@ -117,9 +164,11 @@ impl Tui {
                                 .map(|s| {
                                     let adjusted = s.1 - graph.1;
                                     (&*s.0, adjusted)
-                                }).collect::<Vec<(&str, u64)>>();
+                                })
+                                .collect::<Vec<(&str, u64)>>();
                             &graph2
-                        }).bar_width(2)
+                        })
+                        .bar_width(2)
                         .style(Style::default().fg(Color::Yellow))
                         .value_style(Style::default().fg(Color::Black).bg(Color::Yellow))
                         .render(&mut f, chunks[0]);
@@ -132,9 +181,24 @@ impl Tui {
                                 .title_style(Style::default().fg(Color::White).bg(Color::Black))
                                 .border_style(Style::default().fg(Color::White).bg(Color::Black))
                                 .borders(Borders::ALL),
-                        ).style(Style::default().fg(Color::White))
+                        )
+                        .style(Style::default().fg(Color::White))
                         .render(&mut f, chunks[1]);
-                }).unwrap();
+
+                    // List widget for cache
+                    SelectableList::default()
+                        .block(Block::default().borders(Borders::ALL)
+                          .title("Brute force history"))
+                        .items(&history)
+                        //.select(self.selected)
+                        .style(Style::default().fg(Color::White))
+                        .highlight_style(Style::default()
+                          .fg(Color::LightGreen).modifier(Modifier::Bold))
+                        .highlight_symbol(">")
+                        .render(&mut f, chunks[2]);
+
+                })
+                .unwrap();
         }
         true
     }
@@ -151,7 +215,12 @@ impl Default for Tui {
 impl Ui for Tui {
     // draw bargraph for new input
     fn update<
-        I: 'static + std::fmt::Display + Clone + std::fmt::Debug + std::marker::Send + std::cmp::Ord,
+        I: 'static
+            + std::fmt::Display
+            + Clone
+            + std::fmt::Debug
+            + std::marker::Send
+            + std::cmp::Ord,
     >(
         &mut self,
         results: &[(I, i64)],
@@ -208,6 +277,32 @@ impl Ui for Tui {
                             self.currun -= 1;
                         }
                     }
+                    Ok(Key::Up) => {
+                        match self.selected {
+                            Some(x) => {
+                                if x > 0 {
+                                    self.selected = Some(x - 1);
+                                }
+                            }
+                            None => {
+                                self.selected = Some(0);
+                            }
+                        }
+                        self.redraw();
+                    }
+                    Ok(Key::Down) => {
+                        match self.selected {
+                            Some(x) => {
+                                if x < self.history.len() {
+                                    self.selected = Some(x + 1);
+                                }
+                            }
+                            None => {
+                                self.selected = Some(0);
+                            }
+                        }
+                        self.redraw();
+                    }
                     _ => {}
                 }
                 let _ = self.redraw();
@@ -236,6 +331,32 @@ impl Ui for Tui {
                         self.currun -= 1;
                     }
                 }
+                Ok(Key::Up) => {
+                    match self.selected {
+                        Some(x) => {
+                            if x > 0 {
+                                self.selected = Some(x - 1);
+                            }
+                        }
+                        None => {
+                            self.selected = Some(0);
+                        }
+                    }
+                    self.redraw();
+                }
+                Ok(Key::Down) => {
+                    match self.selected {
+                        Some(x) => {
+                            if x < self.history.len() {
+                                self.selected = Some(x + 1);
+                            }
+                        }
+                        None => {
+                            self.selected = Some(0);
+                        }
+                    }
+                    self.redraw();
+                }
                 _ => {}
             }
             let _ = self.redraw();
@@ -262,7 +383,12 @@ impl Env {
 // default do nothing just let the prints handle it
 impl Ui for Env {
     fn update<
-        I: 'static + std::fmt::Display + Clone + std::fmt::Debug + std::marker::Send + std::cmp::Ord,
+        I: 'static
+            + std::fmt::Display
+            + Clone
+            + std::fmt::Debug
+            + std::marker::Send
+            + std::cmp::Ord,
     >(
         &mut self,
         _results: &[(I, i64)],

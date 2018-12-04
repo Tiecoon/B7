@@ -104,6 +104,8 @@ fn main() {
     vars.insert(String::from("dynpath"), String::from(dynpath));
 
     let mut terminal = b7tui::Tui::new();
+    terminal.set_path(path.to_string());
+
     info!("Using {} solver", solvername);
 
     let mut file = File::create(format!("{}.cache", path)).unwrap();
