@@ -1,7 +1,7 @@
 use log::LevelFilter;
+use std::fs::File;
 use std::io;
 use std::io::Read;
-use std::fs::File;
 use termion::event::Key;
 use termion::input::MouseTerminal;
 use termion::input::TermRead;
@@ -9,8 +9,8 @@ use termion::raw::IntoRawMode;
 use termion::screen::AlternateScreen;
 use tui::backend::TermionBackend;
 use tui::layout::{Constraint, Direction, Layout};
-use tui::style::{Color, Style, Modifier};
-use tui::widgets::{BarChart, Block, Borders, Widget, SelectableList};
+use tui::style::{Color, Modifier, Style};
+use tui::widgets::{BarChart, Block, Borders, SelectableList, Widget};
 use tui::Terminal;
 use tui_logger::*;
 
@@ -23,12 +23,7 @@ enum Format {
 pub trait Ui {
     // handle a new ui check
     fn update<
-        I: 'static
-            + std::fmt::Display
-            + Clone
-            + std::fmt::Debug
-            + std::marker::Send
-            + std::cmp::Ord,
+        I: 'static + std::fmt::Display + Clone + std::fmt::Debug + std::marker::Send + std::cmp::Ord,
     >(
         &mut self,
         results: &[(I, i64)],
@@ -103,15 +98,13 @@ impl Tui {
                     Err(_) => return,
                 };
                 let mut contents = String::new();
-                file.read_to_string(&mut contents).expect(
-                    "Could not read cache file.",
-                );
+                file.read_to_string(&mut contents)
+                    .expect("Could not read cache file.");
                 self.history.clear();
                 for line in contents.lines() {
                     self.history.push(line.to_string());
                 }
                 drop(file);
-
             }
             None => return,
         }
@@ -137,8 +130,7 @@ impl Tui {
                         format!("{}", String::from_utf8_lossy(&[s.0 as u8])),
                         s.1 as u64,
                     ),
-                })
-                .collect();
+                }).collect();
 
             let mut graph2: Vec<(&str, u64)> = Vec::new();
             self.terminal
@@ -151,9 +143,9 @@ impl Tui {
                                 Constraint::Percentage(60),
                                 Constraint::Percentage(25),
                                 Constraint::Percentage(15),
-                            ].as_ref(),
-                        )
-                        .split(size);
+                            ]
+                                .as_ref(),
+                        ).split(size);
 
                     BarChart::default()
                         .block(Block::default().title("B7").borders(Borders::ALL))
@@ -164,11 +156,9 @@ impl Tui {
                                 .map(|s| {
                                     let adjusted = s.1 - graph.1;
                                     (&*s.0, adjusted)
-                                })
-                                .collect::<Vec<(&str, u64)>>();
+                                }).collect::<Vec<(&str, u64)>>();
                             &graph2
-                        })
-                        .bar_width(2)
+                        }).bar_width(2)
                         .style(Style::default().fg(Color::Yellow))
                         .value_style(Style::default().fg(Color::Black).bg(Color::Yellow))
                         .render(&mut f, chunks[0]);
@@ -181,24 +171,25 @@ impl Tui {
                                 .title_style(Style::default().fg(Color::White).bg(Color::Black))
                                 .border_style(Style::default().fg(Color::White).bg(Color::Black))
                                 .borders(Borders::ALL),
-                        )
-                        .style(Style::default().fg(Color::White))
+                        ).style(Style::default().fg(Color::White))
                         .render(&mut f, chunks[1]);
 
                     // List widget for cache
                     SelectableList::default()
-                        .block(Block::default().borders(Borders::ALL)
-                          .title("Brute force history"))
-                        .items(&history)
+                        .block(
+                            Block::default()
+                                .borders(Borders::ALL)
+                                .title("Brute force history"),
+                        ).items(&history)
                         //.select(self.selected)
                         .style(Style::default().fg(Color::White))
-                        .highlight_style(Style::default()
-                          .fg(Color::LightGreen).modifier(Modifier::Bold))
-                        .highlight_symbol(">")
+                        .highlight_style(
+                            Style::default()
+                                .fg(Color::LightGreen)
+                                .modifier(Modifier::Bold),
+                        ).highlight_symbol(">")
                         .render(&mut f, chunks[2]);
-
-                })
-                .unwrap();
+                }).unwrap();
         }
         true
     }
@@ -215,12 +206,7 @@ impl Default for Tui {
 impl Ui for Tui {
     // draw bargraph for new input
     fn update<
-        I: 'static
-            + std::fmt::Display
-            + Clone
-            + std::fmt::Debug
-            + std::marker::Send
-            + std::cmp::Ord,
+        I: 'static + std::fmt::Display + Clone + std::fmt::Debug + std::marker::Send + std::cmp::Ord,
     >(
         &mut self,
         results: &[(I, i64)],
@@ -383,12 +369,7 @@ impl Env {
 // default do nothing just let the prints handle it
 impl Ui for Env {
     fn update<
-        I: 'static
-            + std::fmt::Display
-            + Clone
-            + std::fmt::Debug
-            + std::marker::Send
-            + std::cmp::Ord,
+        I: 'static + std::fmt::Display + Clone + std::fmt::Debug + std::marker::Send + std::cmp::Ord,
     >(
         &mut self,
         _results: &[(I, i64)],
