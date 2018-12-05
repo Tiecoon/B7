@@ -14,7 +14,6 @@ extern crate tui_logger;
 
 pub mod b7tui;
 pub mod binary;
-pub mod bindings;
 pub mod brute;
 pub mod dynamorio;
 pub mod generators;

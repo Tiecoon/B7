@@ -1,3 +1,5 @@
+pub mod bindings;
+
 use bindings::*;
 use generators::Input;
 use libc::{c_int, c_void, ioctl, pid_t, syscall};
