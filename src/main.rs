@@ -14,13 +14,14 @@ extern crate tui_logger;
 
 pub mod b7tui;
 pub mod binary;
-pub mod bindings;
 pub mod brute;
 pub mod dynamorio;
 pub mod generators;
 pub mod process;
 pub mod statistics;
 
+#[cfg(linux)]
+pub mod bindings;
 #[cfg(linux)]
 pub mod perf;
 
