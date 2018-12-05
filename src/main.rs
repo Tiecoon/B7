@@ -18,9 +18,11 @@ pub mod bindings;
 pub mod brute;
 pub mod dynamorio;
 pub mod generators;
-pub mod perf;
 pub mod process;
 pub mod statistics;
+
+#[cfg(linux)]
+pub mod perf;
 
 use b7tui::Ui;
 use brute::brute;
@@ -79,6 +81,23 @@ fn print_usage(matches: &clap::ArgMatches) -> ! {
     exit(-1);
 }
 
+#[cfg(linux)]
+fn get_counter_fn(name: &str) -> fn(&str, &Input, &HashMap<String, String>) -> i64 {
+    match name {
+        "perf" => perf::get_inst_count,
+        "dynamorio" => dynamorio::get_inst_count,
+        _ => panic!("unknown solver"),
+    }
+}
+
+#[cfg(not(linux))]
+fn get_counter_fn(name: &str) -> fn(&str, &Input, &HashMap<String, String>) -> i64 {
+    match name {
+        "dynamorio" => dynamorio::get_inst_count,
+        _ => panic!("unknown solver"),
+    }
+}
+
 fn main() {
     // handle command line arguements
     let matches = handle_cli_args();
@@ -92,11 +111,7 @@ fn main() {
     let stdinstate = matches.occurrences_of("stdinstate") < 1;
 
     let solvername = matches.value_of("solver").unwrap_or("perf");
-    let solver = match solvername {
-        "perf" => perf::get_inst_count,
-        "dynamorio" => dynamorio::get_inst_count,
-        _ => panic!("unknown solver"),
-    };
+    let solver: fn(&str, &Input, &HashMap<String, String>) -> i64 = get_counter_fn(solvername);
 
     let stdin_input = matches.value_of("start").unwrap_or("");
     let mut vars = HashMap::new();

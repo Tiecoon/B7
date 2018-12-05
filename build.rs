@@ -1,9 +1,11 @@
 extern crate bindgen;
-extern crate cc;
 
+#[cfg(linux)]
 use std::env;
+#[cfg(linux)]
 use std::path::PathBuf;
 
+#[cfg(linux)]
 fn main() {
     // Generate Rust bindings
     let bindings = bindgen::Builder::default()
@@ -20,3 +22,6 @@ fn main() {
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
 }
+
+#[cfg(not(linux))]
+fn main() {}

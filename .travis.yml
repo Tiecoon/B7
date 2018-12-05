@@ -1,6 +1,10 @@
 language: rust
 rust:
 - stable
+os:
+- linux
+- windows
+- osx
 before_script:
 - rustup component add rustfmt-preview
 script:
