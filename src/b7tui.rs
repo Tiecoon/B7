@@ -167,7 +167,7 @@ impl Tui {
                     TuiLoggerWidget::default()
                         .block(
                             Block::default()
-                                .title("Independent Tui Logger View")
+                                .title("Log Output")
                                 .title_style(Style::default().fg(Color::White).bg(Color::Black))
                                 .border_style(Style::default().fg(Color::White).bg(Color::Black))
                                 .borders(Borders::ALL),
@@ -179,7 +179,7 @@ impl Tui {
                         .block(
                             Block::default()
                                 .borders(Borders::ALL)
-                                .title("Brute force history"),
+                                .title("Cached Results"),
                         ).items(&history)
                         //.select(self.selected)
                         .style(Style::default().fg(Color::White))
