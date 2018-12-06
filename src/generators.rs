@@ -299,7 +299,7 @@ pub struct ArgvLenGenerator {
 impl std::fmt::Display for ArgvLenGenerator {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         for val in &self.correct {
-            write!(f, "{}", val);
+            write!(f, "{}", val).unwrap();
         }
         Ok(())
     }
@@ -388,7 +388,7 @@ pub struct ArgvGenerator {
 impl std::fmt::Display for ArgvGenerator {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         for val in &self.correct {
-            write!(f, "[{}], ", String::from_utf8_lossy(val.as_slice()));
+            write!(f, "[{}], ", String::from_utf8_lossy(val.as_slice())).unwrap();
         }
         Ok(())
     }
