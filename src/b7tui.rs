@@ -49,6 +49,7 @@ pub struct Tui {
     cache: Vec<(Vec<(u64, u64)>, u64)>,
     numrun: u64,
     currun: u64,
+    gap: u16,
     format: Format,
     cont: bool,
     path: Option<String>,
@@ -79,6 +80,7 @@ impl Tui {
             cache,
             numrun: 0,
             currun: 0,
+            gap: 0,
             format: Format::Hex,
             cont: false,
             path,
@@ -133,6 +135,7 @@ impl Tui {
                 }).collect();
 
             let mut graph2: Vec<(&str, u64)> = Vec::new();
+            let gap = self.gap;
             self.terminal
                 .draw(|mut f| {
                     let chunks = Layout::default()
@@ -161,6 +164,7 @@ impl Tui {
                         }).bar_width(2)
                         .style(Style::default().fg(Color::Yellow))
                         .value_style(Style::default().fg(Color::Black).bg(Color::Yellow))
+                        .bar_gap(gap)
                         .render(&mut f, chunks[0]);
 
                     // Widget for log levels
@@ -288,6 +292,14 @@ impl Ui for Tui {
                             }
                         }
                         self.redraw();
+                    }
+                    Ok(Key::Char('=')) => {
+                        self.gap += 1;
+                    }
+                    Ok(Key::Char('-')) => {
+                        if self.gap > 0 {
+                            self.gap -= 1;
+                        }
                     }
                     _ => {}
                 }

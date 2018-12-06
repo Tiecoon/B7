@@ -181,7 +181,7 @@ fn default_arg_brute<B: b7tui::Ui>(
         brute(path, 5, &mut argvgen, solver, terminal, vars.clone());
 
         // TODO: error handling could be improved here
-        let _ = file.write_fmt(format_args!("argv: {}", argvgen)).unwrap();
+        let _ = file.write_fmt(format_args!("argv: {}", argvgen));
     }
 }
 
