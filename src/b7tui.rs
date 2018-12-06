@@ -58,7 +58,7 @@ pub struct Tui {
 
 // constructor
 impl Tui {
-    pub fn new() -> Tui {
+    pub fn new(path: Option<String>) -> Tui {
         init_logger(LevelFilter::Trace).unwrap();
 
         // Set default level for unknown targets to Trace
@@ -81,7 +81,7 @@ impl Tui {
             currun: 0,
             format: Format::Hex,
             cont: false,
-            path: None,
+            path,
             history,
             selected: None,
         }
@@ -198,7 +198,7 @@ impl Tui {
 // default constructor for syntax sugar
 impl Default for Tui {
     fn default() -> Self {
-        Self::new()
+        Self::new(None)
     }
 }
 

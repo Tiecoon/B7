@@ -105,7 +105,10 @@ fn main() {
 
     let terminal = String::from(matches.value_of("ui").unwrap_or("tui")).to_lowercase();
 
-    let mut file = File::create(format!("{}.cache", path)).unwrap();
+    let mut file = match File::open(format!("{}.cache", path)) {
+        Ok(x) => x,
+        _ => File::create(format!("{}.cache", path)).unwrap(),
+    };
 
     // unsure on wether an enum would be better for readability but more conversion so..
     match &*terminal {
@@ -115,7 +118,7 @@ fn main() {
             stdinstate,
             &mut file,
             solver,
-            &mut b7tui::Tui::new(),
+            &mut b7tui::Tui::new(Some(String::from(path))),
             vars,
         ),
         "env" => main2(
@@ -176,14 +179,11 @@ fn default_arg_brute<B: b7tui::Ui>(
         // solve argv values
         let mut argvgen = ArgvGenerator::new(argc, argvlens, 0x20, 0x7e);
         brute(path, 5, &mut argvgen, solver, terminal, vars.clone());
-        let argv = argvgen.get_argv();
+
         // TODO: error handling could be improved here
-        file.write_all(b"[").unwrap();
-        for arg in argv {
-            file.write_all(String::from_utf8_lossy(arg.as_slice()).as_bytes())
-                .unwrap();
-        }
-        file.write_all(b"]\n").unwrap();
+        let _ = file.write_all(b"[").unwrap();
+        let _ = file.write_fmt(format_args!("{}", argvgen)).unwrap();
+        let _ = file.write_all(b"]\n").unwrap();
     }
 }
 
@@ -210,8 +210,7 @@ fn default_stdin_brute<B: b7tui::Ui>(
             StdinCharGenerator::new_start(stdinlen, 0x20, 0x7e, stdin_input.as_bytes())
         };
         brute(path, 1, &mut gen, solver, terminal, vars.clone());
-        let std = gen.get_input().clone();
-        file.write_all(String::from_utf8_lossy(std.as_slice()).as_bytes())
-            .unwrap();
+
+        let _ = file.write_fmt(format_args!("{}", gen));
     }
 }
