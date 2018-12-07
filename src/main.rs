@@ -1,16 +1,5 @@
-extern crate clap;
-extern crate env_logger;
-extern crate libc;
 #[macro_use]
 extern crate log;
-extern crate nix;
-extern crate num_cpus;
-extern crate regex;
-extern crate spawn_ptrace;
-extern crate termion;
-extern crate threadpool;
-extern crate tui;
-extern crate tui_logger;
 
 pub mod b7tui;
 pub mod binary;
@@ -22,9 +11,9 @@ pub mod perf;
 pub mod process;
 pub mod statistics;
 
-use brute::brute;
+use crate::brute::brute;
+use crate::generators::*;
 use clap::{App, Arg};
-use generators::*;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;

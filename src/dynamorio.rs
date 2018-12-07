@@ -1,9 +1,9 @@
-use process::Process;
+use crate::process::Process;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 
-use generators::Input;
+use crate::generators::Input;
 
 // Handles basic proc spawning and running under dino
 // only works on 32 bit for now

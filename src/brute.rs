@@ -5,9 +5,9 @@ use std::marker::Send;
 use std::sync::mpsc::channel;
 use threadpool::ThreadPool;
 
-use b7tui;
-use generators::{Generate, Input};
-use statistics;
+use crate::b7tui;
+use crate::generators::{Generate, Input};
+use crate::statistics;
 
 // can take out Debug trait later
 // Combines the generators with the instruction counters to deduce the next step

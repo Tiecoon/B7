@@ -1,4 +1,4 @@
-use binary::Binary;
+use crate::binary::Binary;
 use nix::sys::ptrace;
 use nix::sys::wait::{waitpid, WaitStatus};
 use nix::unistd::Pid;

@@ -1,7 +1,7 @@
-use bindings::*;
-use generators::Input;
+use crate::bindings::*;
+use crate::generators::Input;
+use crate::process::Process;
 use libc::{c_int, c_void, ioctl, pid_t, syscall};
-use process::Process;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::File;
