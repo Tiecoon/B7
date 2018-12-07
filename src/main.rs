@@ -38,39 +38,46 @@ fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
                 .help("Binary to brute force input for")
                 .index(1)
                 .required(true),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("solver")
                 .short("s")
                 .long("solver")
                 .value_name("solver")
                 .help("Sets which solver to use (default perf)")
                 .takes_value(true),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("ui")
                 .short("u")
                 .long("ui")
                 .value_name("ui_type")
                 .help("Sets which interface to use (default Tui)")
                 .takes_value(true),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("start")
                 .long("start")
                 .value_name("String")
                 .help("Start with a premade input")
                 .takes_value(true),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("argstate")
                 .long("no-arg")
                 .help("toggle running arg checks"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("stdinstate")
                 .long("no-stdin")
                 .help("toggle running stdin checks"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("dynpath")
                 .long("dynpath")
                 .help("Path to DynamoRio"),
-        ).get_matches()
+        )
+        .get_matches()
 }
 
 fn print_usage(matches: &clap::ArgMatches) -> ! {

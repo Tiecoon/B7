@@ -132,7 +132,8 @@ impl Tui {
                         format!("{}", String::from_utf8_lossy(&[s.0 as u8])),
                         s.1 as u64,
                     ),
-                }).collect();
+                })
+                .collect();
 
             let mut graph2: Vec<(&str, u64)> = Vec::new();
             let gap = self.gap;
@@ -147,8 +148,9 @@ impl Tui {
                                 Constraint::Percentage(25),
                                 Constraint::Percentage(15),
                             ]
-                                .as_ref(),
-                        ).split(size);
+                            .as_ref(),
+                        )
+                        .split(size);
 
                     BarChart::default()
                         .block(Block::default().title("B7").borders(Borders::ALL))
@@ -159,9 +161,11 @@ impl Tui {
                                 .map(|s| {
                                     let adjusted = s.1 - graph.1;
                                     (&*s.0, adjusted)
-                                }).collect::<Vec<(&str, u64)>>();
+                                })
+                                .collect::<Vec<(&str, u64)>>();
                             &graph2
-                        }).bar_width(2)
+                        })
+                        .bar_width(2)
                         .style(Style::default().fg(Color::Yellow))
                         .value_style(Style::default().fg(Color::Black).bg(Color::Yellow))
                         .bar_gap(gap)
@@ -175,7 +179,8 @@ impl Tui {
                                 .title_style(Style::default().fg(Color::White).bg(Color::Black))
                                 .border_style(Style::default().fg(Color::White).bg(Color::Black))
                                 .borders(Borders::ALL),
-                        ).style(Style::default().fg(Color::White))
+                        )
+                        .style(Style::default().fg(Color::White))
                         .render(&mut f, chunks[1]);
 
                     // List widget for cache
@@ -184,16 +189,19 @@ impl Tui {
                             Block::default()
                                 .borders(Borders::ALL)
                                 .title("Cached Results"),
-                        ).items(&history)
+                        )
+                        .items(&history)
                         //.select(self.selected)
                         .style(Style::default().fg(Color::White))
                         .highlight_style(
                             Style::default()
                                 .fg(Color::LightGreen)
                                 .modifier(Modifier::Bold),
-                        ).highlight_symbol(">")
+                        )
+                        .highlight_symbol(">")
                         .render(&mut f, chunks[2]);
-                }).unwrap();
+                })
+                .unwrap();
         }
         true
     }
@@ -245,7 +253,7 @@ impl Ui for Tui {
         if !self.cont {
             for evt in stdin.keys() {
                 match evt {
-                    Ok(Key::Char('q')) => panic!{"Quitting"},
+                    Ok(Key::Char('q')) => panic! {"Quitting"},
                     Ok(Key::Char('h')) => self.format = Format::Hex,
                     Ok(Key::Char('d')) => self.format = Format::Decimal,
                     Ok(Key::Char('s')) => self.format = Format::String,
@@ -314,7 +322,7 @@ impl Ui for Tui {
         let stdin = io::stdin();
         for evt in stdin.keys() {
             match evt {
-                Ok(Key::Char('q')) => panic!{"Quitting"},
+                Ok(Key::Char('q')) => panic! {"Quitting"},
                 Ok(Key::Char('p')) => panic!("Force Closing"),
                 Ok(Key::Char('h')) => self.format = Format::Hex,
                 Ok(Key::Char('d')) => self.format = Format::Decimal,
