@@ -9,9 +9,11 @@ use crate::generators::Input;
 // only works on 32 bit for now
 pub fn get_inst_count(path: &str, inp: &Input, vars: &HashMap<String, String>) -> i64 {
     let dynpath = vars.get("dynpath").unwrap();
-    let mut proc = Process::new(dynpath);
+    let drrun = format!("{}/bin64/drrun", dynpath);
+    let libinscount = format!("{}/api/bin/libinscount.so", dynpath);
+    let mut proc = Process::new(&drrun);
     proc.arg("-c");
-    proc.arg(dynpath);
+    proc.arg(libinscount);
     proc.arg("--");
     proc.arg(path);
     for arg in inp.argv.iter() {
@@ -29,9 +31,10 @@ pub fn get_inst_count(path: &str, inp: &Input, vars: &HashMap<String, String>) -
 
     let stdout = String::from_utf8_lossy(buf.as_slice());
 
-    let re = regex::Regex::new("(\\d+)").unwrap();
-    let m = re.find(&stdout).unwrap().as_str();
-    let num2: i64 = m.parse().unwrap();
+    let re = regex::Regex::new("Instrumentation results: (\\d+) instructions executed").unwrap();
+    let caps = re.captures(&stdout).unwrap();
+    let cap = &caps[caps.len()-1];
+    let num2: i64 = cap.parse().unwrap();
 
     num2
 }

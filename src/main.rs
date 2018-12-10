@@ -64,7 +64,8 @@ fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
         .arg(
             Arg::with_name("dynpath")
                 .long("dynpath")
-                .help("Path to DynamoRio"),
+                .help("Path to DynamoRio build folder")
+                .takes_value(true),
         )
         .get_matches()
 }
@@ -197,7 +198,7 @@ fn default_stdin_brute<B: b7tui::Ui>(
     if stdinlen > 0 {
         // TODO: We should have a good way of configuring the range
         let empty = String::new();
-        let stdin_input = vars.get("dynpath").unwrap_or(&empty);
+        let stdin_input = vars.get("start").unwrap_or(&empty);
         let mut gen = if stdin_input == "" {
             StdinCharGenerator::new(stdinlen, 0x20, 0x7e)
         } else {
