@@ -33,7 +33,7 @@ pub fn get_inst_count(path: &str, inp: &Input, vars: &HashMap<String, String>) -
 
     let re = regex::Regex::new("Instrumentation results: (\\d+) instructions executed").unwrap();
     let caps = re.captures(&stdout).unwrap();
-    let cap = &caps[caps.len()-1];
+    let cap = &caps[caps.len() - 1];
     let num2: i64 = cap.parse().unwrap();
 
     num2
