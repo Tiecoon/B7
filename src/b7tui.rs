@@ -27,7 +27,7 @@ pub trait Ui {
     >(
         &mut self,
         results: &[(I, i64)],
-        min: &u64,
+        min: u64,
     ) -> bool;
     // allow gui to pause if user doesn't want to continue
     fn wait(&mut self) -> bool;
@@ -222,7 +222,7 @@ impl Ui for Tui {
     >(
         &mut self,
         results: &[(I, i64)],
-        min: &u64,
+        min: u64,
     ) -> bool {
         // convertcachefor barchart
 
@@ -237,7 +237,7 @@ impl Ui for Tui {
                 .iter()
                 .map(|s| ((s.0.parse::<u64>().unwrap()), s.1))
                 .collect::<Vec<(u64, u64)>>(),
-            *min,
+            min,
         ));
         if self.currun == self.numrun {
             self.currun += 1;
@@ -393,7 +393,7 @@ impl Ui for Env {
     >(
         &mut self,
         _results: &[(I, i64)],
-        _min: &u64,
+        _min: u64,
     ) -> bool {
         true
     }

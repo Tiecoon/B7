@@ -66,7 +66,7 @@ pub fn brute<
         }
         results.sort();
 
-        terminal.update(&results, &min);
+        terminal.update(&results, min);
 
         terminal.wait();
 
