@@ -1,15 +1,7 @@
 #[macro_use]
 extern crate log;
 
-pub mod b7tui;
-pub mod binary;
-pub mod bindings;
-pub mod brute;
-pub mod dynamorio;
-pub mod generators;
-pub mod perf;
-pub mod process;
-pub mod statistics;
+use b7::*;
 
 use crate::brute::brute;
 use crate::generators::*;
@@ -107,105 +99,21 @@ fn main() {
         _ => File::create(format!("{}.cache", path)).unwrap(),
     };
 
-    // unsure on wether an enum would be better for readability but more conversion so..
-    match &*terminal {
-        "tui" => main2(
-            path,
-            argstate,
-            stdinstate,
-            &mut file,
-            solver,
-            &mut b7tui::Tui::new(Some(String::from(path))),
-            vars,
-        ),
-        "env" => main2(
-            path,
-            argstate,
-            stdinstate,
-            &mut file,
-            solver,
-            &mut b7tui::Env::new(),
-            vars,
-        ),
-        _ => panic!("unknown tui"),
-    }
+    let results = match &*terminal {
+        "tui" => B7Opts::new(path.to_string(), argstate, stdinstate, solver, &mut b7tui::Tui::new(Some(String::from(path)))).run(),
+        "env" => B7Opts::new(path.to_string(), argstate, stdinstate, solver, &mut b7tui::Env::new()).run(),
+         _ => panic!("unknown tui {}", terminal),
+    };
+
+    results.arg_brute.map(|s| {
+        info!("Writing argv to cache");
+        write!(file, "argv: {}", s).expect("Failed to write argv to cache!");
+    });
+
+    results.stdin_brute.map(|s| {
+        info!("Writing stdin to cache");
+        write!(file, "stdin: {}", s).expect("Failed to write stdin to cache!");
+    });
 }
 
-// transistion to handle terminal generic
-fn main2<B: b7tui::Ui>(
-    path: &str,
-    argstate: bool,
-    stdinstate: bool,
-    file: &mut File,
-    solver: fn(&str, &Input, &HashMap<String, String>) -> i64,
-    terminal: &mut B,
-    vars: HashMap<String, String>,
-) {
-    if argstate {
-        default_arg_brute(path, solver, vars.clone(), terminal, file);
-    }
 
-    if stdinstate {
-        default_stdin_brute(path, solver, vars.clone(), terminal, file);
-    }
-
-    // let terminal decide if it should wait for user
-    terminal.done();
-}
-
-// solves "default" arguement case
-fn default_arg_brute<B: b7tui::Ui>(
-    path: &str,
-    solver: fn(&str, &Input, &HashMap<String, String>) -> i64,
-    vars: HashMap<String, String>,
-    terminal: &mut B,
-    file: &mut File,
-) {
-    // Solve for argc
-    let mut argcgen = ArgcGenerator::new(0, 5);
-    brute(path, 1, &mut argcgen, solver, terminal, vars.clone());
-    let argc = argcgen.get_length();
-
-    // check if there is something to be solved
-    if argc > 0 {
-        // solve argv length
-        let mut argvlengen = ArgvLenGenerator::new(argc, 0, 20);
-        brute(path, 5, &mut argvlengen, solver, terminal, vars.clone());
-        let argvlens = argvlengen.get_lengths();
-
-        // solve argv values
-        let mut argvgen = ArgvGenerator::new(argc, argvlens, 0x20, 0x7e);
-        brute(path, 5, &mut argvgen, solver, terminal, vars.clone());
-
-        // TODO: error handling could be improved here
-        let _ = file.write_fmt(format_args!("argv: {}", argvgen));
-    }
-}
-
-// solves "default" stdin case
-fn default_stdin_brute<B: b7tui::Ui>(
-    path: &str,
-    solver: fn(&str, &Input, &HashMap<String, String>) -> i64,
-    vars: HashMap<String, String>,
-    terminal: &mut B,
-    file: &mut File,
-) {
-    // solve stdin len
-    let mut lgen = StdinLenGenerator::new(0, 51);
-    brute(path, 1, &mut lgen, solver, terminal, vars.clone());
-    let stdinlen = lgen.get_length();
-    // solve strin if there is stuff to solve
-    if stdinlen > 0 {
-        // TODO: We should have a good way of configuring the range
-        let empty = String::new();
-        let stdin_input = vars.get("start").unwrap_or(&empty);
-        let mut gen = if stdin_input == "" {
-            StdinCharGenerator::new(stdinlen, 0x20, 0x7e)
-        } else {
-            StdinCharGenerator::new_start(stdinlen, 0x20, 0x7e, stdin_input.as_bytes())
-        };
-        brute(path, 1, &mut gen, solver, terminal, vars.clone());
-
-        let _ = file.write_fmt(format_args!("stdin: {}", gen));
-    }
-}
