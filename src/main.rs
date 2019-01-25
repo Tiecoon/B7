@@ -3,8 +3,6 @@ extern crate log;
 
 use b7::*;
 
-use crate::brute::brute;
-use crate::generators::*;
 use clap::{App, Arg};
 use std::collections::HashMap;
 use std::fs::File;
@@ -105,15 +103,15 @@ fn main() {
          _ => panic!("unknown tui {}", terminal),
     };
 
-    results.arg_brute.map(|s| {
+    if let Some(s) = results.arg_brute {
         info!("Writing argv to cache");
         write!(file, "argv: {}", s).expect("Failed to write argv to cache!");
-    });
+    };
 
-    results.stdin_brute.map(|s| {
+    if let Some(s) = results.stdin_brute {
         info!("Writing stdin to cache");
         write!(file, "stdin: {}", s).expect("Failed to write stdin to cache!");
-    });
+    };
 }
 
 

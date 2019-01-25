@@ -13,11 +13,7 @@ pub mod statistics;
 
 use crate::brute::brute;
 use crate::generators::*;
-use clap::{App, Arg};
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::prelude::*;
-use std::process::exit;
 
 pub type Solver = fn(&str, &Input, &HashMap<String, String>) -> i64; 
 
@@ -93,7 +89,7 @@ fn default_arg_brute<B: b7tui::Ui>(
 
         return Some(argvgen.to_string());
     }
-    return None;
+    None
 }
 
 // solves "default" stdin case
@@ -121,5 +117,5 @@ fn default_stdin_brute<B: b7tui::Ui>(
 
         return Some(gen.to_string());
     }
-    return None;
+    None
 }
