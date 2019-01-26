@@ -98,9 +98,23 @@ fn main() {
     };
 
     let results = match &*terminal {
-        "tui" => B7Opts::new(path.to_string(), argstate, stdinstate, solver, &mut b7tui::Tui::new(Some(String::from(path)))).run(),
-        "env" => B7Opts::new(path.to_string(), argstate, stdinstate, solver, &mut b7tui::Env::new()).run(),
-         _ => panic!("unknown tui {}", terminal),
+        "tui" => B7Opts::new(
+            path.to_string(),
+            argstate,
+            stdinstate,
+            solver,
+            &mut b7tui::Tui::new(Some(String::from(path))),
+        )
+        .run(),
+        "env" => B7Opts::new(
+            path.to_string(),
+            argstate,
+            stdinstate,
+            solver,
+            &mut b7tui::Env::new(),
+        )
+        .run(),
+        _ => panic!("unknown tui {}", terminal),
     };
 
     if let Some(s) = results.arg_brute {
@@ -113,5 +127,3 @@ fn main() {
         write!(file, "stdin: {}", s).expect("Failed to write stdin to cache!");
     };
 }
-
-

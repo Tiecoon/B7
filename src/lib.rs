@@ -15,7 +15,7 @@ use crate::brute::brute;
 use crate::generators::*;
 use std::collections::HashMap;
 
-pub type Solver = fn(&str, &Input, &HashMap<String, String>) -> i64; 
+pub type Solver = fn(&str, &Input, &HashMap<String, String>) -> i64;
 
 pub struct B7Opts<'a, B: b7tui::Ui> {
     path: String,
@@ -23,23 +23,29 @@ pub struct B7Opts<'a, B: b7tui::Ui> {
     stdinstate: bool,
     solver: Solver,
     terminal: &'a mut B,
-    vars: HashMap<String, String>
+    vars: HashMap<String, String>,
 }
 
 pub struct B7Results {
     pub arg_brute: Option<String>,
-    pub stdin_brute: Option<String>
+    pub stdin_brute: Option<String>,
 }
 
 impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
-    pub fn new(path: String, argstate: bool, stdinstate: bool, solver: Solver, terminal: &'a mut B) -> B7Opts<'a, B> {
+    pub fn new(
+        path: String,
+        argstate: bool,
+        stdinstate: bool,
+        solver: Solver,
+        terminal: &'a mut B,
+    ) -> B7Opts<'a, B> {
         B7Opts {
             path,
             argstate,
             stdinstate,
             solver,
             terminal,
-            vars: HashMap::new()
+            vars: HashMap::new(),
         }
     }
 
@@ -47,11 +53,13 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
         let mut arg_brute = None;
         let mut stdin_brute = None;
         if self.argstate {
-            arg_brute = default_arg_brute(&self.path, self.solver, self.vars.clone(), self.terminal);
+            arg_brute =
+                default_arg_brute(&self.path, self.solver, self.vars.clone(), self.terminal);
         }
 
         if self.stdinstate {
-            stdin_brute = default_stdin_brute(&self.path, self.solver, self.vars.clone(), self.terminal);
+            stdin_brute =
+                default_stdin_brute(&self.path, self.solver, self.vars.clone(), self.terminal);
         }
 
         // let terminal decide if it should wait for user
@@ -59,7 +67,7 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
 
         B7Results {
             arg_brute,
-            stdin_brute
+            stdin_brute,
         }
     }
 }
