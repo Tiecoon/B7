@@ -1,12 +1,11 @@
-use std::path::PathBuf;
-use std::collections::HashMap;
 use b7::b7tui::Env;
 use b7::perf::get_inst_count;
 use b7::B7Opts;
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 #[test]
 fn run_wyv() {
-
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     path.push("tests");
     path.push("wyvern");
@@ -19,7 +18,7 @@ fn run_wyv() {
         true,
         get_inst_count,
         &mut term,
-        HashMap::new()
+        HashMap::new(),
     );
 
     let res = opts.run();

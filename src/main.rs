@@ -104,7 +104,7 @@ fn main() {
             stdinstate,
             solver,
             &mut b7tui::Tui::new(Some(String::from(path))),
-            vars
+            vars,
         )
         .run(),
         "env" => B7Opts::new(
@@ -113,7 +113,7 @@ fn main() {
             stdinstate,
             solver,
             &mut b7tui::Env::new(),
-            vars
+            vars,
         )
         .run(),
         _ => panic!("unknown tui {}", terminal),
