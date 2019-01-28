@@ -38,6 +38,7 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
         stdinstate: bool,
         solver: Solver,
         terminal: &'a mut B,
+        vars: HashMap<String, String>
     ) -> B7Opts<'a, B> {
         B7Opts {
             path,
@@ -45,7 +46,7 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
             stdinstate,
             solver,
             terminal,
-            vars: HashMap::new(),
+            vars,
         }
     }
 
