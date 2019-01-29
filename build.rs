@@ -2,19 +2,19 @@ extern crate bindgen;
 extern crate cc;
 
 use std::env;
-use std::process::Command;
-use std::path::PathBuf;
 use std::fs;
+use std::path::PathBuf;
+use std::process::Command;
 
 fn main() {
-
     let mut out_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     out_dir.push("dynamorio");
     out_dir.push("build");
 
     fs::create_dir_all(&out_dir).expect("Failed to make output dir");
 
-    Command::new("cmake").args(&[".."])
+    Command::new("cmake")
+        .args(&[".."])
         .current_dir(&out_dir)
         .spawn()
         .expect("Failed to spawn cmake")
@@ -27,7 +27,6 @@ fn main() {
         .expect("Failed to spawn make")
         .wait()
         .expect("Failed to run make");
-
 
     // Generate Rust bindings
     let bindings = bindgen::Builder::default()
@@ -44,6 +43,4 @@ fn main() {
     bindings
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
-
-
 }

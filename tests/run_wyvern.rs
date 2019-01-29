@@ -15,10 +15,12 @@ fn run_wyv() {
     dynpath.push("dynamorio");
     dynpath.push("build");
 
-
     let mut term = Env::new();
     let mut vars = HashMap::new();
-    vars.insert("dynpath".to_string(), dynpath.to_string_lossy().into_owned());
+    vars.insert(
+        "dynpath".to_string(),
+        dynpath.to_string_lossy().into_owned(),
+    );
 
     let mut opts = B7Opts::new(
         path.to_string_lossy().into_owned(),
