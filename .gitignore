@@ -4,3 +4,4 @@
 tests/*.cache
 .vscode
 dynamario
+dynamorio-sys/target

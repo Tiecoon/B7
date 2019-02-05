@@ -10,29 +10,9 @@ use walkdir::WalkDir;
 fn main() {
     println!("cargo:rerun-if-changed=src/bindgen.h");
     //println!("cargo:rerun-if-changed=dynamorio/");
-    let mut out_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-    out_dir.push("dynamorio");
-    out_dir.push("build");
     /*for entry in WalkDir::new("dynamorio") {
         println!("cargo:rerun-if-changed={}", entry.unwrap().path().display());
     }*/
-
-    fs::create_dir_all(&out_dir).expect("Failed to make output dir");
-
-    Command::new("cmake")
-        .args(&[".."])
-        .current_dir(&out_dir)
-        .spawn()
-        .expect("Failed to spawn cmake")
-        .wait()
-        .expect("Failed to run cmake");
-
-    Command::new("make")
-        .current_dir(out_dir)
-        .spawn()
-        .expect("Failed to spawn make")
-        .wait()
-        .expect("Failed to run make");
 
     // Generate Rust bindings
     let bindings = bindgen::Builder::default()
