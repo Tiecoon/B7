@@ -6,6 +6,11 @@ use std::process::Command;
 fn main() {
 
     println!("cargo:rerun-if-changed=src/bindings.h");
+    println!("cargo:rustc-link-lib=static=dynamorio_static");
+    println!("cargo:rustc-link-lib=static=drhelper");
+    println!("cargo:rustc-link-lib=static=drinjectlib");
+    println!("cargo:rustc-link-search=dynamorio/build/lib64");
+    println!("cargo:rustc-link-search=dynamorio/build/lib64/release");
 
 
     let mut out_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
