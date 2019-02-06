@@ -9,9 +9,10 @@ fn main() {
     println!("cargo:rustc-link-lib=static=dynamorio_static");
     println!("cargo:rustc-link-lib=static=drhelper");
     println!("cargo:rustc-link-lib=static=drinjectlib");
+    println!("cargo:rustc-link-lib=static=drconfiglib");
+    println!("cargo:rustc-link-lib=static=drfrontendlib");
     println!("cargo:rustc-link-search=dynamorio/build/lib64");
     println!("cargo:rustc-link-search=dynamorio/build/lib64/release");
-
 
     let mut out_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     out_dir.push("dynamorio");

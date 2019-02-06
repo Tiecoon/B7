@@ -1,3 +1,6 @@
 # https://stackoverflow.com/a/43713209/1290530
+#
+# This should really only be applied to this crate.
+# Unfortunately, build scripts aren't allowed to pass -C flags
 [target.x86_64-unknown-linux-gnu]
-rustflags = [ "-C", "link-args=-Wl,-export-dynamic" ]
+rustflags = [ "-C", "link-args=-Wl,-export-dynamic,--allow-multiple-definition" ]
