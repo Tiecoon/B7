@@ -8,18 +8,18 @@ use std::ffi::{CString, CStr};
 #[no_mangle]
 pub static _USES_DR_VERSION_: c_int = bindings::_USES_DR_VERSION_;
 
-/*#[allow(non_upper_case_globals)]
+#[allow(non_upper_case_globals)]
 #[no_mangle]
 pub fn dr_client_main(id: client_id_t, argc: c_int, argv: *const *const c_char) {
     println!("Hello from dr client: {}", id);
-}*/
+}
 
 
 fn main() {
     //println!("Hello, world!");
     unsafe {
-        //let bin_path = CString::new(std::env::current_exe().unwrap().to_str().unwrap()).unwrap();
-        let bin_path = CString::new("/home/aaron/repos/B7/dynamorio-sys/dynamorio/build/api/bin/libinscount.so").unwrap();
+        let bin_path = CString::new(std::env::current_exe().unwrap().to_str().unwrap()).unwrap();
+        //let bin_path = CString::new("/home/aaron/repos/B7/dynamorio-sys/dynamorio/build/api/bin/libinscount.so").unwrap();
 
         let app_name = CString::new("/home/aaron/repos/B7/dynamorio-sys/test_bin").unwrap();
         //let app_name = CString::new("/home/aaron/repos/B7/tests/wyvern".to_string()).unwrap();
@@ -56,6 +56,8 @@ fn main() {
 
 
         println!("Registering client: {:?} {:?}", bin_path, client_result);
+
+        println!("Enable ptrace: {}", dr_inject_prepare_to_ptrace(inject_data));
 
         let inject_res = dr_inject_process_inject(inject_data, false as bool_, std::ptr::null_mut());
         println!("Inject result: {}", inject_res);
