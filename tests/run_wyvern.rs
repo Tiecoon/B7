@@ -24,7 +24,7 @@ fn run_wyv() {
 
     let mut opts = B7Opts::new(
         path.to_string_lossy().into_owned(),
-        true,
+        false,
         true,
         dynamorio::get_inst_count,
         &mut term,
