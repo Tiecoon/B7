@@ -19,6 +19,7 @@ enum Format {
     String,
     Decimal,
 }
+
 // Trait that all Uis will implement to ensure genericness
 pub trait Ui {
     // handle a new ui check

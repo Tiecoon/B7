@@ -1,0 +1,4 @@
+[submodule "dynamorio"]
+	path = dynamorio
+	url = https://github.com/Aaron1011/dynamorio
+	ignore = dirty
