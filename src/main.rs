@@ -5,7 +5,6 @@ use b7::*;
 
 use clap::{App, Arg};
 use std::collections::HashMap;
-use std::fs::File;
 use std::io::prelude::*;
 use std::process::exit;
 
@@ -92,10 +91,11 @@ fn main() {
 
     let terminal = String::from(matches.value_of("ui").unwrap_or("tui")).to_lowercase();
 
-    let mut file = match File::open(format!("{}.cache", path)) {
-        Ok(x) => x,
-        _ => File::create(format!("{}.cache", path)).unwrap(),
-    };
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(format!("{}.cache", path))
+        .expect("cache file cannot be opened");
 
     let results = match &*terminal {
         "tui" => B7Opts::new(
