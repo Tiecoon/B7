@@ -119,13 +119,13 @@ fn main() {
         _ => panic!("unknown tui {}", terminal),
     };
 
-    if let Some(s) = results.arg_brute {
+    if !results.arg_brute.is_empty() {
         info!("Writing argv to cache");
-        write!(file, "argv: {}", s).expect("Failed to write argv to cache!");
+        write!(file, "argv: {}", results.arg_brute).expect("Failed to write argv to cache!");
     };
 
-    if let Some(s) = results.stdin_brute {
+    if !results.stdin_brute.is_empty() {
         info!("Writing stdin to cache");
-        write!(file, "stdin: {}", s).expect("Failed to write stdin to cache!");
+        write!(file, "stdin: {}", results.stdin_brute).expect("Failed to write stdin to cache!");
     };
 }

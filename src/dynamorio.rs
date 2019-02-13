@@ -1,3 +1,4 @@
+use crate::errors::*;
 use crate::process::Process;
 use std::collections::HashMap;
 use std::ffi::OsStr;
@@ -7,7 +8,11 @@ use crate::generators::Input;
 
 // Handles basic proc spawning and running under dino
 // only works on 32 bit for now
-pub fn get_inst_count(path: &str, inp: &Input, vars: &HashMap<String, String>) -> i64 {
+pub fn get_inst_count(
+    path: &str,
+    inp: &Input,
+    vars: &HashMap<String, String>,
+) -> Result<i64, SolverError> {
     let dynpath = vars.get("dynpath").unwrap();
     let drrun = format!("{}/bin64/drrun", dynpath);
     let libinscount = format!("{}/api/bin/libinscount.so", dynpath);
@@ -36,5 +41,5 @@ pub fn get_inst_count(path: &str, inp: &Input, vars: &HashMap<String, String>) -
     let cap = &caps[caps.len() - 1];
     let num2: i64 = cap.parse().unwrap();
 
-    num2
+    Ok(num2)
 }

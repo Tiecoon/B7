@@ -1,11 +1,11 @@
 use crate::bindings::*;
+use crate::errors::*;
 use crate::generators::Input;
 use crate::process::Process;
 use libc::{c_int, c_void, ioctl, pid_t, syscall};
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::File;
-use std::io::{Error, ErrorKind, Result};
 use std::mem;
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::FromRawFd;
@@ -54,17 +54,24 @@ fn get_perf_fd(pid: pid_t) -> i32 {
 }
 
 // read the instruction count stoed if perf is establised
-fn perf_get_inst_count(fd: c_int) -> Result<i64> {
+fn perf_get_inst_count(fd: c_int) -> Result<i64, SolverError> {
     let mut count: i64 = 0;
     match unsafe { libc::read(fd, &mut count as *mut i64 as *mut c_void, 8) as i64 } {
         8 => Ok(count),
-        x if x >= 0 => Err(Error::new(ErrorKind::Other, format!("Only read {}!", x))),
-        _ => Err(Error::new(ErrorKind::Other, nix::Error::last())),
+        x if x >= 0 => Err(SolverError::new(
+            Runner::Perf,
+            format!("Only read {}!", x).to_string(),
+        )),
+        _ => Err(SolverError::new(Runner::Perf, "".to_string())), //TODO implement from Nix error
     }
 }
 
 // Handles basic proc spawning and running under perf
-pub fn get_inst_count(path: &str, inp: &Input, _vars: &HashMap<String, String>) -> i64 {
+pub fn get_inst_count(
+    path: &str,
+    inp: &Input,
+    _vars: &HashMap<String, String>,
+) -> Result<i64, SolverError> {
     // TODO: error checking...
     let mut proc = Process::new(path);
     for arg in inp.argv.iter() {
@@ -86,5 +93,5 @@ pub fn get_inst_count(path: &str, inp: &Input, _vars: &HashMap<String, String>) 
         Err(_) => -1,
     };
     drop(unsafe { File::from_raw_fd(fd) });
-    ret
+    Ok(ret)
 }
