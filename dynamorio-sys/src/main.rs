@@ -3,23 +3,64 @@ mod bindings;
 use bindings::*;
 use std::os::raw::{c_char, c_void, c_int};
 use std::ffi::{CString, CStr};
+use std::fs::File;
+use std::io::{Read, Write};
+use std::os::unix::io::FromRawFd;
+use nix::unistd::*;
 
 #[allow(non_upper_case_globals)]
 #[no_mangle]
 pub static _USES_DR_VERSION_: c_int = bindings::_USES_DR_VERSION_;
 
-#[allow(non_upper_case_globals)]
+/*#[allow(non_upper_case_globals)]
 #[no_mangle]
 pub fn dr_client_main(id: client_id_t, argc: c_int, argv: *const *const c_char) {
-    println!("Hello from dr client: {}", id);
-}
+    println!("Hello from dr client: {} {} pid={}", id, std::env::current_exe().unwrap().to_str().unwrap(), std::process::id());
+}*/
 
+
+/*fn main() {
+
+    let pipe = pipe().expect("pipe failed");
+
+    match fork().expect("fork failed") {
+        ForkResult::Parent { child, .. } => {
+            println!("Reading in parent!");
+            let mut f = unsafe { File::from_raw_fd(pipe.0) };
+           
+            drop(unsafe { File::from_raw_fd(pipe.1) });
+
+            let mut out = String::new();
+            f.read_to_string(&mut out).expect("Failed to write!");
+
+            println!("Read from child: '{}'", out);
+        },
+        ForkResult::Child => {
+            println!("Writing in child!");
+            let mut f = unsafe { File::from_raw_fd(pipe.1) };
+
+            drop(unsafe { File::from_raw_fd(pipe.0) });
+
+            unsafe {
+                dr_app_setup();
+            }
+
+
+            f.write(b"Hello from child!");
+        }
+    }
+}*/
 
 fn main() {
-    //println!("Hello, world!");
+    println!("Hello from PID {}", std::process::id());
+    println!("Printing args!");
+    std::io::stdin().lock().read(&mut [0]).unwrap();
+
+    println!("Argv: '{:?}''", std::env::args());
     unsafe {
         let bin_path = CString::new(std::env::current_exe().unwrap().to_str().unwrap()).unwrap();
-        //let bin_path = CString::new("/home/aaron/repos/B7/dynamorio-sys/dynamorio/build/api/bin/libinscount.so").unwrap();
+        let ins_path = bin_path.clone();
+        //let ins_path = CString::new("/home/aaron/repos/B7/dynamorio-sys/dynamorio/build/api/bin/libinscount.so").unwrap();
 
         let app_name = CString::new("/home/aaron/repos/B7/dynamorio-sys/test_bin").unwrap();
         //let app_name = CString::new("/home/aaron/repos/B7/tests/wyvern".to_string()).unwrap();
@@ -51,15 +92,19 @@ fn main() {
                                                 dr_platform_t_DR_PLATFORM_DEFAULT,
                                                 42 /* client id */,
                                                 0 /* priority */,
-                                                bin_path.as_ptr(),
+                                                ins_path.as_ptr(),
                                                 opts_str.as_ptr());
 
 
-        println!("Registering client: {:?} {:?}", bin_path, client_result);
+        println!("Registering client: {:?} {:?}", ins_path, client_result);
 
-        println!("Enable ptrace: {}", dr_inject_prepare_to_ptrace(inject_data));
+       // println!("Enable ptrace: {}", dr_inject_prepare_to_ptrace(inject_data));
 
-        let inject_res = dr_inject_process_inject(inject_data, false as bool_, std::ptr::null_mut());
+        let inject_res = dr_inject_process_inject(inject_data, false as bool_, bin_path.as_ptr());
+
+        println!("Child pid: {} ...", pid);
+        std::io::stdin().lock().read(&mut [0]).unwrap();
+
         println!("Inject result: {}", inject_res);
         println!("Res: {} Registration: {} Pid: {} Process: {:?}", res, reg_result, pid, process);
 

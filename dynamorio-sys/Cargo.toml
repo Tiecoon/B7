@@ -5,6 +5,7 @@ authors = ["Aaron Hill <aa1ronham@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+nix = "0.13.0"
 [build-dependencies]
 bindgen = "0.42.2"
 cc = "1.0.25"
