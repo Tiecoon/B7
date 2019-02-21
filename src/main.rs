@@ -7,6 +7,7 @@ use clap::{App, Arg};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
+use std::time::Duration;
 use std::process::exit;
 
 fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
@@ -57,6 +58,12 @@ fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
                 .help("Path to DynamoRio build folder")
                 .takes_value(true),
         )
+        .arg(
+            Arg::with_name("timeout")
+                .long("timeout")
+                .help("per-thread timeout to use when waiting for results, in seconds")
+                .takes_value(true)
+        )
         .get_matches()
 }
 
@@ -83,6 +90,10 @@ fn main() {
         "dynamorio" => dynamorio::get_inst_count,
         _ => panic!("unknown solver"),
     };
+    let timeout = Duration::new(
+        matches.value_of("timeout").unwrap_or("5").parse().expect("Failed to parse duration!"),
+        0
+    );
 
     let stdin_input = matches.value_of("start").unwrap_or("");
     let mut vars = HashMap::new();
@@ -105,6 +116,7 @@ fn main() {
             solver,
             &mut b7tui::Tui::new(Some(String::from(path))),
             vars,
+            timeout,
         )
         .run(),
         "env" => B7Opts::new(
@@ -114,6 +126,7 @@ fn main() {
             solver,
             &mut b7tui::Env::new(),
             vars,
+            timeout,
         )
         .run(),
         _ => panic!("unknown tui {}", terminal),
