@@ -2,6 +2,7 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::marker::Send;
+use std::time::Duration;
 use std::sync::mpsc::channel;
 use threadpool::ThreadPool;
 
@@ -21,6 +22,7 @@ pub fn brute<
     gen: &mut G,
     get_inst_count: fn(&str, &Input, &HashMap<String, String>) -> i64,
     terminal: &mut B,
+    timeout: Duration,
     vars: HashMap<String, String>,
 ) {
     // Loop until generator says we are done
@@ -58,11 +60,17 @@ pub fn brute<
         let mut min: u64 = std::i64::MAX as u64;
         // Get results from the threads
         for _ in 0..num_jobs {
-            let tmp = rx.recv().unwrap();
-            if (tmp.1 as u64) < min {
-                min = tmp.1 as u64;
+            match rx.recv_timeout(timeout) {
+                Ok(tmp) => {
+                    if (tmp.1 as u64) < min {
+                        min = tmp.1 as u64;
+                    }
+                    results.push(tmp);
+                }
+                Err(_) => {
+                    error!("timeout!") // TODO: print inpit
+                }
             }
-            results.push(tmp);
         }
         results.sort();
 
