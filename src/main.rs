@@ -41,16 +41,12 @@ fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
                 .help("Start with a premade input")
                 .takes_value(true),
         )
-        .arg(
-            Arg::with_name("argstate")
-                .long("no-arg")
-                .help("toggle running arg checks"),
-        )
-        .arg(
-            Arg::with_name("stdinstate")
-                .long("no-stdin")
-                .help("toggle running stdin checks"),
-        )
+        .arg(Arg::with_name("argstate").long("no-arg").help(
+            "toggle running arg checks",
+        ))
+        .arg(Arg::with_name("stdinstate").long("no-stdin").help(
+            "toggle running stdin checks",
+        ))
         .arg(
             Arg::with_name("dynpath")
                 .long("dynpath")
@@ -98,24 +94,26 @@ fn main() {
     };
 
     let results = match &*terminal {
-        "tui" => B7Opts::new(
-            path.to_string(),
-            argstate,
-            stdinstate,
-            solver,
-            &mut b7tui::Tui::new(Some(String::from(path))),
-            vars,
-        )
-        .run(),
-        "env" => B7Opts::new(
-            path.to_string(),
-            argstate,
-            stdinstate,
-            solver,
-            &mut b7tui::Env::new(),
-            vars,
-        )
-        .run(),
+        "tui" => {
+            B7Opts::new(
+                path.to_string(),
+                argstate,
+                stdinstate,
+                solver,
+                &mut b7tui::Tui::new(Some(String::from(path))),
+                vars,
+            ).run()
+        }
+        "env" => {
+            B7Opts::new(
+                path.to_string(),
+                argstate,
+                stdinstate,
+                solver,
+                &mut b7tui::Env::new(),
+                vars,
+            ).run()
+        }
         _ => panic!("unknown tui {}", terminal),
     };
 

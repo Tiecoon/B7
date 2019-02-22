@@ -19,20 +19,28 @@ fn main() {
 
     fs::create_dir_all(&out_dir).expect("Failed to make output dir");
 
-    Command::new("cmake")
+    if !Command::new("cmake")
         .args(&[".."])
         .current_dir(&out_dir)
         .spawn()
         .expect("Failed to spawn cmake")
         .wait()
-        .expect("Failed to run cmake");
+        .expect("Failed to run cmake")
+        .success()
+    {
+        panic!("cmake failed!");
+    }
 
-    Command::new("make")
+    if !Command::new("make")
         .current_dir(out_dir)
         .spawn()
         .expect("Failed to spawn make")
         .wait()
-        .expect("Failed to run make");
+        .expect("Failed to run make")
+        .success()
+    {
+        panic!("make failed!");
+    }
 
     // Generate Rust bindings
     let bindings = bindgen::Builder::default()
