@@ -66,19 +66,19 @@ fn perf_get_inst_count(fd: c_int) -> Result<i64> {
 // Handles basic proc spawning and running under perf
 pub fn get_inst_count(path: &str, inp: &Input, _vars: &HashMap<String, String>) -> i64 {
     // TODO: error checking...
-    let mut proc = Process::new(path);
+    let mut proccess = Process::new(path);
     for arg in inp.argv.iter() {
-        proc.arg(OsStr::from_bytes(arg));
+        proccess.arg(OsStr::from_bytes(arg));
     }
 
     // Start Process run it to completion with all arguements
-    proc.start().unwrap();
-    proc.write_stdin(&inp.stdin).unwrap();
-    proc.close_stdin().unwrap();
+    proccess.start().unwrap();
+    proccess.write_stdin(&inp.stdin).unwrap();
+    proccess.close_stdin().unwrap();
 
     // TODO: error checking!
-    let fd = get_perf_fd(proc.child_id().unwrap() as i32);
-    proc.finish().unwrap();
+    let fd = get_perf_fd(proccess.child_id().unwrap() as i32);
+    proccess.finish().unwrap();
 
     // Process instruction count
     let ret = match perf_get_inst_count(fd) {
