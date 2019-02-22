@@ -2,8 +2,8 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::marker::Send;
-use std::time::Duration;
 use std::sync::mpsc::channel;
+use std::time::Duration;
 use threadpool::ThreadPool;
 
 use crate::b7tui;

@@ -41,7 +41,7 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
         solver: Solver,
         terminal: &'a mut B,
         vars: HashMap<String, String>,
-        timeout: Duration
+        timeout: Duration,
     ) -> B7Opts<'a, B> {
         B7Opts {
             path,
@@ -50,7 +50,7 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
             solver,
             terminal,
             vars,
-            timeout
+            timeout,
         }
     }
 
@@ -58,13 +58,23 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
         let mut arg_brute = None;
         let mut stdin_brute = None;
         if self.argstate {
-            arg_brute =
-                default_arg_brute(&self.path, self.solver, self.vars.clone(), self.timeout, self.terminal);
+            arg_brute = default_arg_brute(
+                &self.path,
+                self.solver,
+                self.vars.clone(),
+                self.timeout,
+                self.terminal,
+            );
         }
 
         if self.stdinstate {
-            stdin_brute =
-                default_stdin_brute(&self.path, self.solver, self.vars.clone(), self.timeout, self.terminal);
+            stdin_brute = default_stdin_brute(
+                &self.path,
+                self.solver,
+                self.vars.clone(),
+                self.timeout,
+                self.terminal,
+            );
         }
 
         // let terminal decide if it should wait for user
@@ -87,19 +97,43 @@ fn default_arg_brute<B: b7tui::Ui>(
 ) -> Option<String> {
     // Solve for argc
     let mut argcgen = ArgcGenerator::new(0, 5);
-    brute(path, 1, &mut argcgen, solver, terminal, timeout,  vars.clone());
+    brute(
+        path,
+        1,
+        &mut argcgen,
+        solver,
+        terminal,
+        timeout,
+        vars.clone(),
+    );
     let argc = argcgen.get_length();
 
     // check if there is something to be solved
     if argc > 0 {
         // solve argv length
         let mut argvlengen = ArgvLenGenerator::new(argc, 0, 20);
-        brute(path, 5, &mut argvlengen, solver, terminal, timeout, vars.clone());
+        brute(
+            path,
+            5,
+            &mut argvlengen,
+            solver,
+            terminal,
+            timeout,
+            vars.clone(),
+        );
         let argvlens = argvlengen.get_lengths();
 
         // solve argv values
         let mut argvgen = ArgvGenerator::new(argc, argvlens, 0x20, 0x7e);
-        brute(path, 5, &mut argvgen, solver, terminal, timeout, vars.clone());
+        brute(
+            path,
+            5,
+            &mut argvgen,
+            solver,
+            terminal,
+            timeout,
+            vars.clone(),
+        );
 
         return Some(argvgen.to_string());
     }
