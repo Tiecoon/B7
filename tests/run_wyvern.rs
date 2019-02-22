@@ -3,6 +3,7 @@ use b7::dynamorio;
 use b7::B7Opts;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::time::Duration;
 
 #[test]
 fn run_wyv() {
@@ -29,6 +30,7 @@ fn run_wyv() {
         dynamorio::get_inst_count,
         &mut term,
         vars,
+        Duration::new(5, 0),
     );
 
     let res = opts.run();
