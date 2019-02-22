@@ -7,8 +7,8 @@ use clap::{App, Arg};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
-use std::time::Duration;
 use std::process::exit;
+use std::time::Duration;
 
 fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
     App::new("B7")
@@ -62,7 +62,7 @@ fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
             Arg::with_name("timeout")
                 .long("timeout")
                 .help("per-thread timeout to use when waiting for results, in seconds")
-                .takes_value(true)
+                .takes_value(true),
         )
         .get_matches()
 }
@@ -91,8 +91,12 @@ fn main() {
         _ => panic!("unknown solver"),
     };
     let timeout = Duration::new(
-        matches.value_of("timeout").unwrap_or("5").parse().expect("Failed to parse duration!"),
-        0
+        matches
+            .value_of("timeout")
+            .unwrap_or("5")
+            .parse()
+            .expect("Failed to parse duration!"),
+        0,
     );
 
     let stdin_input = matches.value_of("start").unwrap_or("");
