@@ -25,18 +25,22 @@ fn main() {
         .spawn()
         .expect("Failed to spawn cmake")
         .wait()
-        .expect("Failed to run cmake").success() {
-            panic!("cmake failed!");
-        }
+        .expect("Failed to run cmake")
+        .success()
+    {
+        panic!("cmake failed!");
+    }
 
     if !Command::new("make")
         .current_dir(out_dir)
         .spawn()
         .expect("Failed to spawn make")
         .wait()
-        .expect("Failed to run make").success() {
-            panic!("make failed!");
-        }
+        .expect("Failed to run make")
+        .success()
+    {
+        panic!("make failed!");
+    }
 
     // Generate Rust bindings
     let bindings = bindgen::Builder::default()
