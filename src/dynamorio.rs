@@ -16,23 +16,23 @@ pub fn get_inst_count(
     let dynpath = vars.get("dynpath").unwrap();
     let drrun = format!("{}/bin64/drrun", dynpath);
     let libinscount = format!("{}/api/bin/libinscount.so", dynpath);
-    let mut proc = Process::new(&drrun);
-    proc.arg("-c");
-    proc.arg(libinscount);
-    proc.arg("--");
-    proc.arg(path);
+    let mut proccess = Process::new(&drrun);
+    proccess.arg("-c");
+    proccess.arg(libinscount);
+    proccess.arg("--");
+    proccess.arg(path);
     for arg in inp.argv.iter() {
-        proc.arg(OsStr::from_bytes(arg));
+        proccess.arg(OsStr::from_bytes(arg));
     }
 
     // Start Process run it to completion with all arguements
-    proc.start().unwrap();
-    proc.write_stdin(&inp.stdin).unwrap();
-    proc.close_stdin().unwrap();
-    proc.finish().unwrap();
+    proccess.start().unwrap();
+    proccess.write_stdin(&inp.stdin).unwrap();
+    proccess.close_stdin().unwrap();
+    proccess.finish().unwrap();
 
     let mut buf: Vec<u8> = Vec::new();
-    proc.read_stdout(&mut buf).unwrap();
+    proccess.read_stdout(&mut buf).unwrap();
 
     let stdout = String::from_utf8_lossy(buf.as_slice());
 
