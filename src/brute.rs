@@ -5,10 +5,12 @@ use std::marker::Send;
 use std::sync::mpsc::channel;
 use std::time::Duration;
 use threadpool::ThreadPool;
+use std::sync::Arc;
 
 use crate::b7tui;
 use crate::generators::{Generate, Input};
 use crate::statistics;
+use crate::process::ProcessWaiter;
 
 // can take out Debug trait later
 // Combines the generators with the instruction counters to deduce the next step
@@ -20,11 +22,15 @@ pub fn brute<
     path: &str,
     repeat: u32,
     gen: &mut G,
-    get_inst_count: fn(&str, &Input, &HashMap<String, String>) -> i64,
+    get_inst_count: fn(&str, &Input, &HashMap<String, String>, &ProcessWaiter) -> i64,
     terminal: &mut B,
     timeout: Duration,
     vars: HashMap<String, String>,
 ) {
+    let mut waiter = ProcessWaiter::new();
+    waiter.start_thread();
+
+    let waiter_arc = Arc::new(waiter);
     // Loop until generator says we are done
     loop {
         // Number of threads to spawn
@@ -42,12 +48,14 @@ pub fn brute<
             let test = String::from(path);
             // give it to a thread to handle
             let vars = vars.clone();
+
+            let waiter = waiter_arc.clone();
             pool.execute(move || {
                 let inp = inp_pair.1;
                 let mut avg: f64 = 0.0;
                 let mut count: f64 = 0.0;
                 for _ in 0..repeat {
-                    let inst_count = get_inst_count(&test, &inp, &vars);
+                    let inst_count = get_inst_count(&test, &inp, &vars, &waiter);
                     avg += inst_count as f64;
                     count += 1.0;
                     trace!("inst_count: {:?}", inst_count);

@@ -17,6 +17,7 @@ tui = "0.3.0"
 termion = "1.5.1"
 tui-logger = "0.2.0"
 num_cpus = "1.8.0"
+static_assertions = "0.3.1"
 
 
 [build-dependencies]

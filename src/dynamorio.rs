@@ -1,13 +1,14 @@
-use crate::process::Process;
+use crate::process::{Process, ProcessWaiter};
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
+use std::time::Duration;
 
 use crate::generators::Input;
 
 // Handles basic proc spawning and running under dino
 // only works on 32 bit for now
-pub fn get_inst_count(path: &str, inp: &Input, vars: &HashMap<String, String>) -> i64 {
+pub fn get_inst_count(path: &str, inp: &Input, vars: &HashMap<String, String>, waiter: &ProcessWaiter) -> i64 {
     let dynpath = vars.get("dynpath").unwrap();
     let drrun = format!("{}/bin64/drrun", dynpath);
     let libinscount = format!("{}/api/bin/libinscount.so", dynpath);
@@ -24,7 +25,8 @@ pub fn get_inst_count(path: &str, inp: &Input, vars: &HashMap<String, String>) -
     proccess.start().unwrap();
     proccess.write_stdin(&inp.stdin).unwrap();
     proccess.close_stdin().unwrap();
-    proccess.finish().unwrap();
+    panic!("Fix this");
+    //proccess.finish(Duration::new(1, 0)).unwrap();
 
     let mut buf: Vec<u8> = Vec::new();
     proccess.read_stdout(&mut buf).unwrap();

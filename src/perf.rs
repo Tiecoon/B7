@@ -1,6 +1,6 @@
 use crate::bindings::*;
 use crate::generators::Input;
-use crate::process::Process;
+use crate::process::{Process, ProcessWaiter};
 use libc::{c_int, c_void, ioctl, pid_t, syscall};
 use std::collections::HashMap;
 use std::ffi::OsStr;
@@ -10,6 +10,7 @@ use std::mem;
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::FromRawFd;
 use std::process::exit;
+use std::time::Duration;
 
 // syscall number for perf syscall
 const PERF_EVENT_OPEN_SYSCALL: i64 = 298;
@@ -64,7 +65,7 @@ fn perf_get_inst_count(fd: c_int) -> Result<i64> {
 }
 
 // Handles basic proc spawning and running under perf
-pub fn get_inst_count(path: &str, inp: &Input, _vars: &HashMap<String, String>) -> i64 {
+pub fn get_inst_count(path: &str, inp: &Input, _vars: &HashMap<String, String>, waiter: &ProcessWaiter) -> i64 {
     // TODO: error checking...
     let mut proccess = Process::new(path);
     for arg in inp.argv.iter() {
@@ -78,7 +79,7 @@ pub fn get_inst_count(path: &str, inp: &Input, _vars: &HashMap<String, String>) 
 
     // TODO: error checking!
     let fd = get_perf_fd(proccess.child_id().unwrap() as i32);
-    proccess.finish().unwrap();
+    proccess.finish(Duration::new(1, 0), waiter).unwrap();
 
     // Process instruction count
     let ret = match perf_get_inst_count(fd) {
