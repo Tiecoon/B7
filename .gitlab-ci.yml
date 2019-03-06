@@ -1,0 +1,32 @@
+stages:
+  - format
+  - build
+  - test
+
+variables:
+  CARGO_HOME: $CI_PROJECT_DIR/cargo
+  GIT_SUBMODULE_STRATEGY: normal
+
+build:
+  stage: build
+  script:
+    RUST_BACKTRACE=1 cargo build
+
+format:
+  stage: format
+  script:
+    cargo fmt --all -- --check
+  allow_failure: true
+
+test:
+  stage: test
+  script:
+    - rustc --version
+    - cargo --version
+    - cargo test --verbose
+
+cache:
+  paths:
+    - dynamorio/
+    - cargo/
+    - target/
