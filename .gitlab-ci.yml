@@ -1,7 +1,7 @@
 stages:
-  - test
-  - build
   - format
+  - build
+  - test
 
 variables:
   CARGO_HOME: $CI_PROJECT_DIR/cargo
@@ -16,6 +16,7 @@ format:
   stage: format
   script:
     cargo fmt --all -- --check
+  allow_failure: true
 
 test:
   stage: test
