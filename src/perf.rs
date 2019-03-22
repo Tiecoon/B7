@@ -1,15 +1,14 @@
 use crate::bindings::*;
+use crate::errors::*;
 use crate::generators::Input;
 use crate::process::Process;
 use libc::{c_int, c_void, ioctl, pid_t, syscall};
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::File;
-use std::io::{Error, ErrorKind, Result};
 use std::mem;
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::FromRawFd;
-use std::process::exit;
 
 // syscall number for perf syscall
 const PERF_EVENT_OPEN_SYSCALL: i64 = 298;
@@ -26,7 +25,7 @@ fn perf_event_open(
 }
 
 // perform struct setup and clear the perf file descriptor
-fn get_perf_fd(pid: pid_t) -> i32 {
+fn get_perf_fd(pid: pid_t) -> Result<i32, SolverError> {
     let mut pe: perf_event_attr = unsafe { mem::zeroed() };
 
     // perf struct setup
@@ -41,8 +40,7 @@ fn get_perf_fd(pid: pid_t) -> i32 {
 
     let fd = perf_event_open(&pe as *const perf_event_attr, pid, -1, -1, 0);
     if fd == -1 {
-        error!("perf_event_open failed!");
-        exit(-1);
+        return Err(SolverError::new(Runner::IoError, "perf_event_open failed!"));
     }
 
     // reset perf to make sure it is zero
@@ -50,21 +48,31 @@ fn get_perf_fd(pid: pid_t) -> i32 {
         ioctl(fd, 9219, 0); // PERF_EVENT_IOC_RESET
         ioctl(fd, 9216, 0); // PERF_EVENT_IOC_ENABLE
     }
-    fd
+    Ok(fd)
 }
 
 // read the instruction count stoed if perf is establised
-fn perf_get_inst_count(fd: c_int) -> Result<i64> {
+fn perf_get_inst_count(fd: c_int) -> Result<i64, SolverError> {
     let mut count: i64 = 0;
     match unsafe { libc::read(fd, &mut count as *mut i64 as *mut c_void, 8) as i64 } {
         8 => Ok(count),
-        x if x >= 0 => Err(Error::new(ErrorKind::Other, format!("Only read {}!", x))),
-        _ => Err(Error::new(ErrorKind::Other, nix::Error::last())),
+        x if x >= 0 => Err(SolverError::new(
+            Runner::IoError,
+            &format!("Perf only read {} bytes!", x),
+        )),
+        _ => Err(SolverError::new(
+            Runner::IoError,
+            "Could not read from perf fd",
+        )), //TODO implement from Nix error
     }
 }
 
 // Handles basic proc spawning and running under perf
-pub fn get_inst_count(path: &str, inp: &Input, _vars: &HashMap<String, String>) -> i64 {
+pub fn get_inst_count(
+    path: &str,
+    inp: &Input,
+    _vars: &HashMap<String, String>,
+) -> Result<i64, SolverError> {
     // TODO: error checking...
     let mut proccess = Process::new(path);
     for arg in inp.argv.iter() {
@@ -72,19 +80,15 @@ pub fn get_inst_count(path: &str, inp: &Input, _vars: &HashMap<String, String>) 
     }
 
     // Start Process run it to completion with all arguements
-    proccess.start().unwrap();
-    proccess.write_stdin(&inp.stdin).unwrap();
-    proccess.close_stdin().unwrap();
+    proccess.start()?;
+    proccess.write_stdin(&inp.stdin)?;
+    proccess.close_stdin()?;
 
-    // TODO: error checking!
-    let fd = get_perf_fd(proccess.child_id().unwrap() as i32);
-    proccess.finish().unwrap();
+    let fd = get_perf_fd(proccess.child_id()? as i32)?;
+    proccess.finish()?;
 
     // Process instruction count
-    let ret = match perf_get_inst_count(fd) {
-        Ok(x) => x,
-        Err(_) => -1,
-    };
+    let ret = perf_get_inst_count(fd);
     drop(unsafe { File::from_raw_fd(fd) });
     ret
 }

@@ -32,7 +32,7 @@ fn run_wyv() {
     );
 
     let res = opts.run();
-    let mut stdin = res.stdin_brute.unwrap();
+    let mut stdin = res.stdin_brute;
 
     // Last character is currently non-deterministic
     stdin.pop();

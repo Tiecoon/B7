@@ -6,6 +6,7 @@ use std::sync::mpsc::channel;
 use threadpool::ThreadPool;
 
 use crate::b7tui;
+use crate::errors::*;
 use crate::generators::{Generate, Input};
 use crate::statistics;
 
@@ -19,10 +20,10 @@ pub fn brute<
     path: &str,
     repeat: u32,
     gen: &mut G,
-    get_inst_count: fn(&str, &Input, &HashMap<String, String>) -> i64,
+    get_inst_count: fn(&str, &Input, &HashMap<String, String>) -> Result<i64, SolverError>,
     terminal: &mut B,
     vars: HashMap<String, String>,
-) {
+) -> Result<(), SolverError> {
     // Loop until generator says we are done
     loop {
         // Number of threads to spawn
@@ -42,16 +43,13 @@ pub fn brute<
             let vars = vars.clone();
             pool.execute(move || {
                 let inp = inp_pair.1;
-                let mut avg: f64 = 0.0;
-                let mut count: f64 = 0.0;
-                for _ in 0..repeat {
-                    let inst_count = get_inst_count(&test, &inp, &vars);
-                    avg += inst_count as f64;
-                    count += 1.0;
+                let mut inst_count = get_inst_count(&test, &inp, &vars);
+                trace!("inst_count: {:?}", inst_count);
+                for _ in 1..repeat {
+                    inst_count = get_inst_count(&test, &inp, &vars);
                     trace!("inst_count: {:?}", inst_count);
                 }
-                avg /= count;
-                let _ = tx.send((inp_pair.0, avg as i64));
+                let _ = tx.send((inp_pair.0, inst_count));
             });
         }
         // Track the minimum for stats later
@@ -59,10 +57,17 @@ pub fn brute<
         // Get results from the threads
         for _ in 0..num_jobs {
             let tmp = rx.recv().unwrap();
-            if (tmp.1 as u64) < min {
-                min = tmp.1 as u64;
+            match tmp.1 {
+                Ok(x) => {
+                    min = x as u64;
+                    results.push((tmp.0, x))
+                }
+
+                Err(x) => {
+                    warn!("{:?} \n returned: {:?}", tmp.0, x);
+                    continue;
+                }
             }
-            results.push(tmp);
         }
         results.sort();
 
@@ -71,9 +76,12 @@ pub fn brute<
         terminal.wait();
 
         // inform generator of the result
+        if results.is_empty() {
+            warn!("Results empty {:?}", results);
+        }
         let good_idx = statistics::find_outlier(results.as_slice());
         if !gen.update(&good_idx.0) {
-            break;
+            break Ok(());
         }
     }
 }

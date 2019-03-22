@@ -1,10 +1,11 @@
 use crate::binary::Binary;
+use crate::errors::*;
 use nix::sys::ptrace;
 use nix::sys::wait::{waitpid, WaitStatus};
 use nix::unistd::Pid;
 use spawn_ptrace::CommandPtraceSpawn;
 use std::ffi::OsStr;
-use std::io::{Error, ErrorKind, Read, Result, Write};
+use std::io::{Error, Read, Write};
 use std::process::{Child, Command, Stdio};
 
 #[derive(Debug)]
@@ -24,10 +25,10 @@ impl Process {
         }
     }
 
-    pub fn child_id(&self) -> Option<u32> {
+    pub fn child_id(&self) -> Result<u32, SolverError> {
         match &self.child {
-            Some(a) => Some(a.id()),
-            None => None,
+            Some(a) => Ok(a.id()),
+            None => Err(SolverError::new(Runner::IoError, "no child id")),
         }
     }
 
@@ -44,12 +45,9 @@ impl Process {
     }
 
     // initialize process and wait it
-    pub fn start(&mut self) -> Result<()> {
+    pub fn start(&mut self) -> Result<(), SolverError> {
         if self.child.is_some() {
-            return Err(Error::new(
-                ErrorKind::Other,
-                "child process already running",
-            ));
+            return Err(SolverError::new(Runner::Unknown, "child already running"));
         }
         self.cmd.stdin(Stdio::piped());
         self.cmd.stdout(Stdio::piped());
@@ -61,75 +59,84 @@ impl Process {
                 self.child = Some(c);
                 Ok(())
             }
-            Err(c) => Err(c),
+            Err(x) => Err(x.into()),
         }
     }
 
     // write buf to process then close it
-    pub fn write_stdin(&mut self, buf: &[u8]) -> Result<()> {
+    pub fn write_stdin(&mut self, buf: &[u8]) -> Result<(), SolverError> {
         if self.child.is_none() {
-            return Err(Error::new(ErrorKind::Other, "child process not running"));
+            return Err(SolverError::new(
+                Runner::RunnerError,
+                "Process is not running",
+            ));
         }
         let child = self.child.as_mut().unwrap();
         match child.stdin.as_mut() {
-            Some(stdin) => stdin.write_all(buf),
-            None => Err(Error::last_os_error()),
+            Some(stdin) => stdin.write_all(buf).map_err(|e| e.into()),
+            None => Err(SolverError::new(Runner::IoError, "could not open stdin")),
         }
     }
 
     // read buf to process then close it
-    pub fn read_stdout(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
+    pub fn read_stdout(&mut self, buf: &mut Vec<u8>) -> Result<usize, SolverError> {
         if self.child.is_none() {
-            return Err(Error::new(ErrorKind::Other, "child process not running"));
+            return Err(SolverError::new(
+                Runner::RunnerError,
+                "child process not running",
+            ));
         }
         let child = self.child.as_mut().unwrap();
         match child.stdout.as_mut() {
-            Some(stdout) => stdout.read_to_end(buf),
-            None => Err(Error::last_os_error()),
+            Some(stdout) => stdout.read_to_end(buf).map_err(|e| e.into()),
+            None => Err(Error::last_os_error().into()),
         }
     }
 
     // close stdin to prevent any reads hanging
-    pub fn close_stdin(&mut self) -> Result<()> {
+    pub fn close_stdin(&mut self) -> Result<(), SolverError> {
         if self.child.is_none() {
-            return Err(Error::new(ErrorKind::Other, "child process not running"));
+            return Err(SolverError::new(
+                Runner::RunnerError,
+                "child process not running",
+            ));
         }
         match self.child.as_mut().unwrap().stdin.take() {
             Some(stdin) => {
                 drop(stdin);
                 Ok(())
             }
-            None => Err(Error::last_os_error()),
+            None => Err(Error::last_os_error().into()),
         }
     }
 
     // continue executing ptrace if it is paused
-    pub fn cont(&self) -> Result<()> {
+    pub fn cont(&self) -> Result<(), SolverError> {
         if self.child.is_none() {
-            return Err(Error::new(ErrorKind::Other, "child process not running"));
+            return Err(SolverError::new(
+                Runner::RunnerError,
+                "child process not running",
+            ));
         }
         let child = self.child.as_ref().unwrap();
-        let res = ptrace::cont(Pid::from_raw(child.id() as i32), None);
-        match res {
-            Ok(_) => Ok(()),
-            Err(x) => Err(Error::new(ErrorKind::Other, format!("{:?}", x))),
-        }
+        ptrace::cont(Pid::from_raw(child.id() as i32), None).map_err(|e| e.into())
+        // match res {
+        //     Ok(_) => Ok(()),
+        //     Err(x) => Err(SolverError::new(ErrorKind::Other, format!("{:?}", x))),
+        // }
     }
 
     // go until next pause point
-    pub fn wait(&self) -> Result<WaitStatus> {
+    pub fn wait(&self) -> Result<WaitStatus, SolverError> {
         if self.child.is_none() {
-            return Err(Error::new(ErrorKind::Other, "child process not running"));
+            SolverError::new(Runner::RunnerError, "child process not running");
         }
         let child = self.child.as_ref().unwrap();
-        match waitpid(Pid::from_raw(child.id() as i32), None) {
-            Err(x) => Err(Error::new(ErrorKind::Other, format!("{:?}", x))),
-            Ok(x) => Ok(x),
-        }
+        waitpid(Pid::from_raw(child.id() as i32), None).map_err(|e| e.into())
     }
 
     // attempt to run the program to completion
-    pub fn finish(&self) -> Result<()> {
+    pub fn finish(&self) -> Result<(), SolverError> {
         loop {
             let cret = self.cont();
             if cret.is_err() {
