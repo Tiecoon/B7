@@ -1,5 +1,6 @@
-use std::error::Error;
+use std::error;
 use std::fmt;
+use std::io;
 
 #[derive(Debug)]
 pub struct SolverError {
@@ -8,15 +9,22 @@ pub struct SolverError {
 }
 
 impl SolverError {
-    pub fn new(runner: Runner, message: String) -> SolverError {
-        SolverError { runner, message }
+    pub fn new(runner: Runner, message: &str) -> SolverError {
+        let message2 = message.to_string();
+        SolverError {
+            runner,
+            message: message2,
+        }
     }
 }
 
 #[derive(Debug)]
 pub enum Runner {
-    Perf,
-    Dynamorio,
+    RunnerError,
+    MissingArgs,
+    IoError,
+    NixError,
+    Unknown,
 }
 
 impl fmt::Display for SolverError {
@@ -25,11 +33,23 @@ impl fmt::Display for SolverError {
     }
 }
 
-impl Error for SolverError {
+impl error::Error for SolverError {
     fn description(&self) -> &str {
         &self.message
     }
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         None
+    }
+}
+
+impl From<io::Error> for SolverError {
+    fn from(error: io::Error) -> Self {
+        SolverError::new(Runner::IoError, error::Error::description(&error))
+    }
+}
+
+impl From<nix::Error> for SolverError {
+    fn from(error: nix::Error) -> Self {
+        SolverError::new(Runner::NixError, error::Error::description(&error))
     }
 }
