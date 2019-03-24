@@ -67,25 +67,41 @@ fn perf_get_inst_count(fd: c_int) -> Result<i64> {
 // Handles basic proc spawning and running under perf
 pub fn get_inst_count(path: &str, inp: &Input, _vars: &HashMap<String, String>, waiter: &ProcessWaiter) -> i64 {
     // TODO: error checking...
-    let mut proccess = Process::new(path);
+    let mut process = Process::new(path);
     for arg in inp.argv.iter() {
-        proccess.arg(OsStr::from_bytes(arg));
+        process.arg(OsStr::from_bytes(arg));
     }
+    process.input(inp.stdin.clone());
+
+
+    //println!("Starting process!");
+    let recv = waiter.register_process(process);
+
+    println!("Waiting...");
+    let res = recv.recv_timeout(Duration::new(5, 0));
+    println!("Res: {:?}", res.is_ok());
+
 
     // Start Process run it to completion with all arguements
-    proccess.start().unwrap();
+    /*proccess.start().unwrap();
     proccess.write_stdin(&inp.stdin).unwrap();
     proccess.close_stdin().unwrap();
 
+    println!("Closed stdin");*/
+
     // TODO: error checking!
-    let fd = get_perf_fd(proccess.child_id().unwrap() as i32);
-    proccess.finish(Duration::new(1, 0), waiter).unwrap();
+
+    //let fd = get_perf_fd(proccess.child_id().unwrap() as i32);
+    //process.finish(Duration::new(1, 0), waiter).unwrap();
+    //println!("Finished!");
 
     // Process instruction count
-    let ret = match perf_get_inst_count(fd) {
+    /*let ret = match perf_get_inst_count(fd) {
         Ok(x) => x,
         Err(_) => -1,
     };
     drop(unsafe { File::from_raw_fd(fd) });
-    ret
+    ret*/
+
+    0 // TODO - fix
 }

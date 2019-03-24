@@ -27,22 +27,32 @@ pub fn brute<
     timeout: Duration,
     vars: HashMap<String, String>,
 ) {
-    let mut waiter = ProcessWaiter::new();
-    waiter.start_thread();
-
-    let waiter_arc = Arc::new(waiter);
+    let n_workers = num_cpus::get();
     // Loop until generator says we are done
     loop {
         // Number of threads to spawn
-        let n_workers = num_cpus::get();
+
         let mut num_jobs: i64 = 0;
         let mut results: Vec<(I, i64)> = Vec::new();
 
         let pool = ThreadPool::new(n_workers);
         let (tx, rx) = channel();
 
+
+        let mut data = Vec::new();
+
         // run each case of the generators
         for inp_pair in gen.by_ref() {
+            data.push(inp_pair);
+        }
+
+        let mut waiter = ProcessWaiter::new(data.len());
+        waiter.start_thread();
+
+        let waiter_arc = Arc::new(waiter);
+
+
+        for inp_pair in data {
             num_jobs += 1;
             let tx = tx.clone();
             let test = String::from(path);
@@ -54,6 +64,7 @@ pub fn brute<
                 let inp = inp_pair.1;
                 let mut avg: f64 = 0.0;
                 let mut count: f64 = 0.0;
+                waiter.init_for_thread();
                 for _ in 0..repeat {
                     let inst_count = get_inst_count(&test, &inp, &vars, &waiter);
                     avg += inst_count as f64;

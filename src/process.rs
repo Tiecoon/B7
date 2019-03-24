@@ -1,17 +1,18 @@
 use crate::binary::Binary;
 use nix::sys::ptrace;
-use nix::sys::signal::{SigSet, Signal};
+use nix::sys::signal::{self, SigSet, Signal, SigmaskHow};
 use nix::sys::wait::{waitpid, WaitStatus};
 use nix::unistd::Pid;
 use spawn_ptrace::CommandPtraceSpawn;
 use std::ffi::OsStr;
 use std::io::{Error, ErrorKind, Read, Result, Write};
 use std::process::{Child, Command, Stdio};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{self, channel, Sender, Receiver};
 use std::time::Duration;
 use libc::sigtimedwait;
+use std::thread::{self, ThreadId};
 
 use crate::siginfo::better_siginfo_t;
 
@@ -47,21 +48,31 @@ const CLD_CONTINUED: libc::c_int = 6;
 
 pub struct ProcessWaiter {
     started: bool,
-    inner: Arc<Mutex<ProcessWaiterInner>>
+    inner: Arc<Mutex<ProcessWaiterInner>>,
+    initialized: Mutex<HashSet<ThreadId>>,
+    num_threads: usize,
 }
 
 struct ProcessWaiterInner {
     //seen: HashMap<Pid, Vec<SignalData>>,
-    channels: HashMap<Pid, (Sender<SignalData>, Option<Receiver<SignalData>>)>
+    //channels: HashMap<Process, (Sender<SignalData>, Option<Receiver<SignalData>>)>,
+    channels: Vec<(Process, Sender<SignalData>)>,
+    read_chan: (Sender<()>, Option<Receiver<()>>)
 }
 
 impl ProcessWaiter {
-    pub fn new() -> ProcessWaiter {
+    pub fn new(num_threads: usize) -> ProcessWaiter {
+        let chan = channel();
         ProcessWaiter {
             inner: Arc::new(Mutex::new(ProcessWaiterInner {
-                channels: HashMap::new()
+                //channels: HashMap::new(),
+                channels: Vec::new(),
+                read_chan: (chan.0, Some(chan.1))
+                //read_chan: channel()
             })),
-            started: false
+            started: false,
+            initialized: Mutex::new(HashSet::new()),
+            num_threads: num_threads,
         }
     }
 
@@ -70,23 +81,64 @@ impl ProcessWaiter {
             panic!("Already started waiter thread!");
         }
         self.started = true;
-        ProcessWaiter::spawn_waiting_thread(self.inner.clone());
+        let recv = self.inner.lock().unwrap().read_chan.1.take().unwrap();
+        ProcessWaiter::spawn_waiting_thread(self.num_threads, recv, self.inner.clone());
+    }
+
+    // Block SIGCHLD for the calling thread
+    // Records the initialization for the thread
+    pub fn init_for_thread(&self) {
+        //println!("Init for thread!");
+        let mut mask = SigSet::empty();
+        mask.add(Signal::SIGCHLD);
+
+        signal::pthread_sigmask(SigmaskHow::SIG_BLOCK, Some(&mask), None).unwrap();
+
+        self.initialized.lock().unwrap().insert(thread::current().id());
     }
 
     // The option is always present - this is just a convenience
     // method to initialize a 'channels' entry
-    fn make_channel() -> (Sender<SignalData>, Option<Receiver<SignalData>>) {
+    /*fn make_channel() -> (Sender<SignalData>, Option<Receiver<SignalData>>) {
         let chan = channel();
         (chan.0, Some(chan.1))
+    }*/
+
+    pub fn register_process(&self, process: Process) -> Receiver<SignalData>  {
+        //println!("Registering process");
+        let mut start = false;
+        let mut recv;
+        {
+            let mut waiter = self.inner.lock().unwrap();
+            //waiter.processes.pushor_insert(ProcessWaiter::make_channel).1.as_ref().unwrap().clone()
+
+            let chan = channel();
+
+            waiter.channels.push((process, chan.0));
+            println!("Curent: {}/{}", waiter.channels.len(), self.num_threads);
+            if waiter.channels.len() == self.num_threads {
+                waiter.read_chan.0.send(()).unwrap();
+            }
+
+            recv = chan.1
+        }
+        recv
+
+        //self.inner.lock().unwrap().channels.insert(process, ProcessWaiter::make_channel)
     }
 
-    pub fn register_pid(&self, pid: Pid) -> Receiver<SignalData> {
+    /*pub fn register_pid(&self, pid: Pid) -> Receiver<SignalData> {
+        let val = self.initialized.lock().unwrap().contains(&thread::current().id());
+        if !val {
+            panic!("init_for_thread must be called on the thread before calling register_pid!");
+        }
         // Crtical section
         {
             let mut waiter = self.inner.lock().unwrap();
 
             let chan = waiter.channels.entry(pid)
                 .or_insert_with(&ProcessWaiter::make_channel);
+
 
             // Remove the Receiver from the Option
             return chan.1.take().unwrap();
@@ -108,28 +160,70 @@ impl ProcessWaiter {
                 waiter.channels.
             }*/
         }
-    }
+    }*/
 
-    fn spawn_waiting_thread(waiter_lock: Arc<Mutex<ProcessWaiterInner>>) {
+    fn spawn_waiting_thread(num_threads: usize, read_chan: Receiver<()>, waiter_lock: Arc<Mutex<ProcessWaiterInner>>) {
         //assert_eq!(std::mem::size_of::<libc::siginfo_t>(), std::mem::size_of::<better_siginfo_t>());
         //
         println!("Starting wait!");
         std::thread::spawn(move || {
+
+            let mut chld_mask = SigSet::empty();
+            chld_mask.add(Signal::SIGCHLD);
+
+            signal::pthread_sigmask(SigmaskHow::SIG_BLOCK, Some(&chld_mask), None).unwrap();
+
             //let mut mask = SigSet::empty();
             let mut mask = SigSet::all();
             let mut info: better_siginfo_t = unsafe { std::mem::zeroed() };
             //mask.add(Signal::SIGCHLD);
+            //
+
+            let mut chld_mask = SigSet::empty();
+            //chld_mask.add(Signal::SIGCHLD);
+            chld_mask = SigSet::all();
 
             let sigset_ptr = mask.as_ref() as *const libc::sigset_t;
             // Safe because we defined better_siginfo_t, to be compatible with libc::siginfo_t
             let info_ptr = unsafe { std::mem::transmute::<*mut better_siginfo_t, *mut libc::siginfo_t>(&mut info as *mut better_siginfo_t) };
 
             loop {
-                println!("Waiting ...");
+                /*println!("Getting processes...");
+                for i in 0..num_threads {
+                    processes.push(waiter_lock.lock().unwrap().read_chan.1.recv().unwrap());
+                }
+                println!("Got processes: {:?}", processes);*/
+
+                eprintln!("Waiting for notification...");
+                read_chan.recv().unwrap();
+                eprintln!("Starting!");
+
+
+                let processes: Vec<(Process, Sender<SignalData>)> = waiter_lock.lock().unwrap().channels.drain(..).collect();
+                println!("Processes: {:?}", processes);
+
+                let mut pids: HashMap<i32, Sender<SignalData>> = HashMap::new();
+
+                for process in processes {
+                    println!("Process: {:?}", process);
+                    let mut proc = process.0;
+                    proc.start().unwrap();
+                    println!("Started!");
+                    proc.write_input();
+                    pids.insert(proc.child_id().unwrap() as i32, process.1);
+                }
+
+                let mut timeout = libc::timespec {
+                    tv_sec: 2,
+                    tv_nsec: 0
+                };
+
+
+                eprintln!("Waiting for signal...");
                 // Safe because we know that the first two pointers are valid,
                 // and the third argument can safely be NULL
-                let res = unsafe { libc::sigtimedwait(sigset_ptr, info_ptr, std::ptr::null()) };
-                println!("Got signal! {:?}", res);
+                let res = unsafe { libc::sigtimedwait(sigset_ptr, info_ptr, &mut timeout as *mut libc::timespec) };
+                eprintln!("GOT SIGNAL! {:?}", res);
                 if (res == -1) {
                     println!("Error calling sigtimedwait: {}", nix::errno::errno());
                 }
@@ -154,10 +248,12 @@ impl ProcessWaiter {
                 };
 
                 // Safe because this union field is always safe to access
-                let pid = Pid::from_raw(unsafe { info.fields.inner.kill.si_pid  });
+                let pid = unsafe { info.fields.inner.kill.si_pid  };
+
+                pids.get(&pid).expect(&format!("Unknown pid {:?}", pid)).send(data);
 
                 // Critical section
-                {
+                /*{
                     let mut waiter = waiter_lock.lock().unwrap();
 
                     // Create the channel if it does not exist
@@ -184,7 +280,7 @@ impl ProcessWaiter {
                         waiter.seen.entry(pid).or_insert_with(|| Vec::new()).push(data);
                         waiter.channels.insert(pid, mpsc::channel());
                     }*/
-                }
+                }*/
             }
         });
     }
@@ -196,6 +292,7 @@ pub struct Process {
     binary: Binary,
     cmd: Command,
     child: Option<Child>,
+    input: Vec<u8>
 }
 
 // Handle running a process
@@ -204,8 +301,13 @@ impl Process {
         Process {
             binary: Binary::new(path),
             cmd: Command::new(path),
+            input: Vec::new(),
             child: None,
         }
+    }
+
+    pub fn input(&mut self, stdin: Vec<u8>) {
+        self.input = stdin
     }
 
     pub fn child_id(&self) -> Option<u32> {
@@ -213,6 +315,10 @@ impl Process {
             Some(a) => Some(a.id()),
             None => None,
         }
+    }
+
+    pub fn write_input(&mut self) -> Result<()> {
+        self.write_stdin(&self.input.clone())
     }
 
     pub fn args<I, S>(&mut self, args: I)
@@ -313,8 +419,8 @@ impl Process {
     }
 
     // attempt to run the program to completion
-    pub fn finish(&self, timeout: Duration, waiter: &ProcessWaiter) -> Result<()> {
-        let receiver = waiter.register_pid(Pid::from_raw(self.child.as_ref().unwrap().id() as i32));
+    pub fn finish(&mut self, timeout: Duration, receiver: Receiver<SignalData>) -> Result<()> {
+        //let receiver = waiter.register_pid(Pid::from_raw(self.child.as_ref().unwrap().id() as i32));
 
         loop {
             let cret = self.cont();
@@ -327,6 +433,10 @@ impl Process {
                     return Ok(());
                 }
                 Err(x) => {
+                    println!("Stdout after timeout...");
+                    let mut stdout = Vec::new();
+                    self.read_stdout(&mut stdout);
+                    println!("Stdout: {:?}", String::from_utf8(stdout).unwrap());
                     panic!("Timeout in wait!");
                 }
                 _ => (),
