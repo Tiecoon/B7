@@ -34,7 +34,7 @@ fn main() {
     }
 
     if !Command::new("make")
-        .args(&["-j",&format!("{}",cpus)])
+        .args(&["-j", &format!("{}", cpus)])
         .current_dir(out_dir)
         .spawn()
         .expect("Failed to spawn make")
