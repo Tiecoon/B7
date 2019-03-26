@@ -21,5 +21,6 @@ num_cpus = "1.8.0"
 
 [build-dependencies]
 bindgen = "0.42.2"
+num_cpus = "1.8.0"
 cc = "1.0.25"
 walkdir = "2"

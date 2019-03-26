@@ -1,5 +1,6 @@
 extern crate bindgen;
 extern crate cc;
+extern crate num_cpus;
 
 use std::env;
 use std::fs;
@@ -18,6 +19,7 @@ fn main() {
     }*/
 
     fs::create_dir_all(&out_dir).expect("Failed to make output dir");
+    let cpus = num_cpus::get();
 
     if !Command::new("cmake")
         .args(&[".."])
@@ -32,6 +34,7 @@ fn main() {
     }
 
     if !Command::new("make")
+        .args(&["-j", &format!("{}", cpus)])
         .current_dir(out_dir)
         .spawn()
         .expect("Failed to spawn make")
