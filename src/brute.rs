@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::marker::Send;
 use std::sync::mpsc::channel;
+use std::sync::{Arc, Barrier};
 use std::time::Duration;
 use threadpool::ThreadPool;
-use std::sync::Arc;
 
 use crate::b7tui;
 use crate::generators::{Generate, Input};
@@ -36,6 +36,7 @@ pub fn brute<
         let mut results: Vec<(I, i64)> = Vec::new();
 
         let pool = ThreadPool::new(n_workers);
+        //let pool = ThreadPool
         let (tx, rx) = channel();
 
 
@@ -47,9 +48,20 @@ pub fn brute<
         }
 
         let mut waiter = ProcessWaiter::new(data.len());
+        waiter.block_signal();
         waiter.start_thread();
 
         let waiter_arc = Arc::new(waiter);
+
+        let barrier = Arc::new(Barrier::new(n_workers));
+        for i in 0..n_workers {
+            let barrier = barrier.clone();
+            let waiter_arc = waiter_arc.clone();
+            pool.execute(move || {
+                barrier.wait();
+                waiter_arc.init_for_thread();
+            });
+        }
 
 
         for inp_pair in data {
@@ -64,7 +76,7 @@ pub fn brute<
                 let inp = inp_pair.1;
                 let mut avg: f64 = 0.0;
                 let mut count: f64 = 0.0;
-                waiter.init_for_thread();
+                //waiter.init_for_thread();
                 for _ in 0..repeat {
                     let inst_count = get_inst_count(&test, &inp, &vars, &waiter);
                     avg += inst_count as f64;

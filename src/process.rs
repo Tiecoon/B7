@@ -85,14 +85,19 @@ impl ProcessWaiter {
         ProcessWaiter::spawn_waiting_thread(self.num_threads, recv, self.inner.clone());
     }
 
-    // Block SIGCHLD for the calling thread
-    // Records the initialization for the thread
-    pub fn init_for_thread(&self) {
-        //println!("Init for thread!");
+    pub fn block_signal(&self) {
         let mut mask = SigSet::empty();
         mask.add(Signal::SIGCHLD);
 
-        signal::pthread_sigmask(SigmaskHow::SIG_BLOCK, Some(&mask), None).unwrap();
+        println!("Block res: {:?}", signal::pthread_sigmask(SigmaskHow::SIG_BLOCK, Some(&mask), None));
+
+    }
+
+    // Block SIGCHLD for the calling thread
+    // Records the initialization for the thread
+    pub fn init_for_thread(&self) {
+        self.block_signal();
+        //println!("Init for thread!");
 
         self.initialized.lock().unwrap().insert(thread::current().id());
     }
@@ -180,8 +185,8 @@ impl ProcessWaiter {
             //
 
             let mut chld_mask = SigSet::empty();
-            //chld_mask.add(Signal::SIGCHLD);
-            chld_mask = SigSet::all();
+            chld_mask.add(Signal::SIGCHLD);
+            //chld_mask = SigSet::all();
 
             let sigset_ptr = mask.as_ref() as *const libc::sigset_t;
             // Safe because we defined better_siginfo_t, to be compatible with libc::siginfo_t
@@ -217,6 +222,13 @@ impl ProcessWaiter {
                     tv_sec: 2,
                     tv_nsec: 0
                 };
+
+                println!("Current threads:");
+                let tree = Command::new("pstree").args(&[std::process::id().to_string()])
+                    .output()
+                    .unwrap();
+
+                println!("{}", String::from_utf8(tree.stdout).unwrap());
 
 
                 eprintln!("Waiting for signal...");
