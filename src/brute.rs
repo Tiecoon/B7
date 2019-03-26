@@ -55,11 +55,14 @@ pub fn brute<
         // Track the minimum for stats later
         let mut min: u64 = std::i64::MAX as u64;
         // Get results from the threads
+
         for _ in 0..num_jobs {
             let tmp = rx.recv().unwrap();
             match tmp.1 {
                 Ok(x) => {
-                    min = x as u64;
+                    if (x as u64) < min {
+                        min = x as u64;
+                    }
                     results.push((tmp.0, x))
                 }
 
