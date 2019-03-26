@@ -75,11 +75,16 @@ pub fn get_inst_count(path: &str, inp: &Input, _vars: &HashMap<String, String>, 
 
 
     //println!("Starting process!");
-    let recv = waiter.register_process(process);
+    let handle = waiter.register_process(process);
 
     println!("Waiting...");
-    let res = recv.recv_timeout(Duration::new(5, 0));
-    println!("Res: {:?}", res.is_ok());
+
+    println!("Finish result: {:?}", handle.finish(Duration::new(5, 0)));
+    /*loop {
+        let res = recv.recv_timeout(Duration::new(5, 0));
+        println!("Res err: {:?} Status: {:?}", res.as_ref().err(), res.as_ref().map(|r| &r.status));
+    }*/
+
 
 
     // Start Process run it to completion with all arguements

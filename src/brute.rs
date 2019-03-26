@@ -53,7 +53,7 @@ pub fn brute<
 
         let waiter_arc = Arc::new(waiter);
 
-        let barrier = Arc::new(Barrier::new(n_workers));
+        let barrier = Arc::new(Barrier::new(n_workers + 1));
         for i in 0..n_workers {
             let barrier = barrier.clone();
             let waiter_arc = waiter_arc.clone();
@@ -62,6 +62,8 @@ pub fn brute<
                 waiter_arc.init_for_thread();
             });
         }
+
+        barrier.wait();
 
 
         for inp_pair in data {
