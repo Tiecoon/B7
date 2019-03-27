@@ -18,7 +18,7 @@ use crate::siginfo::better_siginfo_t;
 
 
 pub struct SignalData {
-    pub info: better_siginfo_t,
+    //pub info: better_siginfo_t,
     // parsed from 'info' filed
     pub status: SignalStatus,
     pub pid: Pid
@@ -152,12 +152,17 @@ impl ProcessWaiter {
 
                 for process in processes {
                     let mut proc = process.0;
-                    println!("Spawning: {:?}", proc);
                     proc.start().unwrap();
                     proc.write_input().unwrap();
                     proc.close_stdin().unwrap();
 
                     pids.insert(proc.child_id().unwrap() as i32, process.1);
+
+                    ptrace::cont(Pid::from_raw(proc.child_id().unwrap() as i32), None)
+                        .unwrap_or_else(|e| panic!("Failed to call initial ptrace::cont for pid {:?}: {:?}", proc.child_id().unwrap(), e));
+
+
+                    println!("Spawning: {:?} {:?}", proc, proc.child_id().unwrap());
                 }
 
                 println!("Pids: {:?}", pids);
@@ -184,11 +189,36 @@ impl ProcessWaiter {
                     eprintln!("GOT SIGNAL! {:?} si_code={:?}", res, unsafe { info.fields.si_code });
                     if (res == -1) {
                         println!("Error calling sigtimedwait: {}", nix::errno::errno());
+                        continue;
                     }
 
                     for (pid, other) in pids.iter() {
                         let res = waitpid(Pid::from_raw(*pid), Some(WaitPidFlag::WNOHANG));
                         println!("Waitpid pid: {:?} result: {:?}", pid, res);
+
+                        let status = match res {
+                            Ok(WaitStatus::Exited(_, _)) => SignalStatus::Exited,
+                            Ok(WaitStatus::StillAlive) => SignalStatus::Other,
+                            Ok(_) => {
+                                ptrace::cont(Pid::from_raw(*pid), None).unwrap_or_else(|e| panic!("Failed to call ptrace::cont for pid {:?}: {:?}", pid, e));
+                                SignalStatus::Other
+                            },
+                            Err(e) => panic!("Error waiting for process: {:?}", e)
+
+                        };
+
+                        let data = SignalData {
+                            status,
+                            pid: Pid::from_raw(*pid)
+                        };
+
+
+
+                        println!("Status: {:?} Code: {:?} Pid: {:?}", status, unsafe { info.fields.si_code }, pid);
+
+
+                        pids.get(pid).expect(&format!("Unknown pid {:?}", pid)).send(data).unwrap();
+
                         /*if res.is_err() || res == Ok(WaitStatus::StillAlive) {
                             break;
                         }*/
@@ -214,22 +244,6 @@ impl ProcessWaiter {
                     let pid = Pid::from_raw(pid_raw);
 
 
-                    let data = SignalData {
-                        info,
-                        status,
-                        pid: pid
-                    };
-
-
-                    if status != SignalStatus::Exited {
-                        ptrace::cont(pid, None).unwrap_or_else(|e| panic!("Failed to call ptrace::cont for pid {:?}: {:?}", data.pid, e));
-                    }
-
-
-                    println!("Status: {:?} Code: {:?} Pid: {:?}", status, unsafe { info.fields.si_code }, pid);
-
-
-                    pids.get(&pid_raw).expect(&format!("Unknown pid {:?}", pid)).send(data).unwrap();
                     
                     info = unsafe { std::mem::zeroed() };
                 }
