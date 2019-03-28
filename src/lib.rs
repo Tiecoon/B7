@@ -46,6 +46,7 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
         vars: HashMap<String, String>,
         timeout: Duration,
     ) -> B7Opts<'a, B> {
+        process::WAITER.block_signal();
         B7Opts {
             path,
             argstate,

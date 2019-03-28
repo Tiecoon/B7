@@ -101,6 +101,7 @@ struct ProcessWaiterInner {
 
 impl ProcessWaiter {
     pub fn new() -> ProcessWaiter {
+        println!("NEW PROCESS WAITER");
         let chan = channel();
         let mut waiter = ProcessWaiter {
             inner: Arc::new(Mutex::new(ProcessWaiterInner {
@@ -241,11 +242,11 @@ impl ProcessWaiter {
 
                 loop {
 
-                    //eprintln!("Waiting for signal...");
+                    eprintln!("Waiting for signal...");
                     // Safe because we know that the first two pointers are valid,
                     // and the third argument can safely be NULL
                     let res = unsafe { libc::sigtimedwait(sigset_ptr, info_ptr, &mut timeout as *mut libc::timespec) };
-                    //eprintln!("GOT SIGNAL! {:?} si_code={:?}", res, unsafe { info.fields.si_code });
+                    eprintln!("GOT SIGNAL! {:?} si_code={:?}", res, unsafe { info.fields.si_code });
                     if (res == -1) {
                         if Errno::last() == Errno::EAGAIN {
                             continue;
