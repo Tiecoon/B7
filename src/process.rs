@@ -271,7 +271,6 @@ impl ProcessWaiter {
 
                             if res.is_err() {
                                 if res == Err(nix::Error::Sys(Errno::ECHILD)) {
-                                    println!("No children left - all done!");
                                     break;
                                 }
                                 panic!("Waitpid error: {:?}", res);
