@@ -30,9 +30,9 @@ pub struct SignalData {
 }
 
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum SignalStatus {
-    Exited,
+    Exited(Sender<SignalData>),
 
     Other
 }
@@ -146,7 +146,7 @@ impl ProcessWaiter {
     }
 
     pub fn spawn_process(&self, mut process: Process) -> ProcessHandle  {
-        println!("Registering process");
+        //println!("Registering process");
         let mut start = false;
         let mut recv;
         process.start().expect("Failed to spawn process!");
@@ -182,7 +182,7 @@ impl ProcessWaiter {
 
             recv = chan.1*/
         }
-        ProcessHandle { pid, recv }
+        ProcessHandle { pid, recv, inner: self.inner.clone() }
     }
 
     fn spawn_waiting_thread(read_chan: Receiver<()>, waiter_lock: Arc<Mutex<ProcessWaiterInner>>) {
@@ -242,11 +242,11 @@ impl ProcessWaiter {
 
                 loop {
 
-                    eprintln!("Waiting for signal...");
+                    //eprintln!("Waiting for signal...");
                     // Safe because we know that the first two pointers are valid,
                     // and the third argument can safely be NULL
                     let res = unsafe { libc::sigtimedwait(sigset_ptr, info_ptr, &mut timeout as *mut libc::timespec) };
-                    eprintln!("GOT SIGNAL! {:?} si_code={:?}", res, unsafe { info.fields.si_code });
+                    //eprintln!("GOT SIGNAL! {:?} si_code={:?}", res, unsafe { info.fields.si_code });
                     if (res == -1) {
                         if Errno::last() == Errno::EAGAIN {
                             continue;
@@ -263,7 +263,7 @@ impl ProcessWaiter {
                         // that we don't block with the lock held
                         let proc_chans = &mut waiter_lock.lock().unwrap().proc_chans;
 
-                        println!("Map size: {:?}", proc_chans.len());
+                        //println!("Map size: {:?}", proc_chans.len());
 
                         loop {
                             let res = waitpid(None, Some(WaitPidFlag::WNOHANG));
@@ -312,7 +312,7 @@ impl ProcessWaiter {
                     }
 
                     // Safe bcause si_signo is always safe to access
-                    let status = match unsafe { info.fields.si_signo } {
+                    /*let status = match unsafe { info.fields.si_signo } {
                         libc::SIGCHLD => {
                             // Safe because si_code is always safe to access
                             match unsafe { info.fields.si_code } {
@@ -328,7 +328,7 @@ impl ProcessWaiter {
 
                     // Safe because this union field is always safe to access
                     let pid_raw = unsafe { info.fields.inner.kill.si_pid  };
-                    let pid = Pid::from_raw(pid_raw);
+                    let pid = Pid::from_raw(pid_raw);*/
 
                     
                     info = unsafe { std::mem::zeroed() };
@@ -349,6 +349,7 @@ pub struct Process {
 
 pub struct ProcessHandle {
     pid: Pid,
+    inner: Arc<Mutex<ProcessWaiterInner>>,
     recv: Receiver<SignalData>
 }
 
@@ -364,7 +365,11 @@ impl ProcessHandle {
             }
             let data = res.ok().unwrap();
             match data.status {
-                WaitStatus::Exited(_, _) => return Ok(data.pid),
+                WaitStatus::Exited(_, _) => {
+                    // Remove process data from the map now that it has exited
+                    self.inner.lock().unwrap().proc_chans.remove(&data.pid);
+                    return Ok(data.pid)
+                },
                 _ => {
 
                     let now = Instant::now();

@@ -80,7 +80,7 @@ pub fn get_inst_count(path: &str, inp: &Input, _vars: &HashMap<String, String>) 
 
     let fd = get_perf_fd(handle.pid().as_raw());
 
-    println!("Finish result: {:?}", handle.finish(Duration::new(5, 0)));
+    handle.finish(Duration::new(5, 0));
 
     // Process instruction count
     let ret = match perf_get_inst_count(fd) {
@@ -89,7 +89,7 @@ pub fn get_inst_count(path: &str, inp: &Input, _vars: &HashMap<String, String>) 
     };
     drop(unsafe { File::from_raw_fd(fd) });
 
-    println!("Instruction count: {}", ret);
+    //println!("Instruction count: {}", ret);
     ret
 
     /*loop {

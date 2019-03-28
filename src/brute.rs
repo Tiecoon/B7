@@ -81,7 +81,7 @@ pub fn brute<
                 let mut count: f64 = 0.0;
                 //waiter.init_for_thread();
                 for _ in 0..repeat {
-                    println!("Spawning process!");
+                    //println!("Spawning process!");
                     let inst_count = get_inst_count(&test, &inp, &vars);
                     avg += inst_count as f64;
                     count += 1.0;
@@ -108,7 +108,7 @@ pub fn brute<
             }
         }
         results.sort();
-        println!("Got results: {:?}", results);
+        //println!("Got results: {:?}", results);
 
         terminal.update(&results, min);
 
