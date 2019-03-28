@@ -8,7 +8,7 @@ use crate::generators::Input;
 
 // Handles basic proc spawning and running under dino
 // only works on 32 bit for now
-pub fn get_inst_count(path: &str, inp: &Input, vars: &HashMap<String, String>, waiter: &ProcessWaiter) -> i64 {
+pub fn get_inst_count(path: &str, inp: &Input, vars: &HashMap<String, String>, waiter) -> i64 {
     let dynpath = vars.get("dynpath").unwrap();
     let drrun = format!("{}/bin64/drrun", dynpath);
     let libinscount = format!("{}/api/bin/libinscount.so", dynpath);

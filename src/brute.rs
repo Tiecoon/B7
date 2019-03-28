@@ -10,7 +10,7 @@ use threadpool::ThreadPool;
 use crate::b7tui;
 use crate::generators::{Generate, Input};
 use crate::statistics;
-use crate::process::ProcessWaiter;
+use crate::process::{WAITER, ProcessWaiter};
 
 // can take out Debug trait later
 // Combines the generators with the instruction counters to deduce the next step
@@ -22,12 +22,32 @@ pub fn brute<
     path: &str,
     repeat: u32,
     gen: &mut G,
-    get_inst_count: fn(&str, &Input, &HashMap<String, String>, &ProcessWaiter) -> i64,
+    get_inst_count: fn(&str, &Input, &HashMap<String, String>) -> i64,
     terminal: &mut B,
     timeout: Duration,
     vars: HashMap<String, String>,
 ) {
     let n_workers = num_cpus::get();
+
+    //let mut waiter = ProcessWaiter::new();
+    //waiter.block_signal();
+    //waiter.start_thread();
+
+
+
+    let pool = ThreadPool::new(n_workers);
+
+    let barrier = Arc::new(Barrier::new(n_workers + 1));
+    for i in 0..n_workers {
+        let barrier = barrier.clone();
+        pool.execute(move || {
+            barrier.wait();
+            WAITER.init_for_thread();
+        });
+    }
+
+    barrier.wait();
+
     // Loop until generator says we are done
     loop {
         // Number of threads to spawn
@@ -35,7 +55,6 @@ pub fn brute<
         let mut num_jobs: i64 = 0;
         let mut results: Vec<(I, i64)> = Vec::new();
 
-        let pool = ThreadPool::new(n_workers);
         //let pool = ThreadPool
         let (tx, rx) = channel();
 
@@ -47,23 +66,6 @@ pub fn brute<
             data.push(inp_pair);
         }
 
-        let mut waiter = ProcessWaiter::new();
-        waiter.block_signal();
-        waiter.start_thread();
-
-        let waiter_arc = Arc::new(waiter);
-
-        let barrier = Arc::new(Barrier::new(n_workers + 1));
-        for i in 0..n_workers {
-            let barrier = barrier.clone();
-            let waiter_arc = waiter_arc.clone();
-            pool.execute(move || {
-                barrier.wait();
-                waiter_arc.init_for_thread();
-            });
-        }
-
-        barrier.wait();
 
 
         for inp_pair in data {
@@ -73,7 +75,6 @@ pub fn brute<
             // give it to a thread to handle
             let vars = vars.clone();
 
-            let waiter = waiter_arc.clone();
             pool.execute(move || {
                 let inp = inp_pair.1;
                 let mut avg: f64 = 0.0;
@@ -81,10 +82,9 @@ pub fn brute<
                 //waiter.init_for_thread();
                 for _ in 0..repeat {
                     println!("Spawning process!");
-                    let inst_count = get_inst_count(&test, &inp, &vars, &waiter);
+                    let inst_count = get_inst_count(&test, &inp, &vars);
                     avg += inst_count as f64;
                     count += 1.0;
-                    println!("Got inst count: {:?}", inst_count);
                     trace!("inst_count: {:?}", inst_count);
                 }
                 avg /= count;
@@ -108,6 +108,7 @@ pub fn brute<
             }
         }
         results.sort();
+        println!("Got results: {:?}", results);
 
         terminal.update(&results, min);
 

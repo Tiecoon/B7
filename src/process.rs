@@ -16,6 +16,7 @@ use std::sync::mpsc::{self, channel, Sender, Receiver};
 use std::time::{Duration, Instant};
 use libc::sigtimedwait;
 use std::thread::{self, ThreadId};
+use lazy_static::lazy_static;
 
 use crate::siginfo::better_siginfo_t;
 
@@ -50,6 +51,18 @@ const CLD_CONTINUED: libc::c_int = 6;
 // are filled in with address by Linux,
 // to provide information about the signal.
 // We never actually try to deference them
+
+
+lazy_static! {
+    pub static ref WAITER: ProcessWaiter = {
+        ProcessWaiter::new()
+    };
+}
+
+// There is exactly one ProcessWaiter for the entire
+// process.
+// ProcessWaiter needs complete over signal handling
+// for the process, so multiple cannot ever coexist
 
 
 pub struct ProcessWaiter {
@@ -89,7 +102,7 @@ struct ProcessWaiterInner {
 impl ProcessWaiter {
     pub fn new() -> ProcessWaiter {
         let chan = channel();
-        ProcessWaiter {
+        let mut waiter = ProcessWaiter {
             inner: Arc::new(Mutex::new(ProcessWaiterInner {
                 //channels: HashMap::new(),
                 channels: Vec::new(),
@@ -99,7 +112,10 @@ impl ProcessWaiter {
             })),
             started: false,
             initialized: Mutex::new(HashSet::new()),
-        }
+        };
+        waiter.block_signal();
+        waiter.start_thread();
+        waiter
     }
 
     pub fn start_thread(&mut self) {
@@ -143,7 +159,6 @@ impl ProcessWaiter {
         //ptrace::cont(pid, None).expect("Failed to send initial cont!");
 
         {
-            println!("Entered critical section");
             // Critical section - create channel pair if it does
             // not exist, and take the receiver end
             let proc_chans = &mut self.inner.lock().unwrap().proc_chans;
@@ -153,7 +168,6 @@ impl ProcessWaiter {
                 .take_recv();
             drop(proc_chans);
 
-            println!("Exited critical section");
 
             //waiter.processes.pushor_insert(ProcessWaiter::make_channel).1.as_ref().unwrap().clone()
 
@@ -213,7 +227,7 @@ impl ProcessWaiter {
                 //println!("Pids: {:?}", pids);
 
                 let mut timeout = libc::timespec {
-                    tv_sec: 2,
+                    tv_sec: 1,
                     tv_nsec: 0
                 };
 
@@ -227,12 +241,15 @@ impl ProcessWaiter {
 
                 loop {
 
-                    eprintln!("Waiting for signal...");
+                    //eprintln!("Waiting for signal...");
                     // Safe because we know that the first two pointers are valid,
                     // and the third argument can safely be NULL
                     let res = unsafe { libc::sigtimedwait(sigset_ptr, info_ptr, &mut timeout as *mut libc::timespec) };
-                    eprintln!("GOT SIGNAL! {:?} si_code={:?}", res, unsafe { info.fields.si_code });
+                    //eprintln!("GOT SIGNAL! {:?} si_code={:?}", res, unsafe { info.fields.si_code });
                     if (res == -1) {
+                        if Errno::last() == Errno::EAGAIN {
+                            continue;
+                        }
                         println!("Error calling sigtimedwait: {}", nix::errno::errno());
                         continue;
                     }
@@ -245,9 +262,11 @@ impl ProcessWaiter {
                         // that we don't block with the lock held
                         let proc_chans = &mut waiter_lock.lock().unwrap().proc_chans;
 
+                        println!("Map size: {:?}", proc_chans.len());
+
                         loop {
                             let res = waitpid(None, Some(WaitPidFlag::WNOHANG));
-                            println!("Waitpid result: {:?}", res);
+                            //println!("Waitpid result: {:?}", res);
 
                             if res.is_err() {
                                 if res == Err(nix::Error::Sys(Errno::ECHILD)) {
@@ -279,7 +298,7 @@ impl ProcessWaiter {
                                 pid: pid
                             };
 
-                            println!("Data: {:?}", data);
+                            //println!("Data: {:?}", data);
 
                             let sender: &Sender<SignalData> = &proc_chans.entry(pid)
                                 .or_insert_with(|| ChanPair::new())
@@ -366,6 +385,10 @@ impl ProcessHandle {
                 //SignalStatus::Exited => return Ok(data.pid)
             }
         }
+    }
+
+    pub fn pid(&self) -> Pid {
+        self.pid
     }
 }
 

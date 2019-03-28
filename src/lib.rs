@@ -19,7 +19,7 @@ use crate::process::ProcessWaiter;
 use std::collections::HashMap;
 use std::time::Duration;
 
-pub type Solver = fn(&str, &Input, &HashMap<String, String>, &ProcessWaiter) -> i64;
+pub type Solver = fn(&str, &Input, &HashMap<String, String>) -> i64;
 
 pub struct B7Opts<'a, B: b7tui::Ui> {
     path: String,
@@ -93,7 +93,7 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
 // solves "default" arguement case
 fn default_arg_brute<B: b7tui::Ui>(
     path: &str,
-    solver: fn(&str, &Input, &HashMap<String, String>, &ProcessWaiter) -> i64,
+    solver: Solver,
     vars: HashMap<String, String>,
     timeout: Duration,
     terminal: &mut B,
@@ -146,7 +146,7 @@ fn default_arg_brute<B: b7tui::Ui>(
 // solves "default" stdin case
 fn default_stdin_brute<B: b7tui::Ui>(
     path: &str,
-    solver: fn(&str, &Input, &HashMap<String, String>, &ProcessWaiter) -> i64,
+    solver: Solver,
     vars: HashMap<String, String>,
     timeout: Duration,
     terminal: &mut B,

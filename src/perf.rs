@@ -1,6 +1,6 @@
 use crate::bindings::*;
 use crate::generators::Input;
-use crate::process::{Process, ProcessWaiter};
+use crate::process::{Process, ProcessWaiter, WAITER};
 use libc::{c_int, c_void, ioctl, pid_t, syscall};
 use std::collections::HashMap;
 use std::ffi::OsStr;
@@ -66,7 +66,7 @@ fn perf_get_inst_count(fd: c_int) -> Result<i64> {
 }
 
 // Handles basic proc spawning and running under perf
-pub fn get_inst_count(path: &str, inp: &Input, _vars: &HashMap<String, String>, waiter: &ProcessWaiter) -> i64 {
+pub fn get_inst_count(path: &str, inp: &Input, _vars: &HashMap<String, String>) -> i64 {
     // TODO: error checking...
     let mut process = Process::new(path);
     for arg in inp.argv.iter() {
@@ -75,13 +75,23 @@ pub fn get_inst_count(path: &str, inp: &Input, _vars: &HashMap<String, String>, 
     process.input(inp.stdin.clone());
 
 
-    println!("Spawning on waiter");
     //println!("Starting process!");
-    let handle = waiter.spawn_process(process);
+    let handle = WAITER.spawn_process(process);
 
-    println!("Getting result");
+    let fd = get_perf_fd(handle.pid().as_raw());
 
     println!("Finish result: {:?}", handle.finish(Duration::new(5, 0)));
+
+    // Process instruction count
+    let ret = match perf_get_inst_count(fd) {
+        Ok(x) => x,
+        Err(_) => -1,
+    };
+    drop(unsafe { File::from_raw_fd(fd) });
+
+    println!("Instruction count: {}", ret);
+    ret
+
     /*loop {
         let res = recv.recv_timeout(Duration::new(5, 0));
         println!("Res err: {:?} Status: {:?}", res.as_ref().err(), res.as_ref().map(|r| &r.status));
@@ -109,6 +119,4 @@ pub fn get_inst_count(path: &str, inp: &Input, _vars: &HashMap<String, String>, 
     };
     drop(unsafe { File::from_raw_fd(fd) });
     ret*/
-
-    0 // TODO - fix
 }
