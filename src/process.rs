@@ -2,11 +2,14 @@ use crate::binary::Binary;
 use nix::sys::ptrace;
 use nix::sys::signal::{self, SigSet, Signal, SigmaskHow};
 use nix::sys::wait::{waitpid, WaitStatus, WaitPidFlag};
+use nix::errno::Errno;
 use nix::unistd::Pid;
 use spawn_ptrace::CommandPtraceSpawn;
 use std::ffi::OsStr;
 use std::io::{Error, ErrorKind, Read, Result, Write};
 use std::process::{Child, Command, Stdio};
+use std::os::unix::process::CommandExt;
+use std::ptr;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{self, channel, Sender, Receiver};
@@ -53,29 +56,49 @@ pub struct ProcessWaiter {
     started: bool,
     inner: Arc<Mutex<ProcessWaiterInner>>,
     initialized: Mutex<HashSet<ThreadId>>,
-    num_threads: usize,
+}
+
+struct ChanPair {
+    sender: Sender<SignalData>,
+    receiver: Option<Receiver<SignalData>>
+}
+
+impl ChanPair {
+
+    fn new() -> ChanPair {
+        let (sender, receiver) = channel();
+        ChanPair {
+            sender,
+            receiver: Some(receiver)
+        }
+    }
+
+    fn take_recv(&mut self) -> Receiver<SignalData> {
+        self.receiver.take().expect("Already took receiver!")
+    }
 }
 
 struct ProcessWaiterInner {
     //seen: HashMap<Pid, Vec<SignalData>>,
     //channels: HashMap<Process, (Sender<SignalData>, Option<Receiver<SignalData>>)>,
+    proc_chans: HashMap<Pid, ChanPair>,
     channels: Vec<(Process, Sender<SignalData>)>,
     read_chan: (Sender<()>, Option<Receiver<()>>)
 }
 
 impl ProcessWaiter {
-    pub fn new(num_threads: usize) -> ProcessWaiter {
+    pub fn new() -> ProcessWaiter {
         let chan = channel();
         ProcessWaiter {
             inner: Arc::new(Mutex::new(ProcessWaiterInner {
                 //channels: HashMap::new(),
                 channels: Vec::new(),
-                read_chan: (chan.0, Some(chan.1))
+                read_chan: (chan.0, Some(chan.1)),
+                proc_chans: HashMap::new()
                 //read_chan: channel()
             })),
             started: false,
             initialized: Mutex::new(HashSet::new()),
-            num_threads: num_threads,
         }
     }
 
@@ -85,14 +108,14 @@ impl ProcessWaiter {
         }
         self.started = true;
         let recv = self.inner.lock().unwrap().read_chan.1.take().unwrap();
-        ProcessWaiter::spawn_waiting_thread(self.num_threads, recv, self.inner.clone());
+        ProcessWaiter::spawn_waiting_thread(recv, self.inner.clone());
     }
 
     pub fn block_signal(&self) {
         let mut mask = SigSet::empty();
         mask.add(Signal::SIGCHLD);
 
-        signal::pthread_sigmask(SigmaskHow::SIG_BLOCK, Some(&mask), None);
+        signal::pthread_sigmask(SigmaskHow::SIG_BLOCK, Some(&mask), None).expect("Failed to block signals!");
 
     }
 
@@ -105,15 +128,36 @@ impl ProcessWaiter {
         self.initialized.lock().unwrap().insert(thread::current().id());
     }
 
-    pub fn register_process(&self, process: Process) -> ProcessHandle  {
-        //println!("Registering process");
+    pub fn spawn_process(&self, mut process: Process) -> ProcessHandle  {
+        println!("Registering process");
         let mut start = false;
         let mut recv;
+        process.start().expect("Failed to spawn process!");
+        process.write_input().unwrap();
+        process.close_stdin().unwrap();
+
+
+        let pid = Pid::from_raw(process.child_id().unwrap() as i32);
+
+        //println!("Calling ptrace::cont");
+        //ptrace::cont(pid, None).expect("Failed to send initial cont!");
+
         {
-            let mut waiter = self.inner.lock().unwrap();
+            println!("Entered critical section");
+            // Critical section - create channel pair if it does
+            // not exist, and take the receiver end
+            let proc_chans = &mut self.inner.lock().unwrap().proc_chans;
+
+            recv = proc_chans.entry(pid)
+                .or_insert_with(|| ChanPair::new())
+                .take_recv();
+            drop(proc_chans);
+
+            println!("Exited critical section");
+
             //waiter.processes.pushor_insert(ProcessWaiter::make_channel).1.as_ref().unwrap().clone()
 
-            let chan = channel();
+            /*let chan = channel();
 
             waiter.channels.push((process, chan.0));
             println!("Curent: {}/{}", waiter.channels.len(), self.num_threads);
@@ -121,12 +165,12 @@ impl ProcessWaiter {
                 waiter.read_chan.0.send(()).unwrap();
             }
 
-            recv = chan.1
+            recv = chan.1*/
         }
-        ProcessHandle { recv }
+        ProcessHandle { pid, recv }
     }
 
-    fn spawn_waiting_thread(num_threads: usize, read_chan: Receiver<()>, waiter_lock: Arc<Mutex<ProcessWaiterInner>>) {
+    fn spawn_waiting_thread(read_chan: Receiver<()>, waiter_lock: Arc<Mutex<ProcessWaiterInner>>) {
         assert_eq!(std::mem::size_of::<libc::siginfo_t>(), std::mem::size_of::<better_siginfo_t>());
         std::thread::spawn(move || {
 
@@ -142,12 +186,12 @@ impl ProcessWaiter {
             let info_ptr = unsafe { std::mem::transmute::<*mut better_siginfo_t, *mut libc::siginfo_t>(&mut info as *mut better_siginfo_t) };
 
             loop {
-                eprintln!("Waiting for notification...");
+                /*eprintln!("Waiting for notification...");
                 read_chan.recv().unwrap();
-                eprintln!("Starting!");
+                eprintln!("Starting!");*/
 
 
-                let processes: Vec<(Process, Sender<SignalData>)> = waiter_lock.lock().unwrap().channels.drain(..).collect();
+                /*let processes: Vec<(Process, Sender<SignalData>)> = waiter_lock.lock().unwrap().channels.drain(..).collect();
 
                 let mut pids: HashMap<i32, Sender<SignalData>> = HashMap::new();
 
@@ -164,9 +208,9 @@ impl ProcessWaiter {
 
 
                     println!("Spawning: {:?} {:?}", proc, proc.child_id().unwrap());
-                }
+                }*/
 
-                println!("Pids: {:?}", pids);
+                //println!("Pids: {:?}", pids);
 
                 let mut timeout = libc::timespec {
                     tv_sec: 2,
@@ -193,57 +237,58 @@ impl ProcessWaiter {
                         continue;
                     }
 
-                    loop {
-                        let res = waitpid(None, Some(WaitPidFlag::WNOHANG));
-                        println!("Waitpid result: {:?}", res);
+                    {
+                        // Critical section - we repeatedly call waitpid()
+                        // to reap all children that have exited since the last
+                        // signal
+                        // We call waitpid with WNOHANG, which ensures
+                        // that we don't block with the lock held
+                        let proc_chans = &mut waiter_lock.lock().unwrap().proc_chans;
 
-                        if res.is_err() {
-                            panic!("Waitpid error: {:?}", res);
-                        }
-                        let res = res.ok().unwrap();
+                        loop {
+                            let res = waitpid(None, Some(WaitPidFlag::WNOHANG));
+                            println!("Waitpid result: {:?}", res);
 
-                        if res == WaitStatus::StillAlive {
-                            break;
-                        }
-
-                        let pid = res.pid().unwrap();
-                        let pid_raw = pid.as_raw();
-
-                        match res {
-                            WaitStatus::Exited(_, _) => {},
-                            _ => {
-                                ptrace::cont(pid, None).unwrap_or_else(|e| panic!("Failed to call ptrace::cont for pid {:?}: {:?}", pid, e));
+                            if res.is_err() {
+                                if res == Err(nix::Error::Sys(Errno::ECHILD)) {
+                                    println!("No children left - all done!");
+                                    break;
+                                }
+                                panic!("Waitpid error: {:?}", res);
                             }
+                            let res = res.ok().unwrap();
+
+                            if res == WaitStatus::StillAlive {
+                                break;
+                            }
+
+                            let pid = res.pid().unwrap();
+                            let pid_raw = pid.as_raw();
+
+                            let exited = match res {
+                                WaitStatus::Exited(_, _) => true,
+                                _ => {
+                                    
+                                    false
+                                }
+                            };
+
+
+                            let data = SignalData {
+                                status: res,
+                                pid: pid
+                            };
+
+                            println!("Data: {:?}", data);
+
+                            let sender: &Sender<SignalData> = &proc_chans.entry(pid)
+                                .or_insert_with(|| ChanPair::new())
+                                .sender;
+
+
+                            sender.send(data);
+
                         }
-
-
-                        /*let (pid, status) = match res {
-                            Ok(WaitStatus::Exited(pid, _)) => (pid, SignalStatus::Exited),
-                            Ok(WaitStatus::StillAlive) => break, // All pending children events were consumed
-                            Ok(_) => {
-
-                                                                SignalStatus::Other
-                            },
-                            Err(e) => panic!("Error waiting for process: {:?}", e)
-
-                        };*/
-
-                        let data = SignalData {
-                            status: res,
-                            pid: pid
-                        };
-
-                        println!("Data: {:?}", data);
-
-
-                        //println!("Status: {:?} Code: {:?} Pid: {:?}", status, unsafe { info.fields.si_code }, pid);
-
-
-                        pids.get(&pid_raw).expect(&format!("Unknown pid {:?}", pid)).send(data).unwrap();
-
-                        /*if res.is_err() || res == Ok(WaitStatus::StillAlive) {
-                            break;
-                        }*/
                     }
 
                     // Safe bcause si_signo is always safe to access
@@ -265,7 +310,6 @@ impl ProcessWaiter {
                     let pid_raw = unsafe { info.fields.inner.kill.si_pid  };
                     let pid = Pid::from_raw(pid_raw);
 
-
                     
                     info = unsafe { std::mem::zeroed() };
                 }
@@ -284,6 +328,7 @@ pub struct Process {
 }
 
 pub struct ProcessHandle {
+    pid: Pid,
     recv: Receiver<SignalData>
 }
 
@@ -291,6 +336,7 @@ impl ProcessHandle {
     pub fn finish(&self, timeout: Duration) -> std::result::Result<Pid, String> {
         let mut start = Instant::now();
         let mut time_left = timeout;
+
         loop {
             let res = self.recv.recv_timeout(time_left);
             if res.is_err() {
@@ -300,15 +346,20 @@ impl ProcessHandle {
             match data.status {
                 WaitStatus::Exited(_, _) => return Ok(data.pid),
                 _ => {
+
                     let now = Instant::now();
                     let elapsed = now - start;
                     if elapsed > timeout {
+                        // TODO - kill process?
                         return Err(format!("Timout: elapsed!"))
                     }
                     time_left = match time_left.checked_sub(elapsed) {
                         Some(t) => t,
                         None => return Err(format!("Timeout: no time left"))
                     };
+
+                    ptrace::cont(self.pid, None)
+                        .unwrap_or_else(|e| panic!("Failed to call ptrace::cont for pid {:?}: {:?}", self.pid, e))
 
 
                 },
@@ -367,8 +418,17 @@ impl Process {
         self.cmd.stdin(Stdio::piped());
         self.cmd.stdout(Stdio::piped());
         self.cmd.stderr(Stdio::piped());
+
+        // Copied from spawn_ptrace
+        self.cmd.before_exec(|| {
+            ptrace::traceme().expect("TRACEME failed!");
+            Ok(())
+        });
+
+        let child = self.cmd.spawn();
+
         // spawn process and wait after fork
-        let child = self.cmd.spawn_ptrace();
+        //let child = self.cmd.spawn_ptrace();
         match child {
             Ok(c) => {
                 self.child = Some(c);

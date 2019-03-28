@@ -11,6 +11,7 @@ use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::FromRawFd;
 use std::process::exit;
 use std::time::Duration;
+use nix::unistd::Pid;
 
 // syscall number for perf syscall
 const PERF_EVENT_OPEN_SYSCALL: i64 = 298;
@@ -74,10 +75,11 @@ pub fn get_inst_count(path: &str, inp: &Input, _vars: &HashMap<String, String>, 
     process.input(inp.stdin.clone());
 
 
+    println!("Spawning on waiter");
     //println!("Starting process!");
-    let handle = waiter.register_process(process);
+    let handle = waiter.spawn_process(process);
 
-    println!("Waiting...");
+    println!("Getting result");
 
     println!("Finish result: {:?}", handle.finish(Duration::new(5, 0)));
     /*loop {

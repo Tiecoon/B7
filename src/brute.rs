@@ -47,7 +47,7 @@ pub fn brute<
             data.push(inp_pair);
         }
 
-        let mut waiter = ProcessWaiter::new(data.len());
+        let mut waiter = ProcessWaiter::new();
         waiter.block_signal();
         waiter.start_thread();
 
@@ -80,9 +80,11 @@ pub fn brute<
                 let mut count: f64 = 0.0;
                 //waiter.init_for_thread();
                 for _ in 0..repeat {
+                    println!("Spawning process!");
                     let inst_count = get_inst_count(&test, &inp, &vars, &waiter);
                     avg += inst_count as f64;
                     count += 1.0;
+                    println!("Got inst count: {:?}", inst_count);
                     trace!("inst_count: {:?}", inst_count);
                 }
                 avg /= count;
