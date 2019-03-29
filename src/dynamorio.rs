@@ -26,16 +26,17 @@ pub fn get_inst_count(
     for arg in inp.argv.iter() {
         proccess.arg(OsStr::from_bytes(arg));
     }
+    proccess.input(inp.stdin.clone());
 
-    proccess.start()?;
-    proccess.write_stdin(&inp.stdin)?;
-    proccess.close_stdin()?;
+    //proccess.start()?;
+    //proccess.write_stdin(&inp.stdin)?;
+    //proccess.close_stdin()?;
 
-    panic!("Fix this");
-    WAITER.spawn_process(proccess).finish(Duration::new(5, 0))?;
+    let mut handle = proccess.spawn();
+    handle.finish(Duration::new(5, 0))?;
 
     let mut buf: Vec<u8> = Vec::new();
-    proccess.read_stdout(&mut buf)?;
+    handle.read_stdout(&mut buf)?;
 
     let stdout = String::from_utf8_lossy(buf.as_slice());
 

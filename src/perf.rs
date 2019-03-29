@@ -85,10 +85,8 @@ pub fn get_inst_count(
 
 
     //println!("Starting process!");
-    let handle = WAITER.spawn_process(process);
-
+    let handle = process.spawn();
     let fd = get_perf_fd(handle.pid().as_raw())?;
-
     handle.finish(Duration::new(5, 0))?;
 
     // Process instruction count

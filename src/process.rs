@@ -183,7 +183,7 @@ impl ProcessWaiter {
 
             recv = chan.1*/
         }
-        ProcessHandle { pid, recv, inner: self.inner.clone() }
+        ProcessHandle { pid, recv, inner: self.inner.clone(), proc: process }
     }
 
     fn spawn_waiting_thread(read_chan: Receiver<()>, waiter_lock: Arc<Mutex<ProcessWaiterInner>>) {
@@ -350,7 +350,8 @@ pub struct Process {
 pub struct ProcessHandle {
     pid: Pid,
     inner: Arc<Mutex<ProcessWaiterInner>>,
-    recv: Receiver<SignalData>
+    recv: Receiver<SignalData>,
+    proc: Process
 }
 
 impl ProcessHandle {
@@ -392,6 +393,23 @@ impl ProcessHandle {
     pub fn pid(&self) -> Pid {
         self.pid
     }
+
+
+    // read buf to process then close it
+    pub fn read_stdout(&mut self, buf: &mut Vec<u8>) -> Result<usize, SolverError> {
+        if self.proc.child.is_none() {
+            return Err(SolverError::new(
+                Runner::RunnerError,
+                "child process not running",
+            ));
+        }
+        let child = self.proc.child.as_mut().unwrap();
+        match child.stdout.as_mut() {
+            Some(stdout) => stdout.read_to_end(buf).map_err(|e| e.into()),
+            None => Err(Error::last_os_error().into()),
+        }
+    }
+
 }
 
 // Handle running a process
@@ -475,21 +493,6 @@ impl Process {
         }
     }
 
-    // read buf to process then close it
-    pub fn read_stdout(&mut self, buf: &mut Vec<u8>) -> Result<usize, SolverError> {
-        if self.child.is_none() {
-            return Err(SolverError::new(
-                Runner::RunnerError,
-                "child process not running",
-            ));
-        }
-        let child = self.child.as_mut().unwrap();
-        match child.stdout.as_mut() {
-            Some(stdout) => stdout.read_to_end(buf).map_err(|e| e.into()),
-            None => Err(Error::last_os_error().into()),
-        }
-    }
-
     // close stdin to prevent any reads hanging
     pub fn close_stdin(&mut self) -> Result<(), SolverError> {
         if self.child.is_none() {
@@ -533,6 +536,10 @@ impl Process {
         // We wait for a SIGCHLD using sigtimedwait
         // Based on https://www.linuxprogrammingblog.com/code-examples/signal-waiting-sigtimedwait
         unimplemented!();
+    }
+
+    pub fn spawn(self) -> ProcessHandle {
+        WAITER.spawn_process(self)
     }
 
     // attempt to run the program to completion
