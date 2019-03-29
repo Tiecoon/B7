@@ -6,6 +6,7 @@ use std::os::unix::ffi::OsStrExt;
 use std::time::Duration;
 
 use crate::generators::Input;
+use crate::process::WAITER;
 
 // Handles basic proc spawning and running under dino
 // only works on 32 bit for now
@@ -31,7 +32,7 @@ pub fn get_inst_count(
     proccess.close_stdin()?;
 
     panic!("Fix this");
-    proccess.finish()?;
+    WAITER.spawn_process(proccess).finish(Duration::new(5, 0))?;
 
     let mut buf: Vec<u8> = Vec::new();
     proccess.read_stdout(&mut buf)?;

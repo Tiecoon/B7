@@ -86,15 +86,16 @@ pub fn brute<
         // Get results from the threads
 
         for _ in 0..num_jobs {
-            match rx.recv_timeout(timeout) {
-                Ok(tmp) => {
-                    if (tmp.1 as u64) < min {
-                        min = tmp.1 as u64;
+            let tmp = rx.recv().unwrap();
+            match tmp.1 {
+                Ok(x) => {
+                    if (x as u64) < min {
+                        min = x as u64;
                     }
-                    results.push(tmp);
+                    results.push((tmp.0, x));
                 }
                 Err(x) => {
-                    warn!("returned: {:?}", x);
+                    warn!("{:?} \n returned: {:?}", tmp.0, x);
                     continue;
                 }
 
