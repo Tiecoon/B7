@@ -14,19 +14,17 @@ pub mod statistics;
 
 mod siginfo;
 
-use crate::brute::brute;
+use crate::brute::{brute, InstCountData, InstCounter};
 use crate::errors::*;
 use crate::generators::*;
 use std::collections::HashMap;
 use std::time::Duration;
 
-pub type Solver = fn(&str, &Input, &HashMap<String, String>) -> Result<i64, SolverError>;
-
 pub struct B7Opts<'a, B: b7tui::Ui> {
     path: String,
     argstate: bool,
     stdinstate: bool,
-    solver: Solver,
+    solver: Box<InstCounter>,
     terminal: &'a mut B,
     timeout: Duration,
     vars: HashMap<String, String>,
@@ -42,7 +40,7 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
         path: String,
         argstate: bool,
         stdinstate: bool,
-        solver: Solver,
+        solver: Box<InstCounter>,
         terminal: &'a mut B,
         vars: HashMap<String, String>,
         timeout: Duration,
@@ -64,13 +62,13 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
         let mut stdin_brute = String::new();
         if self.argstate {
             arg_brute =
-                default_arg_brute(&self.path, self.solver, self.vars.clone(), self.timeout, self.terminal)
+                default_arg_brute(&self.path, &*self.solver, self.vars.clone(), self.timeout, self.terminal)
                     .unwrap();
         }
 
         if self.stdinstate {
             stdin_brute =
-                default_stdin_brute(&self.path, self.solver, self.vars.clone(), self.timeout, self.terminal)
+                default_stdin_brute(&self.path, &*self.solver, self.vars.clone(), self.timeout, self.terminal)
                     .unwrap();
         }
 
@@ -87,7 +85,7 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
 // solves "default" arguement case
 fn default_arg_brute<B: b7tui::Ui>(
     path: &str,
-    solver: Solver,
+    solver: &InstCounter,
     vars: HashMap<String, String>,
     timeout: Duration,
     terminal: &mut B,
@@ -116,7 +114,7 @@ fn default_arg_brute<B: b7tui::Ui>(
 // solves "default" stdin case
 fn default_stdin_brute<B: b7tui::Ui>(
     path: &str,
-    solver: Solver,
+    solver: &InstCounter,
     vars: HashMap<String, String>,
     timeout: Duration,
     terminal: &mut B,

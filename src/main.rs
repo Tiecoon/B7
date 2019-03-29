@@ -2,6 +2,7 @@
 extern crate log;
 
 use b7::*;
+use b7::brute::InstCounter;
 
 use clap::{App, Arg};
 use std::collections::HashMap;
@@ -85,8 +86,8 @@ fn main() {
 
     let solvername = matches.value_of("solver").unwrap_or("perf");
     let solver = match solvername {
-        "perf" => perf::get_inst_count,
-        "dynamorio" => dynamorio::get_inst_count,
+        "perf" => Box::new(perf::PerfSolver) as Box<InstCounter>,
+        "dynamorio" => Box::new(dynamorio::DynamorioSolver) as Box<InstCounter>,
         _ => panic!("unknown solver"),
     };
     let timeout = Duration::new(
