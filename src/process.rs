@@ -139,7 +139,6 @@ impl ProcessWaiter {
             recv = proc_chans.entry(pid)
                 .or_insert_with(|| ChanPair::new())
                 .take_recv();
-            drop(proc_chans);
         }
         ProcessHandle { pid, recv, inner: self.inner.clone(), proc: process }
     }
