@@ -82,6 +82,7 @@ pub fn get_inst_count(
         process.arg(OsStr::from_bytes(arg));
     }
     process.input(inp.stdin.clone());
+    process.with_ptrace(true);
 
 
     //println!("Starting process!");

@@ -344,7 +344,8 @@ pub struct Process {
     binary: Binary,
     cmd: Command,
     child: Option<Child>,
-    input: Vec<u8>
+    input: Vec<u8>,
+    ptrace: bool
 }
 
 pub struct ProcessHandle {
@@ -380,9 +381,10 @@ impl ProcessHandle {
                         None => return Err(SolverError::new(Runner::Timeout, "child timed out"))
                     };
 
-                    ptrace::cont(self.pid, None)
-                        .unwrap_or_else(|e| panic!("Failed to call ptrace::cont for pid {:?}: {:?}", self.pid, e))
-
+                    if self.proc.ptrace {
+                        ptrace::cont(self.pid, None)
+                            .unwrap_or_else(|e| panic!("Failed to call ptrace::cont for pid {:?}: {:?}", self.pid, e))
+                    }
 
                 },
                 //SignalStatus::Exited => return Ok(data.pid)
@@ -420,6 +422,7 @@ impl Process {
             cmd: Command::new(path),
             input: Vec::new(),
             child: None,
+            ptrace: false
         }
     }
 
@@ -459,11 +462,13 @@ impl Process {
         self.cmd.stdout(Stdio::piped());
         self.cmd.stderr(Stdio::piped());
 
-        // Copied from spawn_ptrace
-        self.cmd.before_exec(|| {
-            ptrace::traceme().expect("TRACEME failed!");
-            Ok(())
-        });
+        if self.ptrace {
+            // Copied from spawn_ptrace
+            self.cmd.before_exec(|| {
+                ptrace::traceme().expect("TRACEME failed!");
+                Ok(())
+            });
+        }
 
         let child = self.cmd.spawn();
 
@@ -536,6 +541,10 @@ impl Process {
         // We wait for a SIGCHLD using sigtimedwait
         // Based on https://www.linuxprogrammingblog.com/code-examples/signal-waiting-sigtimedwait
         unimplemented!();
+    }
+
+    pub fn with_ptrace(&mut self, ptrace: bool) {
+        self.ptrace = ptrace;
     }
 
     pub fn spawn(self) -> ProcessHandle {
