@@ -5,17 +5,14 @@ use nix::sys::signal::{self, SigSet, Signal, SigmaskHow};
 use nix::sys::wait::{waitpid, WaitStatus, WaitPidFlag};
 use nix::errno::Errno;
 use nix::unistd::Pid;
-use spawn_ptrace::CommandPtraceSpawn;
 use std::ffi::OsStr;
 use std::io::{Error, Read, Write};
 use std::process::{Child, Command, Stdio};
 use std::os::unix::process::CommandExt;
-use std::ptr;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
-use std::sync::mpsc::{self, channel, Sender, Receiver};
+use std::sync::mpsc::{channel, Sender, Receiver};
 use std::time::{Duration, Instant};
-use libc::sigtimedwait;
 use std::thread::{self, ThreadId};
 use lazy_static::lazy_static;
 
@@ -147,7 +144,6 @@ impl ProcessWaiter {
 
     pub fn spawn_process(&self, mut process: Process) -> ProcessHandle  {
         //println!("Registering process");
-        let mut start = false;
         let mut recv;
         process.start().expect("Failed to spawn process!");
         process.write_input().unwrap();
@@ -247,7 +243,7 @@ impl ProcessWaiter {
                     // and the third argument can safely be NULL
                     let res = unsafe { libc::sigtimedwait(sigset_ptr, info_ptr, &mut timeout as *mut libc::timespec) };
                     //eprintln!("GOT SIGNAL! {:?} si_code={:?}", res, unsafe { info.fields.si_code });
-                    if (res == -1) {
+                    if res == -1 {
                         if Errno::last() == Errno::EAGAIN {
                             continue;
                         }
@@ -282,16 +278,6 @@ impl ProcessWaiter {
                             }
 
                             let pid = res.pid().unwrap();
-                            let pid_raw = pid.as_raw();
-
-                            let exited = match res {
-                                WaitStatus::Exited(_, _) => true,
-                                _ => {
-                                    
-                                    false
-                                }
-                            };
-
 
                             let data = SignalData {
                                 status: res,
@@ -328,9 +314,6 @@ impl ProcessWaiter {
                     // Safe because this union field is always safe to access
                     let pid_raw = unsafe { info.fields.inner.kill.si_pid  };
                     let pid = Pid::from_raw(pid_raw);*/
-
-                    
-                    info = unsafe { std::mem::zeroed() };
                 }
             }
         });

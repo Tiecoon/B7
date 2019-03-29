@@ -10,7 +10,6 @@ use crate::b7tui;
 use crate::errors::*;
 use crate::generators::{Generate, Input};
 use crate::statistics;
-use crate::process::{WAITER, ProcessWaiter};
 
 // can take out Debug trait later
 // Combines the generators with the instruction counters to deduce the next step

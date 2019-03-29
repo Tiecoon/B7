@@ -1,7 +1,7 @@
 use crate::bindings::*;
 use crate::errors::*;
 use crate::generators::Input;
-use crate::process::{Process, ProcessWaiter, WAITER};
+use crate::process::Process;
 use libc::{c_int, c_void, ioctl, pid_t, syscall};
 use std::collections::HashMap;
 use std::ffi::OsStr;
@@ -9,9 +9,7 @@ use std::fs::File;
 use std::mem;
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::FromRawFd;
-use std::process::exit;
 use std::time::Duration;
-use nix::unistd::Pid;
 
 // syscall number for perf syscall
 const PERF_EVENT_OPEN_SYSCALL: i64 = 298;

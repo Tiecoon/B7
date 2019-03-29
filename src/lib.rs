@@ -17,7 +17,6 @@ mod siginfo;
 use crate::brute::brute;
 use crate::errors::*;
 use crate::generators::*;
-use crate::process::ProcessWaiter;
 use std::collections::HashMap;
 use std::time::Duration;
 
