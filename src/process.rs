@@ -102,7 +102,6 @@ struct ProcessWaiterInner {
 
 impl ProcessWaiter {
     pub fn new() -> ProcessWaiter {
-        println!("NEW PROCESS WAITER");
         let chan = channel();
         let mut waiter = ProcessWaiter {
             inner: Arc::new(Mutex::new(ProcessWaiterInner {
