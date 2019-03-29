@@ -35,16 +35,6 @@ pub enum SignalStatus {
     Other
 }
 
-// From <siginfo.h>
-const CLD_EXITED: libc::c_int = 1;
-const CLD_KILLED: libc::c_int = 2;
-const CLD_DUMPED: libc::c_int = 3;
-const CLD_TRAPPED: libc::c_int  = 4;
-const CLD_STOPPED: libc::c_int = 5;
-const CLD_CONTINUED: libc::c_int = 6;
-
-
-
 // All of the raw pointers in this type
 // are filled in with address by Linux,
 // to provide information about the signal.
@@ -90,23 +80,14 @@ impl ChanPair {
 }
 
 struct ProcessWaiterInner {
-    //seen: HashMap<Pid, Vec<SignalData>>,
-    //channels: HashMap<Process, (Sender<SignalData>, Option<Receiver<SignalData>>)>,
     proc_chans: HashMap<Pid, ChanPair>,
-    channels: Vec<(Process, Sender<SignalData>)>,
-    read_chan: (Sender<()>, Option<Receiver<()>>)
 }
 
 impl ProcessWaiter {
     pub fn new() -> ProcessWaiter {
-        let chan = channel();
         let mut waiter = ProcessWaiter {
             inner: Arc::new(Mutex::new(ProcessWaiterInner {
-                //channels: HashMap::new(),
-                channels: Vec::new(),
-                read_chan: (chan.0, Some(chan.1)),
                 proc_chans: HashMap::new()
-                //read_chan: channel()
             })),
             started: false,
             initialized: Mutex::new(HashSet::new()),
@@ -121,8 +102,7 @@ impl ProcessWaiter {
             panic!("Already started waiter thread!");
         }
         self.started = true;
-        let recv = self.inner.lock().unwrap().read_chan.1.take().unwrap();
-        ProcessWaiter::spawn_waiting_thread(recv, self.inner.clone());
+        ProcessWaiter::spawn_waiting_thread(self.inner.clone());
     }
 
     pub fn block_signal(&self) {
@@ -143,7 +123,6 @@ impl ProcessWaiter {
     }
 
     pub fn spawn_process(&self, mut process: Process) -> ProcessHandle  {
-        //println!("Registering process");
         let mut recv;
         process.start().expect("Failed to spawn process!");
         process.write_input().unwrap();
@@ -151,9 +130,6 @@ impl ProcessWaiter {
 
 
         let pid = Pid::from_raw(process.child_id().unwrap() as i32);
-
-        //println!("Calling ptrace::cont");
-        //ptrace::cont(pid, None).expect("Failed to send initial cont!");
 
         {
             // Critical section - create channel pair if it does
@@ -164,24 +140,11 @@ impl ProcessWaiter {
                 .or_insert_with(|| ChanPair::new())
                 .take_recv();
             drop(proc_chans);
-
-
-            //waiter.processes.pushor_insert(ProcessWaiter::make_channel).1.as_ref().unwrap().clone()
-
-            /*let chan = channel();
-
-            waiter.channels.push((process, chan.0));
-            println!("Curent: {}/{}", waiter.channels.len(), self.num_threads);
-            if waiter.channels.len() == self.num_threads {
-                waiter.read_chan.0.send(()).unwrap();
-            }
-
-            recv = chan.1*/
         }
         ProcessHandle { pid, recv, inner: self.inner.clone(), proc: process }
     }
 
-    fn spawn_waiting_thread(read_chan: Receiver<()>, waiter_lock: Arc<Mutex<ProcessWaiterInner>>) {
+    fn spawn_waiting_thread(waiter_lock: Arc<Mutex<ProcessWaiterInner>>) {
         assert_eq!(std::mem::size_of::<libc::siginfo_t>(), std::mem::size_of::<better_siginfo_t>());
         std::thread::spawn(move || {
 
@@ -189,7 +152,7 @@ impl ProcessWaiter {
             chld_mask.add(Signal::SIGCHLD);
             signal::pthread_sigmask(SigmaskHow::SIG_BLOCK, Some(&chld_mask), None).unwrap();
 
-            let mut mask = SigSet::all();
+            let mask = SigSet::all();
             let mut info: better_siginfo_t = unsafe { std::mem::zeroed() };
 
             let sigset_ptr = mask.as_ref() as *const libc::sigset_t;
@@ -197,52 +160,16 @@ impl ProcessWaiter {
             let info_ptr = unsafe { std::mem::transmute::<*mut better_siginfo_t, *mut libc::siginfo_t>(&mut info as *mut better_siginfo_t) };
 
             loop {
-                /*eprintln!("Waiting for notification...");
-                read_chan.recv().unwrap();
-                eprintln!("Starting!");*/
-
-
-                /*let processes: Vec<(Process, Sender<SignalData>)> = waiter_lock.lock().unwrap().channels.drain(..).collect();
-
-                let mut pids: HashMap<i32, Sender<SignalData>> = HashMap::new();
-
-                for process in processes {
-                    let mut proc = process.0;
-                    proc.start().unwrap();
-                    proc.write_input().unwrap();
-                    proc.close_stdin().unwrap();
-
-                    pids.insert(proc.child_id().unwrap() as i32, process.1);
-
-                    ptrace::cont(Pid::from_raw(proc.child_id().unwrap() as i32), None)
-                        .unwrap_or_else(|e| panic!("Failed to call initial ptrace::cont for pid {:?}: {:?}", proc.child_id().unwrap(), e));
-
-
-                    println!("Spawning: {:?} {:?}", proc, proc.child_id().unwrap());
-                }*/
-
-                //println!("Pids: {:?}", pids);
-
                 let mut timeout = libc::timespec {
                     tv_sec: 1,
                     tv_nsec: 0
                 };
 
-                /*println!("Current threads:");
-                let tree = Command::new("pstree").args(&[std::process::id().to_string()])
-                    .output()
-                    .unwrap();
-
-                println!("{}", String::from_utf8(tree.stdout).unwrap());
-*/
-
                 loop {
 
-                    //eprintln!("Waiting for signal...");
                     // Safe because we know that the first two pointers are valid,
                     // and the third argument can safely be NULL
                     let res = unsafe { libc::sigtimedwait(sigset_ptr, info_ptr, &mut timeout as *mut libc::timespec) };
-                    //eprintln!("GOT SIGNAL! {:?} si_code={:?}", res, unsafe { info.fields.si_code });
                     if res == -1 {
                         if Errno::last() == Errno::EAGAIN {
                             continue;
@@ -259,11 +186,10 @@ impl ProcessWaiter {
                         // that we don't block with the lock held
                         let proc_chans = &mut waiter_lock.lock().unwrap().proc_chans;
 
-                        //println!("Map size: {:?}", proc_chans.len());
 
                         loop {
                             let res = waitpid(None, Some(WaitPidFlag::WNOHANG));
-                            //println!("Waitpid result: {:?}", res);
+                            trace!("Waitpid result: {:?}", res);
 
                             if res.is_err() {
                                 if res == Err(nix::Error::Sys(Errno::ECHILD)) {
@@ -284,8 +210,6 @@ impl ProcessWaiter {
                                 pid: pid
                             };
 
-                            //println!("Data: {:?}", data);
-
                             let sender: &Sender<SignalData> = &proc_chans.entry(pid)
                                 .or_insert_with(|| ChanPair::new())
                                 .sender;
@@ -295,25 +219,6 @@ impl ProcessWaiter {
 
                         }
                     }
-
-                    // Safe bcause si_signo is always safe to access
-                    /*let status = match unsafe { info.fields.si_signo } {
-                        libc::SIGCHLD => {
-                            // Safe because si_code is always safe to access
-                            match unsafe { info.fields.si_code } {
-                                CLD_EXITED | CLD_KILLED | CLD_DUMPED => {
-                                    SignalStatus::Exited
-                                },
-                                _ => SignalStatus::Other
-                            }
-                        },
-                        _ => SignalStatus::Other
-                    };
-
-
-                    // Safe because this union field is always safe to access
-                    let pid_raw = unsafe { info.fields.inner.kill.si_pid  };
-                    let pid = Pid::from_raw(pid_raw);*/
                 }
             }
         });
@@ -339,7 +244,7 @@ pub struct ProcessHandle {
 
 impl ProcessHandle {
     pub fn finish(&self, timeout: Duration) -> Result<Pid, SolverError> {
-        let mut start = Instant::now();
+        let start = Instant::now();
         let mut time_left = timeout;
 
         loop {
@@ -369,7 +274,6 @@ impl ProcessHandle {
                     }
 
                 },
-                //SignalStatus::Exited => return Ok(data.pid)
             }
         }
     }
@@ -507,22 +411,6 @@ impl Process {
         }
         let child = self.child.as_ref().unwrap();
         ptrace::cont(Pid::from_raw(child.id() as i32), None).map_err(|e| e.into())
-        // match res {
-        //     Ok(_) => Ok(()),
-        //     Err(x) => Err(SolverError::new(ErrorKind::Other, format!("{:?}", x))),
-        // }
-    }
-
-    // go until next pause point
-    pub fn wait(&self) -> Result<WaitStatus, SolverError> {
-        if self.child.is_none() {
-            SolverError::new(Runner::RunnerError, "child process not running");
-        }
-        let child = self.child.as_ref().unwrap();
-
-        // We wait for a SIGCHLD using sigtimedwait
-        // Based on https://www.linuxprogrammingblog.com/code-examples/signal-waiting-sigtimedwait
-        unimplemented!();
     }
 
     pub fn with_ptrace(&mut self, ptrace: bool) {
@@ -532,28 +420,4 @@ impl Process {
     pub fn spawn(self) -> ProcessHandle {
         WAITER.spawn_process(self)
     }
-
-    // attempt to run the program to completion
-    /*pub fn finish(&self, timeout: Duration) -> Result<(), SolverError> {
-        loop {
-            /*let cret = self.cont();
-            if cret.is_err() {
-                return cret;
-            }*/
-            match receiver.recv_timeout(Duration::new(5, 0)) {
-                Ok(data) => {
-                    println!("Got data :{:?}", data.status);
-                    return Ok(());
-                }
-                Err(x) => {
-                    println!("Stdout after timeout...");
-                    let mut stdout = Vec::new();
-                    self.read_stdout(&mut stdout).expect("Failed to read stdout!");
-                    println!("Stdout: {:?}", String::from_utf8(stdout).unwrap());
-                    panic!("Timeout in wait!");
-                }
-                _ => (),
-            }
-        }
-    }*/
 }
