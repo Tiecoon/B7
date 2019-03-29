@@ -8,6 +8,7 @@ use std::time::Duration;
 use threadpool::ThreadPool;
 
 use crate::b7tui;
+use crate::errors::*;
 use crate::generators::{Generate, Input};
 use crate::statistics;
 use crate::process::{WAITER, ProcessWaiter};
@@ -22,18 +23,12 @@ pub fn brute<
     path: &str,
     repeat: u32,
     gen: &mut G,
-    get_inst_count: fn(&str, &Input, &HashMap<String, String>) -> i64,
+    get_inst_count: fn(&str, &Input, &HashMap<String, String>) -> Result<i64, SolverError>,
     terminal: &mut B,
     timeout: Duration,
     vars: HashMap<String, String>,
-) {
+) -> Result<(), SolverError> {
     let n_workers = num_cpus::get();
-
-    //let mut waiter = ProcessWaiter::new();
-    //waiter.block_signal();
-    //waiter.start_thread();
-
-
 
     let pool = ThreadPool::new(n_workers);
 
@@ -77,23 +72,19 @@ pub fn brute<
 
             pool.execute(move || {
                 let inp = inp_pair.1;
-                let mut avg: f64 = 0.0;
-                let mut count: f64 = 0.0;
-                //waiter.init_for_thread();
-                for _ in 0..repeat {
-                    //println!("Spawning process!");
-                    let inst_count = get_inst_count(&test, &inp, &vars);
-                    avg += inst_count as f64;
-                    count += 1.0;
+                let mut inst_count = get_inst_count(&test, &inp, &vars);
+                trace!("inst_count: {:?}", inst_count);
+                for _ in 1..repeat {
+                    inst_count = get_inst_count(&test, &inp, &vars);
                     trace!("inst_count: {:?}", inst_count);
                 }
-                avg /= count;
-                let _ = tx.send((inp_pair.0, avg as i64));
+                let _ = tx.send((inp_pair.0, inst_count));
             });
         }
         // Track the minimum for stats later
         let mut min: u64 = std::i64::MAX as u64;
         // Get results from the threads
+
         for _ in 0..num_jobs {
             match rx.recv_timeout(timeout) {
                 Ok(tmp) => {
@@ -102,9 +93,11 @@ pub fn brute<
                     }
                     results.push(tmp);
                 }
-                Err(_) => {
-                    error!("timeout!") // TODO: print inpit
+                Err(x) => {
+                    warn!("returned: {:?}", x);
+                    continue;
                 }
+
             }
         }
         results.sort();
@@ -115,9 +108,12 @@ pub fn brute<
         terminal.wait();
 
         // inform generator of the result
+        if results.is_empty() {
+            warn!("Results empty {:?}", results);
+        }
         let good_idx = statistics::find_outlier(results.as_slice());
         if !gen.update(&good_idx.0) {
-            break;
+            break Ok(());
         }
     }
 }

@@ -5,7 +5,6 @@ use b7::*;
 
 use clap::{App, Arg};
 use std::collections::HashMap;
-use std::fs::File;
 use std::io::prelude::*;
 use std::process::exit;
 use std::time::Duration;
@@ -107,10 +106,11 @@ fn main() {
 
     let terminal = String::from(matches.value_of("ui").unwrap_or("tui")).to_lowercase();
 
-    let mut file = match File::open(format!("{}.cache", path)) {
-        Ok(x) => x,
-        _ => File::create(format!("{}.cache", path)).unwrap(),
-    };
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(format!("{}.cache", path))
+        .expect("cache file cannot be opened");
 
     let results = match &*terminal {
         "tui" => B7Opts::new(
@@ -136,13 +136,13 @@ fn main() {
         _ => panic!("unknown tui {}", terminal),
     };
 
-    if let Some(s) = results.arg_brute {
+    if !results.arg_brute.is_empty() {
         info!("Writing argv to cache");
-        write!(file, "argv: {}", s).expect("Failed to write argv to cache!");
+        write!(file, "argv: {}", results.arg_brute).expect("Failed to write argv to cache!");
     };
 
-    if let Some(s) = results.stdin_brute {
+    if !results.stdin_brute.is_empty() {
         info!("Writing stdin to cache");
-        write!(file, "stdin: {}", s).expect("Failed to write stdin to cache!");
+        write!(file, "stdin: {}", results.stdin_brute).expect("Failed to write stdin to cache!");
     };
 }
