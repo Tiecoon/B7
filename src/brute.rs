@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::marker::Send;
 use std::sync::mpsc::channel;
-use std::sync::{Arc, Barrier};
 use std::time::Duration;
 use threadpool::ThreadPool;
 
@@ -31,17 +30,6 @@ pub fn brute<
     let n_workers = num_cpus::get();
 
     let pool = ThreadPool::new(n_workers);
-
-    let barrier = Arc::new(Barrier::new(n_workers + 1));
-    for i in 0..n_workers {
-        let barrier = barrier.clone();
-        pool.execute(move || {
-            barrier.wait();
-            WAITER.init_for_thread();
-        });
-    }
-
-    barrier.wait();
 
     // Loop until generator says we are done
     loop {
