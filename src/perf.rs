@@ -1,10 +1,8 @@
 use crate::bindings::*;
 use crate::errors::*;
 use crate::brute::*;
-use crate::generators::Input;
 use crate::process::Process;
 use libc::{c_int, c_void, ioctl, pid_t, syscall};
-use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::mem;

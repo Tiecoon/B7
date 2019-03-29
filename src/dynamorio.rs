@@ -1,12 +1,9 @@
 use crate::process::Process;
 use crate::errors::*;
 use crate::brute::*;
-use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 use std::time::Duration;
-
-use crate::generators::Input;
 
 #[derive(Copy, Clone)]
 pub struct DynamorioSolver;

@@ -14,7 +14,7 @@ pub mod statistics;
 
 mod siginfo;
 
-use crate::brute::{brute, InstCountData, InstCounter};
+use crate::brute::{brute, InstCounter};
 use crate::errors::*;
 use crate::generators::*;
 use std::collections::HashMap;

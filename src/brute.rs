@@ -5,7 +5,6 @@ use std::marker::Send;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::time::Duration;
-use threadpool::ThreadPool;
 use scoped_pool::Pool;
 
 use crate::b7tui;
