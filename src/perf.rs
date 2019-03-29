@@ -80,7 +80,7 @@ pub fn get_inst_count(path: &str, inp: &Input, _vars: &HashMap<String, String>) 
 
     let fd = get_perf_fd(handle.pid().as_raw());
 
-    handle.finish(Duration::new(5, 0));
+    handle.finish(Duration::new(5, 0)).expect("Child didn't exit!");
 
     // Process instruction count
     let ret = match perf_get_inst_count(fd) {

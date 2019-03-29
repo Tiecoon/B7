@@ -305,7 +305,7 @@ impl ProcessWaiter {
                                 .sender;
 
 
-                            sender.send(data);
+                            sender.send(data).expect("Failed to send SignalData!");
 
                         }
                     }
@@ -546,7 +546,7 @@ impl Process {
                 Err(x) => {
                     println!("Stdout after timeout...");
                     let mut stdout = Vec::new();
-                    self.read_stdout(&mut stdout);
+                    self.read_stdout(&mut stdout).expect("Failed to read stdout!");
                     println!("Stdout: {:?}", String::from_utf8(stdout).unwrap());
                     panic!("Timeout in wait!");
                 }
