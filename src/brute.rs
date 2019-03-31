@@ -78,8 +78,8 @@ pub fn brute<
                     let inp = inp_pair.1;
                     let data = InstCountData {
                         path: test,
-                        inp: inp,
-                        vars: vars,
+                        inp,
+                        vars,
                         timeout
                     };
                     let mut inst_count = counter.get_inst_count(&data);

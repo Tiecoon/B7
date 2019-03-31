@@ -13,6 +13,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::time::{Duration, Instant};
+use std::convert::Into;
 use std::thread::{self, ThreadId};
 use lazy_static::lazy_static;
 
@@ -137,7 +138,7 @@ impl ProcessWaiter {
             let proc_chans = &mut self.inner.lock().unwrap().proc_chans;
 
             recv = proc_chans.entry(pid)
-                .or_insert_with(|| ChanPair::new())
+                .or_insert_with(ChanPair::new)
                 .take_recv();
         }
         ProcessHandle { pid, recv, inner: self.inner.clone(), proc: process }
@@ -206,11 +207,11 @@ impl ProcessWaiter {
 
                             let data = SignalData {
                                 status: res,
-                                pid: pid
+                                pid
                             };
 
                             let sender: &Sender<SignalData> = &proc_chans.entry(pid)
-                                .or_insert_with(|| ChanPair::new())
+                                .or_insert_with(ChanPair::new)
                                 .sender;
 
 
@@ -292,7 +293,7 @@ impl ProcessHandle {
         }
         let child = self.proc.child.as_mut().unwrap();
         match child.stdout.as_mut() {
-            Some(stdout) => stdout.read_to_end(buf).map_err(|e| e.into()),
+            Some(stdout) => stdout.read_to_end(buf).map_err(Into::into),
             None => Err(Error::last_os_error().into()),
         }
     }
@@ -378,7 +379,7 @@ impl Process {
         }
         let child = self.child.as_mut().unwrap();
         match child.stdin.as_mut() {
-            Some(stdin) => stdin.write_all(buf).map_err(|e| e.into()),
+            Some(stdin) => stdin.write_all(buf).map_err(Into::into),
             None => Err(SolverError::new(Runner::IoError, "could not open stdin")),
         }
     }
@@ -409,7 +410,7 @@ impl Process {
             ));
         }
         let child = self.child.as_ref().unwrap();
-        ptrace::cont(Pid::from_raw(child.id() as i32), None).map_err(|e| e.into())
+        ptrace::cont(Pid::from_raw(child.id() as i32), None).map_err(Into::into)
     }
 
     pub fn with_ptrace(&mut self, ptrace: bool) {
