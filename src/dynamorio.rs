@@ -3,7 +3,6 @@ use crate::errors::*;
 use crate::brute::*;
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
-use std::time::Duration;
 
 #[derive(Copy, Clone)]
 pub struct DynamorioSolver;
@@ -30,7 +29,7 @@ impl InstCounter for DynamorioSolver {
         //proccess.close_stdin()?;
 
         let mut handle = proccess.spawn();
-        handle.finish(Duration::new(5, 0))?;
+        handle.finish(data.timeout)?;
 
         let mut buf: Vec<u8> = Vec::new();
         handle.read_stdout(&mut buf)?;

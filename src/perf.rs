@@ -8,7 +8,6 @@ use std::fs::File;
 use std::mem;
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::FromRawFd;
-use std::time::Duration;
 
 // syscall number for perf syscall
 const PERF_EVENT_OPEN_SYSCALL: i64 = 298;
@@ -85,7 +84,7 @@ impl InstCounter for PerfSolver {
         //println!("Starting process!");
         let handle = process.spawn();
         let fd = get_perf_fd(handle.pid().as_raw())?;
-        handle.finish(Duration::new(5, 0))?;
+        handle.finish(data.timeout)?;
 
         // Process instruction count
         let ret = perf_get_inst_count(fd);
