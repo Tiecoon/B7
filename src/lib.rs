@@ -12,8 +12,6 @@ pub mod perf;
 pub mod process;
 pub mod statistics;
 
-mod siginfo;
-
 use crate::brute::{brute, InstCounter};
 use crate::errors::*;
 use crate::generators::*;

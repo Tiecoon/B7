@@ -17,13 +17,8 @@ use std::convert::Into;
 use std::thread::{self, ThreadId};
 use lazy_static::lazy_static;
 
-use crate::siginfo::better_siginfo_t;
-
 #[derive(Debug)]
 pub struct SignalData {
-    //pub info: better_siginfo_t,
-    // parsed from 'info' filed
-    //pub status: SignalStatus,
     pub status: WaitStatus,
     pub pid: Pid
 }
@@ -35,12 +30,6 @@ pub enum SignalStatus {
 
     Other
 }
-
-// All of the raw pointers in this type
-// are filled in with address by Linux,
-// to provide information about the signal.
-// We never actually try to deference them
-
 
 lazy_static! {
     pub static ref WAITER: ProcessWaiter = {
@@ -118,7 +107,6 @@ impl ProcessWaiter {
     // Records the initialization for the thread
     pub fn init_for_thread(&self) {
         self.block_signal();
-        //println!("Init for thread!");
 
         self.initialized.lock().unwrap().insert(thread::current().id());
     }
@@ -145,7 +133,6 @@ impl ProcessWaiter {
     }
 
     fn spawn_waiting_thread(waiter_lock: Arc<Mutex<ProcessWaiterInner>>) {
-        assert_eq!(std::mem::size_of::<libc::siginfo_t>(), std::mem::size_of::<better_siginfo_t>());
         std::thread::spawn(move || {
 
             let mut chld_mask = SigSet::empty();
@@ -153,11 +140,11 @@ impl ProcessWaiter {
             signal::pthread_sigmask(SigmaskHow::SIG_BLOCK, Some(&chld_mask), None).unwrap();
 
             let mask = SigSet::all();
-            let mut info: better_siginfo_t = unsafe { std::mem::zeroed() };
+            let mut info: libc::siginfo_t = unsafe { std::mem::zeroed() };
 
             let sigset_ptr = mask.as_ref() as *const libc::sigset_t;
+            let info_ptr = &mut info as *mut libc::siginfo_t;
             // Safe because we defined better_siginfo_t, to be compatible with libc::siginfo_t
-            let info_ptr = unsafe { std::mem::transmute::<*mut better_siginfo_t, *mut libc::siginfo_t>(&mut info as *mut better_siginfo_t) };
 
             loop {
                 let mut timeout = libc::timespec {
@@ -399,18 +386,6 @@ impl Process {
             }
             None => Err(Error::last_os_error().into()),
         }
-    }
-
-    // continue executing ptrace if it is paused
-    pub fn cont(&self) -> Result<(), SolverError> {
-        if self.child.is_none() {
-            return Err(SolverError::new(
-                Runner::RunnerError,
-                "child process not running",
-            ));
-        }
-        let child = self.child.as_ref().unwrap();
-        ptrace::cont(Pid::from_raw(child.id() as i32), None).map_err(Into::into)
     }
 
     pub fn with_ptrace(&mut self, ptrace: bool) {
