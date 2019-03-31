@@ -1,6 +1,6 @@
-use crate::process::Process;
-use crate::errors::*;
 use crate::brute::*;
+use crate::errors::*;
+use crate::process::Process;
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 
@@ -36,7 +36,8 @@ impl InstCounter for DynamorioSolver {
 
         let stdout = String::from_utf8_lossy(buf.as_slice());
 
-        let re = regex::Regex::new("Instrumentation results: (\\d+) instructions executed").unwrap();
+        let re =
+            regex::Regex::new("Instrumentation results: (\\d+) instructions executed").unwrap();
         let caps = match re.captures(&stdout) {
             Some(x) => x,
             None => {
@@ -52,4 +53,3 @@ impl InstCounter for DynamorioSolver {
         Ok(num2)
     }
 }
-

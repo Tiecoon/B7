@@ -1,47 +1,43 @@
 use crate::binary::Binary;
 use crate::errors::*;
-use nix::sys::ptrace;
-use nix::sys::signal::{self, SigSet, Signal, SigmaskHow};
-use nix::sys::wait::{waitpid, WaitStatus, WaitPidFlag};
+use lazy_static::lazy_static;
 use nix::errno::Errno;
+use nix::sys::ptrace;
+use nix::sys::signal::{self, SigSet, SigmaskHow, Signal};
+use nix::sys::wait::{waitpid, WaitPidFlag, WaitStatus};
 use nix::unistd::Pid;
+use std::collections::{HashMap, HashSet};
+use std::convert::Into;
 use std::ffi::OsStr;
 use std::io::{Error, Read, Write};
-use std::process::{Child, Command, Stdio};
 use std::os::unix::process::CommandExt;
-use std::collections::{HashMap, HashSet};
+use std::process::{Child, Command, Stdio};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
-use std::sync::mpsc::{channel, Sender, Receiver};
-use std::time::{Duration, Instant};
-use std::convert::Into;
 use std::thread::{self, ThreadId};
-use lazy_static::lazy_static;
+use std::time::{Duration, Instant};
 
 #[derive(Debug)]
 pub struct SignalData {
     pub status: WaitStatus,
-    pub pid: Pid
+    pub pid: Pid,
 }
-
 
 #[derive(Debug, Clone)]
 pub enum SignalStatus {
     Exited(Sender<SignalData>),
 
-    Other
+    Other,
 }
 
 lazy_static! {
-    pub static ref WAITER: ProcessWaiter = {
-        ProcessWaiter::new()
-    };
+    pub static ref WAITER: ProcessWaiter = { ProcessWaiter::new() };
 }
 
 // There is exactly one ProcessWaiter for the entire
 // process.
 // ProcessWaiter needs complete over signal handling
 // for the process, so multiple cannot ever coexist
-
 
 pub struct ProcessWaiter {
     started: bool,
@@ -51,16 +47,15 @@ pub struct ProcessWaiter {
 
 struct ChanPair {
     sender: Sender<SignalData>,
-    receiver: Option<Receiver<SignalData>>
+    receiver: Option<Receiver<SignalData>>,
 }
 
 impl ChanPair {
-
     fn new() -> ChanPair {
         let (sender, receiver) = channel();
         ChanPair {
             sender,
-            receiver: Some(receiver)
+            receiver: Some(receiver),
         }
     }
 
@@ -77,7 +72,7 @@ impl ProcessWaiter {
     pub fn new() -> ProcessWaiter {
         let mut waiter = ProcessWaiter {
             inner: Arc::new(Mutex::new(ProcessWaiterInner {
-                proc_chans: HashMap::new()
+                proc_chans: HashMap::new(),
             })),
             started: false,
             initialized: Mutex::new(HashSet::new()),
@@ -99,8 +94,8 @@ impl ProcessWaiter {
         let mut mask = SigSet::empty();
         mask.add(Signal::SIGCHLD);
 
-        signal::pthread_sigmask(SigmaskHow::SIG_BLOCK, Some(&mask), None).expect("Failed to block signals!");
-
+        signal::pthread_sigmask(SigmaskHow::SIG_BLOCK, Some(&mask), None)
+            .expect("Failed to block signals!");
     }
 
     // Block SIGCHLD for the calling thread
@@ -108,15 +103,17 @@ impl ProcessWaiter {
     pub fn init_for_thread(&self) {
         self.block_signal();
 
-        self.initialized.lock().unwrap().insert(thread::current().id());
+        self.initialized
+            .lock()
+            .unwrap()
+            .insert(thread::current().id());
     }
 
-    pub fn spawn_process(&self, mut process: Process) -> ProcessHandle  {
+    pub fn spawn_process(&self, mut process: Process) -> ProcessHandle {
         let mut recv;
         process.start().expect("Failed to spawn process!");
         process.write_input().unwrap();
         process.close_stdin().unwrap();
-
 
         let pid = Pid::from_raw(process.child_id().unwrap() as i32);
 
@@ -125,16 +122,21 @@ impl ProcessWaiter {
             // not exist, and take the receiver end
             let proc_chans = &mut self.inner.lock().unwrap().proc_chans;
 
-            recv = proc_chans.entry(pid)
+            recv = proc_chans
+                .entry(pid)
                 .or_insert_with(ChanPair::new)
                 .take_recv();
         }
-        ProcessHandle { pid, recv, inner: self.inner.clone(), proc: process }
+        ProcessHandle {
+            pid,
+            recv,
+            inner: self.inner.clone(),
+            proc: process,
+        }
     }
 
     fn spawn_waiting_thread(waiter_lock: Arc<Mutex<ProcessWaiterInner>>) {
         std::thread::spawn(move || {
-
             let mut chld_mask = SigSet::empty();
             chld_mask.add(Signal::SIGCHLD);
             signal::pthread_sigmask(SigmaskHow::SIG_BLOCK, Some(&chld_mask), None).unwrap();
@@ -149,14 +151,19 @@ impl ProcessWaiter {
             loop {
                 let mut timeout = libc::timespec {
                     tv_sec: 1,
-                    tv_nsec: 0
+                    tv_nsec: 0,
                 };
 
                 loop {
-
                     // Safe because we know that the first two pointers are valid,
                     // and the third argument can safely be NULL
-                    let res = unsafe { libc::sigtimedwait(sigset_ptr, info_ptr, &mut timeout as *mut libc::timespec) };
+                    let res = unsafe {
+                        libc::sigtimedwait(
+                            sigset_ptr,
+                            info_ptr,
+                            &mut timeout as *mut libc::timespec,
+                        )
+                    };
                     if res == -1 {
                         if Errno::last() == Errno::EAGAIN {
                             continue;
@@ -172,7 +179,6 @@ impl ProcessWaiter {
                         // We call waitpid with WNOHANG, which ensures
                         // that we don't block with the lock held
                         let proc_chans = &mut waiter_lock.lock().unwrap().proc_chans;
-
 
                         loop {
                             let res = waitpid(None, Some(WaitPidFlag::WNOHANG));
@@ -192,18 +198,12 @@ impl ProcessWaiter {
 
                             let pid = res.pid().unwrap();
 
-                            let data = SignalData {
-                                status: res,
-                                pid
-                            };
+                            let data = SignalData { status: res, pid };
 
-                            let sender: &Sender<SignalData> = &proc_chans.entry(pid)
-                                .or_insert_with(ChanPair::new)
-                                .sender;
-
+                            let sender: &Sender<SignalData> =
+                                &proc_chans.entry(pid).or_insert_with(ChanPair::new).sender;
 
                             sender.send(data).expect("Failed to send SignalData!");
-
                         }
                     }
                 }
@@ -212,21 +212,20 @@ impl ProcessWaiter {
     }
 }
 
-
 #[derive(Debug)]
 pub struct Process {
     binary: Binary,
     cmd: Command,
     child: Option<Child>,
     input: Vec<u8>,
-    ptrace: bool
+    ptrace: bool,
 }
 
 pub struct ProcessHandle {
     pid: Pid,
     inner: Arc<Mutex<ProcessWaiterInner>>,
     recv: Receiver<SignalData>,
-    proc: Process
+    proc: Process,
 }
 
 impl ProcessHandle {
@@ -240,27 +239,29 @@ impl ProcessHandle {
                 WaitStatus::Exited(_, _) => {
                     // Remove process data from the map now that it has exited
                     self.inner.lock().unwrap().proc_chans.remove(&data.pid);
-                    return Ok(data.pid)
-                },
+                    return Ok(data.pid);
+                }
                 _ => {
-
                     let now = Instant::now();
                     let elapsed = now - start;
                     if elapsed > timeout {
                         // TODO - kill process?
-                        return Err(SolverError::new(Runner::Timeout, "child timeout"))
+                        return Err(SolverError::new(Runner::Timeout, "child timeout"));
                     }
                     time_left = match time_left.checked_sub(elapsed) {
                         Some(t) => t,
-                        None => return Err(SolverError::new(Runner::Timeout, "child timed out"))
+                        None => return Err(SolverError::new(Runner::Timeout, "child timed out")),
                     };
 
                     if self.proc.ptrace {
-                        ptrace::cont(self.pid, None)
-                            .unwrap_or_else(|e| panic!("Failed to call ptrace::cont for pid {:?}: {:?}", self.pid, e))
+                        ptrace::cont(self.pid, None).unwrap_or_else(|e| {
+                            panic!(
+                                "Failed to call ptrace::cont for pid {:?}: {:?}",
+                                self.pid, e
+                            )
+                        })
                     }
-
-                },
+                }
             }
         }
     }
@@ -268,7 +269,6 @@ impl ProcessHandle {
     pub fn pid(&self) -> Pid {
         self.pid
     }
-
 
     // read buf to process then close it
     pub fn read_stdout(&mut self, buf: &mut Vec<u8>) -> Result<usize, SolverError> {
@@ -284,7 +284,6 @@ impl ProcessHandle {
             None => Err(Error::last_os_error().into()),
         }
     }
-
 }
 
 // Handle running a process
@@ -295,7 +294,7 @@ impl Process {
             cmd: Command::new(path),
             input: Vec::new(),
             child: None,
-            ptrace: false
+            ptrace: false,
         }
     }
 

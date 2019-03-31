@@ -1,8 +1,8 @@
 #[macro_use]
 extern crate log;
 
-use b7::*;
 use b7::brute::InstCounter;
+use b7::*;
 
 use clap::{App, Arg};
 use std::collections::HashMap;

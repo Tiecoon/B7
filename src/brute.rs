@@ -1,11 +1,11 @@
 // use std::cmp::Ord;
+use scoped_pool::Pool;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::marker::Send;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::time::Duration;
-use scoped_pool::Pool;
 
 use crate::b7tui;
 use crate::errors::*;
@@ -17,7 +17,7 @@ pub struct InstCountData {
     pub path: String,
     pub inp: Input,
     pub vars: HashMap<String, String>,
-    pub timeout: Duration
+    pub timeout: Duration,
 }
 
 pub trait InstCounter: Send + Sync + 'static {
@@ -53,7 +53,6 @@ pub fn brute<
         //let pool = ThreadPool
         let (tx, rx) = channel();
 
-
         let mut data = Vec::new();
 
         // run each case of the generators
@@ -62,8 +61,6 @@ pub fn brute<
         }
 
         let counter = Arc::new(counter);
-
-
 
         pool.scoped(|scope| {
             for inp_pair in data {
@@ -80,7 +77,7 @@ pub fn brute<
                         path: test,
                         inp,
                         vars,
-                        timeout
+                        timeout,
                     };
                     let mut inst_count = counter.get_inst_count(&data);
                     trace!("inst_count: {:?}", inst_count);
@@ -109,7 +106,6 @@ pub fn brute<
                     warn!("{:?} \n returned: {:?}", tmp.0, x);
                     continue;
                 }
-
             }
         }
         results.sort();

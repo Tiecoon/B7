@@ -1,6 +1,6 @@
 use crate::bindings::*;
-use crate::errors::*;
 use crate::brute::*;
+use crate::errors::*;
 use crate::process::Process;
 use libc::{c_int, c_void, ioctl, pid_t, syscall};
 use std::ffi::OsStr;
@@ -80,7 +80,6 @@ impl InstCounter for PerfSolver {
         process.input(data.inp.stdin.clone());
         process.with_ptrace(true);
 
-
         //println!("Starting process!");
         let handle = process.spawn();
         let fd = get_perf_fd(handle.pid().as_raw())?;
@@ -91,6 +90,5 @@ impl InstCounter for PerfSolver {
         drop(unsafe { File::from_raw_fd(fd) });
 
         ret
-
     }
 }
