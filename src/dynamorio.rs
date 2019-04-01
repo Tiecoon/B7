@@ -9,7 +9,7 @@ pub struct DynamorioSolver;
 
 impl InstCounter for DynamorioSolver {
     // Handles basic proc spawning and running under dino
-    // only works on 32 bit for now
+    // only works on 64 bit for now
     fn get_inst_count(&self, data: &InstCountData) -> Result<i64, SolverError> {
         let dynpath = data.vars.get("dynpath").unwrap();
         let drrun = format!("{}/bin64/drrun", dynpath);
@@ -23,10 +23,6 @@ impl InstCounter for DynamorioSolver {
             proccess.arg(OsStr::from_bytes(arg));
         }
         proccess.input(data.inp.stdin.clone());
-
-        //proccess.start()?;
-        //proccess.write_stdin(&inp.stdin)?;
-        //proccess.close_stdin()?;
 
         let mut handle = proccess.spawn();
         handle.finish(data.timeout)?;

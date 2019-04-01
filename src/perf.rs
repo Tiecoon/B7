@@ -80,7 +80,6 @@ impl InstCounter for PerfSolver {
         process.input(data.inp.stdin.clone());
         process.with_ptrace(true);
 
-        //println!("Starting process!");
         let handle = process.spawn();
         let fd = get_perf_fd(handle.pid().as_raw())?;
         handle.finish(data.timeout)?;

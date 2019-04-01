@@ -50,7 +50,6 @@ pub fn brute<
         let mut num_jobs: i64 = 0;
         let mut results: Vec<(I, i64)> = Vec::new();
 
-        //let pool = ThreadPool
         let (tx, rx) = channel();
 
         let mut data = Vec::new();
@@ -109,8 +108,6 @@ pub fn brute<
             }
         }
         results.sort();
-        //println!("Got results: {:?}", results);
-
         terminal.update(&results, min);
 
         terminal.wait();
