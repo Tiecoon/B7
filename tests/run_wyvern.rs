@@ -5,6 +5,26 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
+use ctor::ctor;
+
+
+// This hack ensures that we block SIGCHLD
+// on every thread. When running tests,
+// Rust spawns several test worker threads
+// from the main thread. In order to
+// ensure that *every* thread (including the main thread)
+// has SIGCHLD blocked, we use the 'ctor' crate to run
+// our code very early during process startup.
+//
+// This is not a normal function - main() has not
+// yet been called, any the Rust stdlib may not yet
+// be initialized. It should do the absolute minimum
+// necessary to get B7 working in a test environment
+#[ctor]
+fn on_init() {
+    b7::process::block_signal();
+}
+
 #[test]
 fn run_wyv() {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -27,7 +47,7 @@ fn run_wyv() {
         path.to_string_lossy().into_owned(),
         false,
         true,
-        dynamorio::get_inst_count,
+        Box::new(dynamorio::DynamorioSolver),
         &mut term,
         vars,
         Duration::new(5, 0),

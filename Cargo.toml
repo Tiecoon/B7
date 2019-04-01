@@ -25,3 +25,6 @@ bindgen = "0.42.2"
 num_cpus = "1.8.0"
 cc = "1.0.25"
 walkdir = "2"
+
+[dev-dependencies]
+ctor = "0.1.8"
