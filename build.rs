@@ -22,7 +22,7 @@ fn main() {
     let cpus = num_cpus::get();
 
     if !Command::new("cmake")
-        .args(&[".."])
+        .args(&["..", "-DDISABLE_WARNINGS=yes"])
         .current_dir(&out_dir)
         .spawn()
         .expect("Failed to spawn cmake")
