@@ -98,8 +98,6 @@ impl ProcessWaiter {
         ProcessWaiter::spawn_waiting_thread(self.inner.clone());
     }
 
-
-
     // Block SIGCHLD for the calling thread
     // Records the initialization for the thread
     pub fn init_for_thread(&self) {

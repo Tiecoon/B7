@@ -7,7 +7,6 @@ use std::time::Duration;
 
 use ctor::ctor;
 
-
 // This hack ensures that we block SIGCHLD
 // on every thread. When running tests,
 // Rust spawns several test worker threads
