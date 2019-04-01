@@ -6,7 +6,7 @@ use nix::sys::ptrace;
 use nix::sys::signal::{self, SigSet, SigmaskHow, Signal};
 use nix::sys::wait::{waitpid, WaitPidFlag, WaitStatus};
 use nix::unistd::Pid;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::convert::Into;
 use std::ffi::OsStr;
 use std::io::{Error, Read, Write};
@@ -14,9 +14,7 @@ use std::os::unix::process::CommandExt;
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
-use std::thread::{self, ThreadId};
 use std::time::{Duration, Instant};
-
 
 // Represents data returned from a call to waitpid()
 // For convenience, we include the pid directly in the
@@ -28,14 +26,13 @@ struct WaitData {
     pub pid: Pid,
 }
 
-/// The global ProcessWaiter instance
-/// This takes control of SIGCHLD handling for the entire
-/// process. For this reason, there can never be more than one,
-/// as they would interfere with each other.
-///
-/// See [ProcessWaiter::spawn_process] for details on how to use
-/// this
 lazy_static! {
+    /// The global ProcessWaiter instance
+    /// This takes control of SIGCHLD handling for the entire
+    /// process. For this reason, there can never be more than one,
+    /// as they would interfere with each other.
+    ///
+    /// See [ProcessWaiter::spawn_process] for details on how to use it
     pub static ref WAITER: ProcessWaiter = { ProcessWaiter::new() };
 }
 /// ProcessWaiter allows waiting on child processes
@@ -182,7 +179,7 @@ impl ProcessWaiter {
     /// that every thread has SIGCHLD blocked (unless a thread manually unblocks it).
     ///
     /// As described in sigtimedwait(2) [https://linux.die.net/man/2/sigtimedwait],
-    /// and signal(7) [http://man7.org/linux/man-pages/man7/signal.7.html], 
+    /// and signal(7) [http://man7.org/linux/man-pages/man7/signal.7.html],
     /// deterministic handling a signal in a multi-threaded environment
     /// requires that the signal in question be unblocked on at most one thread.
     /// If multiple threads have a signal unblocked, the kernel chooses an
