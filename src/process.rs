@@ -68,6 +68,14 @@ struct ProcessWaiterInner {
     proc_chans: HashMap<Pid, ChanPair>,
 }
 
+pub fn block_signal() {
+    let mut mask = SigSet::empty();
+    mask.add(Signal::SIGCHLD);
+
+    signal::pthread_sigmask(SigmaskHow::SIG_BLOCK, Some(&mask), None)
+        .expect("Failed to block signals!");
+}
+
 impl ProcessWaiter {
     pub fn new() -> ProcessWaiter {
         let mut waiter = ProcessWaiter {
@@ -77,7 +85,7 @@ impl ProcessWaiter {
             started: false,
             initialized: Mutex::new(HashSet::new()),
         };
-        waiter.block_signal();
+        block_signal();
         waiter.start_thread();
         waiter
     }
@@ -90,18 +98,12 @@ impl ProcessWaiter {
         ProcessWaiter::spawn_waiting_thread(self.inner.clone());
     }
 
-    pub fn block_signal(&self) {
-        let mut mask = SigSet::empty();
-        mask.add(Signal::SIGCHLD);
 
-        signal::pthread_sigmask(SigmaskHow::SIG_BLOCK, Some(&mask), None)
-            .expect("Failed to block signals!");
-    }
 
     // Block SIGCHLD for the calling thread
     // Records the initialization for the thread
     pub fn init_for_thread(&self) {
-        self.block_signal();
+        block_signal();
 
         self.initialized
             .lock()
