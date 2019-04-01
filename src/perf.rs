@@ -1,9 +1,8 @@
 use crate::bindings::*;
+use crate::brute::*;
 use crate::errors::*;
-use crate::generators::Input;
 use crate::process::Process;
 use libc::{c_int, c_void, ioctl, pid_t, syscall};
-use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::mem;
@@ -67,28 +66,28 @@ fn perf_get_inst_count(fd: c_int) -> Result<i64, SolverError> {
     }
 }
 
-// Handles basic proc spawning and running under perf
-pub fn get_inst_count(
-    path: &str,
-    inp: &Input,
-    _vars: &HashMap<String, String>,
-) -> Result<i64, SolverError> {
-    // TODO: error checking...
-    let mut proccess = Process::new(path);
-    for arg in inp.argv.iter() {
-        proccess.arg(OsStr::from_bytes(arg));
+#[derive(Copy, Clone)]
+pub struct PerfSolver;
+
+impl InstCounter for PerfSolver {
+    // Handles basic proc spawning and running under perf
+    fn get_inst_count(&self, data: &InstCountData) -> Result<i64, SolverError> {
+        // TODO: error checking...
+        let mut process = Process::new(&data.path);
+        for arg in data.inp.argv.iter() {
+            process.arg(OsStr::from_bytes(arg));
+        }
+        process.input(data.inp.stdin.clone());
+        process.with_ptrace(true);
+
+        let handle = process.spawn();
+        let fd = get_perf_fd(handle.pid().as_raw())?;
+        handle.finish(data.timeout)?;
+
+        // Process instruction count
+        let ret = perf_get_inst_count(fd);
+        drop(unsafe { File::from_raw_fd(fd) });
+
+        ret
     }
-
-    // Start Process run it to completion with all arguements
-    proccess.start()?;
-    proccess.write_stdin(&inp.stdin)?;
-    proccess.close_stdin()?;
-
-    let fd = get_perf_fd(proccess.child_id()? as i32)?;
-    proccess.finish()?;
-
-    // Process instruction count
-    let ret = perf_get_inst_count(fd);
-    drop(unsafe { File::from_raw_fd(fd) });
-    ret
 }

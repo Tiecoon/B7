@@ -1,14 +1,28 @@
 // use std::cmp::Ord;
+use scoped_pool::Pool;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::marker::Send;
 use std::sync::mpsc::channel;
-use threadpool::ThreadPool;
+use std::sync::Arc;
+use std::time::Duration;
 
 use crate::b7tui;
 use crate::errors::*;
 use crate::generators::{Generate, Input};
 use crate::statistics;
+
+#[derive(Clone, Debug)]
+pub struct InstCountData {
+    pub path: String,
+    pub inp: Input,
+    pub vars: HashMap<String, String>,
+    pub timeout: Duration,
+}
+
+pub trait InstCounter: Send + Sync + 'static {
+    fn get_inst_count(&self, data: &InstCountData) -> Result<i64, SolverError>;
+}
 
 // can take out Debug trait later
 // Combines the generators with the instruction counters to deduce the next step
@@ -20,38 +34,60 @@ pub fn brute<
     path: &str,
     repeat: u32,
     gen: &mut G,
-    get_inst_count: fn(&str, &Input, &HashMap<String, String>) -> Result<i64, SolverError>,
+    counter: &InstCounter,
     terminal: &mut B,
+    timeout: Duration,
     vars: HashMap<String, String>,
 ) -> Result<(), SolverError> {
+    let n_workers = num_cpus::get();
+
+    let pool = Pool::new(n_workers);
+
     // Loop until generator says we are done
     loop {
         // Number of threads to spawn
-        let n_workers = num_cpus::get();
+
         let mut num_jobs: i64 = 0;
         let mut results: Vec<(I, i64)> = Vec::new();
 
-        let pool = ThreadPool::new(n_workers);
         let (tx, rx) = channel();
+
+        let mut data = Vec::new();
 
         // run each case of the generators
         for inp_pair in gen.by_ref() {
-            num_jobs += 1;
-            let tx = tx.clone();
-            let test = String::from(path);
-            // give it to a thread to handle
-            let vars = vars.clone();
-            pool.execute(move || {
-                let inp = inp_pair.1;
-                let mut inst_count = get_inst_count(&test, &inp, &vars);
-                trace!("inst_count: {:?}", inst_count);
-                for _ in 1..repeat {
-                    inst_count = get_inst_count(&test, &inp, &vars);
-                    trace!("inst_count: {:?}", inst_count);
-                }
-                let _ = tx.send((inp_pair.0, inst_count));
-            });
+            data.push(inp_pair);
         }
+
+        let counter = Arc::new(counter);
+
+        pool.scoped(|scope| {
+            for inp_pair in data {
+                num_jobs += 1;
+                let tx = tx.clone();
+                let test = String::from(path);
+                // give it to a thread to handle
+                let vars = vars.clone();
+                let counter = counter.clone();
+
+                scope.execute(move || {
+                    let inp = inp_pair.1;
+                    let data = InstCountData {
+                        path: test,
+                        inp,
+                        vars,
+                        timeout,
+                    };
+                    let mut inst_count = counter.get_inst_count(&data);
+                    trace!("inst_count: {:?}", inst_count);
+                    for _ in 1..repeat {
+                        inst_count = counter.get_inst_count(&data);
+                        trace!("inst_count: {:?}", inst_count);
+                    }
+                    let _ = tx.send((inp_pair.0, inst_count));
+                });
+            }
+        });
         // Track the minimum for stats later
         let mut min: u64 = std::i64::MAX as u64;
         // Get results from the threads
@@ -63,9 +99,8 @@ pub fn brute<
                     if (x as u64) < min {
                         min = x as u64;
                     }
-                    results.push((tmp.0, x))
+                    results.push((tmp.0, x));
                 }
-
                 Err(x) => {
                     warn!("{:?} \n returned: {:?}", tmp.0, x);
                     continue;
@@ -73,7 +108,6 @@ pub fn brute<
             }
         }
         results.sort();
-
         terminal.update(&results, min);
 
         terminal.wait();

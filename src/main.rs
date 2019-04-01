@@ -1,12 +1,14 @@
 #[macro_use]
 extern crate log;
 
+use b7::brute::InstCounter;
 use b7::*;
 
 use clap::{App, Arg};
 use std::collections::HashMap;
 use std::io::prelude::*;
 use std::process::exit;
+use std::time::Duration;
 
 fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
     App::new("B7")
@@ -56,6 +58,12 @@ fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
                 .help("Path to DynamoRio build folder")
                 .takes_value(true),
         )
+        .arg(
+            Arg::with_name("timeout")
+                .long("timeout")
+                .help("per-thread timeout to use when waiting for results, in seconds")
+                .takes_value(true),
+        )
         .get_matches()
 }
 
@@ -78,10 +86,18 @@ fn main() {
 
     let solvername = matches.value_of("solver").unwrap_or("perf");
     let solver = match solvername {
-        "perf" => perf::get_inst_count,
-        "dynamorio" => dynamorio::get_inst_count,
+        "perf" => Box::new(perf::PerfSolver) as Box<InstCounter>,
+        "dynamorio" => Box::new(dynamorio::DynamorioSolver) as Box<InstCounter>,
         _ => panic!("unknown solver"),
     };
+    let timeout = Duration::new(
+        matches
+            .value_of("timeout")
+            .unwrap_or("5")
+            .parse()
+            .expect("Failed to parse duration!"),
+        0,
+    );
 
     let stdin_input = matches.value_of("start").unwrap_or("");
     let mut vars = HashMap::new();
@@ -105,6 +121,7 @@ fn main() {
             solver,
             &mut b7tui::Tui::new(Some(String::from(path))),
             vars,
+            timeout,
         )
         .run(),
         "env" => B7Opts::new(
@@ -114,6 +131,7 @@ fn main() {
             solver,
             &mut b7tui::Env::new(),
             vars,
+            timeout,
         )
         .run(),
         _ => panic!("unknown tui {}", terminal),

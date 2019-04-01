@@ -1,7 +1,7 @@
 type StringType = Vec<u8>;
 type ArgumentType = Vec<StringType>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Input {
     pub argv: ArgumentType,
     pub stdin: StringType,

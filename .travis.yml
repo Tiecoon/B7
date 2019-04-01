@@ -18,3 +18,7 @@ script:
   - cargo fmt --all -- --check
   - cargo build
   - cargo test
+
+cache:
+  directories:
+  - dynamorio/build

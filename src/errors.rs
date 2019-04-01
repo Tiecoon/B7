@@ -24,6 +24,7 @@ pub enum Runner {
     MissingArgs,
     IoError,
     NixError,
+    Timeout,
     Unknown,
 }
 
