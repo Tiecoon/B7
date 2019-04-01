@@ -17,37 +17,51 @@ use std::sync::{Arc, Mutex};
 use std::thread::{self, ThreadId};
 use std::time::{Duration, Instant};
 
+
+// Represents data returned from a call to waitpid()
+// For convenience, we include the pid directly in the
+// struct, to avoid needing to unwrap it from WaitStatus
+// repeatedly
 #[derive(Debug)]
-pub struct SignalData {
+struct WaitData {
     pub status: WaitStatus,
     pub pid: Pid,
 }
 
-#[derive(Debug, Clone)]
-pub enum SignalStatus {
-    Exited(Sender<SignalData>),
-
-    Other,
-}
-
+/// The global ProcessWaiter instance
+/// This takes control of SIGCHLD handling for the entire
+/// process. For this reason, there can never be more than one,
+/// as they would interfere with each other.
+///
+/// See [ProcessWaiter::spawn_process] for details on how to use
+/// this
 lazy_static! {
     pub static ref WAITER: ProcessWaiter = { ProcessWaiter::new() };
 }
-
-// There is exactly one ProcessWaiter for the entire
-// process.
-// ProcessWaiter needs complete over signal handling
-// for the process, so multiple cannot ever coexist
-
+/// ProcessWaiter allows waiting on child processes
+/// while specifying a timeout. There is exactly
+/// one instance of this struct for the entire process -
+/// it's stored in [WAITER]
 pub struct ProcessWaiter {
     started: bool,
     inner: Arc<Mutex<ProcessWaiterInner>>,
-    initialized: Mutex<HashSet<ThreadId>>,
 }
 
+/// The Mutex-protected interior of a ProcessWaiter.
+/// This is used to give the waiter thread access
+/// to the part of ProcessWaiter that it actually uses,
+/// avoiding the need to wrap the entire ProcessWaiter
+/// in a mutex
+struct ProcessWaiterInner {
+    proc_chans: HashMap<Pid, ChanPair>,
+}
+
+/// Represents the two ends of an MPSC channel
+/// The 'receiver' field will be taken by
+/// the consumer (i.e. the caller of ProcessWaiter::spawn_process)
 struct ChanPair {
-    sender: Sender<SignalData>,
-    receiver: Option<Receiver<SignalData>>,
+    sender: Sender<WaitData>,
+    receiver: Option<Receiver<WaitData>>,
 }
 
 impl ChanPair {
@@ -59,15 +73,27 @@ impl ChanPair {
         }
     }
 
-    fn take_recv(&mut self) -> Receiver<SignalData> {
+    fn take_recv(&mut self) -> Receiver<WaitData> {
         self.receiver.take().expect("Already took receiver!")
     }
 }
 
-struct ProcessWaiterInner {
-    proc_chans: HashMap<Pid, ChanPair>,
-}
-
+/// Blocks SIGCHLD for the current thread.
+/// Normally, there's no need to call this function - ProcessWaiter
+/// will automatically call it the first time it is used.
+///
+/// However, this function *must* be used when using ProcessWaiter
+/// with the standard Rust testing framework (e.g. `#[test]` functions)
+///
+/// Because tests are run on separate threads, the main thread will
+/// never have SIGCHLD blocked. This will prevent ProcessWaiter from
+/// working properly, as SIGCHLD must be blocked on every thread.
+///
+/// In a testing environment, 'block_signal' must be somehow called
+/// on the main thread. One approach is to use the `ctor` crate,
+/// and register a contructor that calls `block_signal`.
+///
+/// For an example of what this looks like, see 'tests/run_wyvern.rs'
 pub fn block_signal() {
     let mut mask = SigSet::empty();
     mask.add(Signal::SIGCHLD);
@@ -77,20 +103,19 @@ pub fn block_signal() {
 }
 
 impl ProcessWaiter {
-    pub fn new() -> ProcessWaiter {
+    fn new() -> ProcessWaiter {
         let mut waiter = ProcessWaiter {
             inner: Arc::new(Mutex::new(ProcessWaiterInner {
                 proc_chans: HashMap::new(),
             })),
             started: false,
-            initialized: Mutex::new(HashSet::new()),
         };
         block_signal();
         waiter.start_thread();
         waiter
     }
 
-    pub fn start_thread(&mut self) {
+    fn start_thread(&mut self) {
         if self.started {
             panic!("Already started waiter thread!");
         }
@@ -102,13 +127,10 @@ impl ProcessWaiter {
     // Records the initialization for the thread
     pub fn init_for_thread(&self) {
         block_signal();
-
-        self.initialized
-            .lock()
-            .unwrap()
-            .insert(thread::current().id());
     }
 
+    /// Spawns a process, returing a ProcessHandle which can be
+    /// used to interact with the spawned process.
     pub fn spawn_process(&self, mut process: Process) -> ProcessHandle {
         let mut recv;
         process.start().expect("Failed to spawn process!");
@@ -135,18 +157,79 @@ impl ProcessWaiter {
         }
     }
 
+    /// The core logic of ProcessWaiter. This is fairly tricky, due to the complications
+    /// of Linux signal handling. It works like this:
+    ///
+    /// We call 'sigtimedwait' in a loop, with a signal mask containing only 'SIGCHLD'.
+    /// Whenever we receieve a signal (which is guaranteed to be SIGCHLD),
+    /// we call waitpid() in a loop with WNOHANG. This ensures that we process
+    /// all child updates that have occured since our last call to 'sigtimedwait'.
+    /// Due to how Linux signal delivery works, we are not guaranteed to receive
+    /// a SIGCHLD for every single child event - if a SIGCHLD arives
+    /// while another SIGCHLD is still pending, it won't be delievered.
+    /// We then send the 'waitpid' result over an MPSC channel, where it
+    /// will be consumed by the thread waiting on the child.
+    ///
+    /// There are a number of subtleties here:
+    ///
+    /// By 'waiter thead', we mean the thread spawned by this function.
+    /// By 'spawned thread', we mean the thread that actually spawns
+    /// a child process, via calling ProcessWaiter::spawn_process
+    ///
+    /// 1. We block SIGCHLD on every thread. Normally, ProcessWaiter
+    /// will be initialized from the main thread. Since threads
+    /// inherit the blocked signal set of their parent, this ensures
+    /// that every thread has SIGCHLD blocked (unless a thread manually unblocks it).
+    ///
+    /// As described in sigtimedwait(2) [https://linux.die.net/man/2/sigtimedwait],
+    /// and signal(7) [http://man7.org/linux/man-pages/man7/signal.7.html], 
+    /// deterministic handling a signal in a multi-threaded environment
+    /// requires that the signal in question be unblocked on at most one thread.
+    /// If multiple threads have a signal unblocked, the kernel chooses an
+    /// arbitrary thread to deliver the signal to.
+    ///
+    /// In our case, we block SIGCHLD on *all* threads. This ensure
+    /// that our call to `sigtimedwait` will receieve the SIGCHLD - otherwise,
+    /// it could be delivered to some other thread.
+    ///
+    /// 2. When a consumer of ProcessWaiter wants to spawn a process,
+    /// it calls 'spawn_process'. 'spawn_process' registers interest
+    /// in the process by storing a new MPSC channel into the 'proc_chans'
+    /// map, using the process PID as the key.
+    ///
+    /// However, since we use the PID as the key, it's only possible
+    /// for the parent to update the map *after* the process has been spawned.
+    /// This creates the potential for a race condition - if the process runs
+    /// for a very short amount of time, it might exit before
+    /// the parent has a chance to store the channel in the map.
+    ///
+    /// To avoid this race condition, we allow the waiter thread to *also*
+    /// store the channel in the map. This creates two possible cases:
+    ///
+    /// Case 1: The spawned process lives long enough for the parent
+    /// thread to store its PID and channel in the map. When it eventually
+    /// exits, the waiter thread sees the existing channel, and sends
+    /// the waitpid() data to the parent listening on the receive end of the channel.
+    ///
+    /// Case 2: The spawned process lives for a very short time. Specifically,
+    /// the waiter thread receives a SIGCHLD before the spawner thread has a
+    /// chance to update the map. In this case, the waiter thread will
+    /// create a new channel, and send the waitpid data to the 'Sender'
+    /// half of the channel. Because MPSC channels are buffered,
+    /// the WaitData will simply remain in the queue until
+    /// the spawner thread retrieves the 'Reciever' half of the channel from the map.
     fn spawn_waiting_thread(waiter_lock: Arc<Mutex<ProcessWaiterInner>>) {
         std::thread::spawn(move || {
-            let mut chld_mask = SigSet::empty();
-            chld_mask.add(Signal::SIGCHLD);
-            signal::pthread_sigmask(SigmaskHow::SIG_BLOCK, Some(&chld_mask), None).unwrap();
+            // Block SIGCHLD on this thread, just to be safe (in case
+            // it somehow wasn't blocked on the parent thread)
+            block_signal();
 
-            let mask = SigSet::all();
+            let mut mask = SigSet::empty();
+            mask.add(Signal::SIGCHLD);
             let mut info: libc::siginfo_t = unsafe { std::mem::zeroed() };
 
             let sigset_ptr = mask.as_ref() as *const libc::sigset_t;
             let info_ptr = &mut info as *mut libc::siginfo_t;
-            // Safe because we defined better_siginfo_t, to be compatible with libc::siginfo_t
 
             loop {
                 let mut timeout = libc::timespec {
@@ -198,12 +281,12 @@ impl ProcessWaiter {
 
                             let pid = res.pid().unwrap();
 
-                            let data = SignalData { status: res, pid };
+                            let data = WaitData { status: res, pid };
 
-                            let sender: &Sender<SignalData> =
+                            let sender: &Sender<WaitData> =
                                 &proc_chans.entry(pid).or_insert_with(ChanPair::new).sender;
 
-                            sender.send(data).expect("Failed to send SignalData!");
+                            sender.send(data).expect("Failed to send WaitData!");
                         }
                     }
                 }
@@ -224,7 +307,7 @@ pub struct Process {
 pub struct ProcessHandle {
     pid: Pid,
     inner: Arc<Mutex<ProcessWaiterInner>>,
-    recv: Receiver<SignalData>,
+    recv: Receiver<WaitData>,
     proc: Process,
 }
 
