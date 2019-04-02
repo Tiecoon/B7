@@ -2,12 +2,12 @@ use crate::brute::*;
 use crate::errors::*;
 use crate::process::Process;
 use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
 use std::fs::File;
 use std::io::Read;
 use std::os::unix::ffi::OsStrExt;
+use std::path::{Path, PathBuf};
 
-use goblin::elf::header::{EI_CLASS, header32};
+use goblin::elf::header::{header32, EI_CLASS};
 use goblin::elf::Elf;
 
 #[derive(Copy, Clone)]
@@ -15,9 +15,8 @@ pub struct DynamorioSolver;
 
 enum Arch {
     ThirtyTwo,
-    SixtyFour
+    SixtyFour,
 }
-
 
 impl DynamorioSolver {
     /// Reads the ELFCLASS of the ELF binary at the specified
@@ -44,7 +43,7 @@ impl InstCounter for DynamorioSolver {
 
         let (build_dir, bin_dir) = match self.get_arch(&PathBuf::from(&data.path))? {
             Arch::ThirtyTwo => ("build_32", "bin32"),
-            Arch::SixtyFour => ("build_64", "bin64")
+            Arch::SixtyFour => ("build_64", "bin64"),
         };
 
         let mut base_path = dynpath.clone();
