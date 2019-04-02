@@ -35,7 +35,6 @@ pub trait Update: Iterator {
 /// * notify generator which was chosen
 /// * generator updates its internal state
 /// * returns true, next round will return next inputs to try or false if done
-
 pub trait Generate<T>: Iterator<Item = (T, Input)> + Update<Id = T> {}
 
 pub trait Events {

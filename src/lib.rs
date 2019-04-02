@@ -60,7 +60,7 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
     }
 
     /// run b7 under given state and args
-    pub fn run(&mut self) -> B7Results {
+    pub fn run(&mut self) -> Result<B7Results, SolverError> {
         let mut arg_brute = String::new();
         let mut stdin_brute = String::new();
         if self.argstate {
@@ -70,8 +70,7 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
                 self.vars.clone(),
                 self.timeout,
                 self.terminal,
-            )
-            .unwrap();
+            )?;
         }
 
         if self.stdinstate {
@@ -81,17 +80,16 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
                 self.vars.clone(),
                 self.timeout,
                 self.terminal,
-            )
-            .unwrap();
+            )?;
         }
 
         // let terminal decide if it should wait for user
         self.terminal.done();
 
-        B7Results {
+        Ok(B7Results {
             arg_brute,
             stdin_brute,
-        }
+        })
     }
 }
 
