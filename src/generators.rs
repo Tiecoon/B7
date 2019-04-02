@@ -2,6 +2,7 @@ type StringType = Vec<u8>;
 type ArgumentType = Vec<StringType>;
 
 #[derive(Debug, Clone)]
+/// Holds the various input the runner is expected to use
 pub struct Input {
     pub argv: ArgumentType,
     pub stdin: StringType,
@@ -13,32 +14,28 @@ impl Input {
     }
 }
 
-/*
- * GENERATORS:
- * the brute forcer will proceed in a sequence of rounds
- * each round is composed of:
- *   collect all inputs to try from the generator
- *   execute program with collected inputs and get inst counts
- *   choose the right input (stats analysis)
- *   notify generator which was chosen
- *     generator updates its internal state
- *     returns true, next round will return next inputs to try
- *     or false if done
- *
- * generators follow this spec:
- *   iteration: should return (Id, Input)
- *     Id is an arbitrary type, an identifier the generator uses to identify the input
- *   update: when brute forcer chooses the (argv, stdin) pair that was best,
- *     it calls update(Id) passing the associated Id of the chosen input
- */
-
 // sub-trait might not be needed...
 pub trait Update: Iterator {
     type Id;
+    /// signals to the generator to start solving with chosen as the next constraint
+    ///
+    /// # Arguements
+    ///
+    /// * `chosen` - the value that was found to be correct
     fn update(&mut self, chosen: &Self::Id) -> bool;
 }
 
 // Generate trait: has iteration and updating with right Id type
+/// GENERATORS:
+/// the brute forcer will proceed in a sequence of rounds
+/// each round is composed of:
+/// * collect all inputs to try from the generator
+/// * execute program with collected inputs and get inst counts
+/// * choose the right input (stats analysis)
+/// * notify generator which was chosen
+/// * generator updates its internal state
+/// * returns true, next round will return next inputs to try or false if done
+
 pub trait Generate<T>: Iterator<Item = (T, Input)> + Update<Id = T> {}
 
 pub trait Events {
@@ -47,6 +44,7 @@ pub trait Events {
 
 // a blanket impl: any type T that implements iteration and updating with
 // the right types has an (empty) impl for Generate
+/// returns all possible inputs from the current generator state
 impl<T: Iterator<Item = (U, Input)> + Update<Id = U>, U> Generate<U> for T {}
 
 /* code for stdin generators */

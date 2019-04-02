@@ -10,6 +10,7 @@ use std::io::prelude::*;
 use std::process::exit;
 use std::time::Duration;
 
+/// parses program arguements
 fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
     App::new("B7")
         .version("0.1.0")
@@ -67,6 +68,7 @@ fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
         .get_matches()
 }
 
+/// output the help menu based on input
 fn print_usage(matches: &clap::ArgMatches) -> ! {
     println!("{}", matches.usage());
     exit(-1);

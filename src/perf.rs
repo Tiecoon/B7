@@ -9,10 +9,13 @@ use std::mem;
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::FromRawFd;
 
-// syscall number for perf syscall
+/// syscall number for perf syscall
 const PERF_EVENT_OPEN_SYSCALL: i64 = 298;
 
-// initiliaze perf on a process
+/// initiliaze perf on a process
+///
+/// # Return
+/// * i32 unix file descriptor id
 fn perf_event_open(
     hw_event: *const perf_event_attr,
     pid: pid_t,
@@ -23,7 +26,7 @@ fn perf_event_open(
     unsafe { syscall(PERF_EVENT_OPEN_SYSCALL, hw_event, pid, cpu, group_fd, flags) as i32 }
 }
 
-// perform struct setup and clear the perf file descriptor
+/// perform perf struct setup and clear the perf file descriptor
 fn get_perf_fd(pid: pid_t) -> Result<i32, SolverError> {
     let mut pe: perf_event_attr = unsafe { mem::zeroed() };
 
@@ -50,7 +53,7 @@ fn get_perf_fd(pid: pid_t) -> Result<i32, SolverError> {
     Ok(fd)
 }
 
-// read the instruction count stoed if perf is establised
+/// read instruction count from perf file descriptor
 fn perf_get_inst_count(fd: c_int) -> Result<i64, SolverError> {
     let mut count: i64 = 0;
     match unsafe { libc::read(fd, &mut count as *mut i64 as *mut c_void, 8) as i64 } {
@@ -71,6 +74,10 @@ pub struct PerfSolver;
 
 impl InstCounter for PerfSolver {
     // Handles basic proc spawning and running under perf
+    /// runs the processes under ptrace and follow execution with perf
+    ///
+    /// # Return
+    /// * number of instructions perf says were executed or error
     fn get_inst_count(&self, data: &InstCountData) -> Result<i64, SolverError> {
         // TODO: error checking...
         let mut process = Process::new(&data.path);

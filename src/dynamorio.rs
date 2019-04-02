@@ -8,8 +8,8 @@ use std::os::unix::ffi::OsStrExt;
 pub struct DynamorioSolver;
 
 impl InstCounter for DynamorioSolver {
-    // Handles basic proc spawning and running under dino
-    // only works on 64 bit for now
+    /// Handles basic proc spawning and running under dynamorio
+    /// only works on 64 bit for now
     fn get_inst_count(&self, data: &InstCountData) -> Result<i64, SolverError> {
         let dynpath = data.vars.get("dynpath").unwrap();
         let drrun = format!("{}/bin64/drrun", dynpath);

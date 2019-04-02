@@ -13,6 +13,7 @@ use crate::generators::{Generate, Input};
 use crate::statistics;
 
 #[derive(Clone, Debug)]
+/// holds information that is universal to InstCounters
 pub struct InstCountData {
     pub path: String,
     pub inp: Input,
@@ -21,11 +22,57 @@ pub struct InstCountData {
 }
 
 pub trait InstCounter: Send + Sync + 'static {
+    /// function that runs a program and returns a number representing progress in a binary
+    /// runs passed on info in data
     fn get_inst_count(&self, data: &InstCountData) -> Result<i64, SolverError>;
 }
 
 // can take out Debug trait later
-// Combines the generators with the instruction counters to deduce the next step
+/// Combines the generators with the instruction counters to deduce the next input.
+/// Responsible for spinning up threads and managing process input
+///
+/// # Arguements
+///
+/// * `path` - a string slice that holds the path to the binary
+/// * `repeat` - an int to tell how many runs to average for each input
+/// * `gen` - a generators::generator that has Display trait to use to generate additional input
+/// * `counter` - the inst_counter function to run the binary under
+/// * `terminal` - a b7tui::Ui to present data to, so it can display it
+/// * `timeout` - a duration in seconds to timeout program after
+/// * `vars` - additional variables that the counter function might need
+///
+/// # Example
+///
+/// ```no_run
+/// # use crate::b7::errors::*;
+/// # use crate::b7::generators;
+/// # use crate::b7::perf;
+/// # use crate::b7::b7tui;
+/// # use b7::brute::brute;
+/// # use b7::brute::InstCounter;
+/// use std::collections::HashMap;
+/// use std::time::Duration;
+/// use std::io;
+/// fn main() -> Result<(), SolverError> {
+///
+///    let mut todo = generators::ArgcGenerator::new(0,9);
+///
+///    brute(
+///        "./tests/wyvern",
+///        1,
+///        &todo,
+///        &perf::PerfSolver,
+///        &mut b7tui::Env,
+///        Duration::new(5,0),
+///        HashMap::new(),
+///    )?;
+///
+///    // prints the number of argc it found
+///    println!("argc is: {}",todo);
+///
+///    Ok(())
+/// }
+/// ```
 pub fn brute<
     G: Generate<I> + Display,
     I: 'static + std::fmt::Display + Clone + Debug + Send + Ord,
