@@ -2,18 +2,53 @@ use crate::brute::*;
 use crate::errors::*;
 use crate::process::Process;
 use std::ffi::OsStr;
+use std::fs::File;
+use std::io::Read;
 use std::os::unix::ffi::OsStrExt;
+
+use goblin::elf::header::{EI_CLASS, header32};
+use goblin::elf::Elf;
 
 #[derive(Copy, Clone)]
 pub struct DynamorioSolver;
+
+enum Arch {
+    ThirtyTwo,
+    SixtyFour
+}
+
+
+impl DynamorioSolver {
+    /// Reads the ELFCLASS of the ELF binary at the specified
+    /// TODO: Support other binary formats (PE, Macho-O, etc)
+    fn get_arch(&self, bin: &str) -> Result<Arch, SolverError> {
+        let mut f = File::open(bin)?;
+        let mut buf = Vec::new();
+        f.read_to_end(&mut buf)?;
+
+        let bin = Elf::parse(&buf)?;
+        if bin.header.e_ident[EI_CLASS] == header32::ELFCLASS {
+            Ok(Arch::ThirtyTwo)
+        } else {
+            Ok(Arch::SixtyFour)
+        }
+    }
+}
 
 impl InstCounter for DynamorioSolver {
     // Handles basic proc spawning and running under dino
     // only works on 64 bit for now
     fn get_inst_count(&self, data: &InstCountData) -> Result<i64, SolverError> {
         let dynpath = data.vars.get("dynpath").unwrap();
-        let drrun = format!("{}/bin64/drrun", dynpath);
-        let libinscount = format!("{}/api/bin/libinscount.so", dynpath);
+
+        let (build_dir, bin_dir) = match self.get_arch(&data.path)? {
+            Arch::ThirtyTwo => ("build_32", "bin32"),
+            Arch::SixtyFour => ("build_64", "bin64")
+        };
+
+        let base_path = format!("{}/{}", dynpath, build_dir);
+        let drrun = format!("{}/{}/drrun", base_path, bin_dir);
+        let libinscount = format!("{}/api/bin/libinscount.so", base_path);
         let mut proccess = Process::new(&drrun);
         proccess.arg("-c");
         proccess.arg(libinscount);
