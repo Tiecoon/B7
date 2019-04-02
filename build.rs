@@ -23,11 +23,13 @@ fn main() {
     let cpus = num_cpus::get();
 
     let run_cmake = |cmd: &mut Command| {
-        if !cmd.spawn()
-        .expect("Failed to spawn cmake")
-        .wait()
-        .expect("Failed to run cmake")
-        .success() {
+        if !cmd
+            .spawn()
+            .expect("Failed to spawn cmake")
+            .wait()
+            .expect("Failed to run cmake")
+            .success()
+        {
             panic!("cmake failed!");
         }
     };
@@ -40,26 +42,33 @@ fn main() {
             .expect("Failed to spawn make")
             .wait()
             .expect("Failed to run make")
-            .success() {
-                panic!("make failed!");
+            .success()
+        {
+            panic!("make failed!");
         }
     };
 
-    run_cmake(Command::new("cmake")
-        .args(&["..", "-DDISABLE_WARNINGS=yes"])
-        .current_dir(&out_dir_64));
+    run_cmake(
+        Command::new("cmake")
+            .args(&["..", "-DDISABLE_WARNINGS=yes"])
+            .current_dir(&out_dir_64),
+    );
 
     run_make(&out_dir_64);
 
-    run_cmake(Command::new("cmake")
-        .args(&["..", "-DDISABLE_WARNINGS=yes", "-DCMAKE_DISABLE_FIND_PACKAGE_Qt5Widgets=TRUE"])
-        .env("CXXFLAGS", "-m32")
-        .env("CFLAGS", "-m32")
-        .current_dir(&out_dir_32));
+    run_cmake(
+        Command::new("cmake")
+            .args(&[
+                "..",
+                "-DDISABLE_WARNINGS=yes",
+                "-DCMAKE_DISABLE_FIND_PACKAGE_Qt5Widgets=TRUE",
+            ])
+            .env("CXXFLAGS", "-m32")
+            .env("CFLAGS", "-m32")
+            .current_dir(&out_dir_32),
+    );
 
     run_make(&out_dir_32);
-
-
 
     // Generate Rust bindings
     let bindings = bindgen::Builder::default()
