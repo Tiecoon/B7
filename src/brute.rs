@@ -55,12 +55,12 @@ pub trait InstCounter: Send + Sync + 'static {
 /// use std::io;
 /// fn main() -> Result<(), SolverError> {
 ///
-///    let mut todo = generators::ArgcGenerator::new(0,9);
+///    let mut task = generators::ArgcGenerator::new(0,9);
 ///
 ///    brute(
 ///        "./tests/wyvern",
 ///        1,
-///        &todo,
+///        &mut task,
 ///        &perf::PerfSolver,
 ///        &mut b7tui::Env,
 ///        Duration::new(5,0),
@@ -68,7 +68,7 @@ pub trait InstCounter: Send + Sync + 'static {
 ///    )?;
 ///
 ///    // prints the number of argc it found
-///    println!("argc is: {}",todo);
+///    println!("argc is: {}",task);
 ///
 ///    Ok(())
 /// }
