@@ -2,6 +2,7 @@ use crate::brute::*;
 use crate::errors::*;
 use crate::process::Process;
 use std::ffi::OsStr;
+use std::path::{Path, PathBuf};
 use std::fs::File;
 use std::io::Read;
 use std::os::unix::ffi::OsStrExt;
@@ -21,8 +22,8 @@ enum Arch {
 impl DynamorioSolver {
     /// Reads the ELFCLASS of the ELF binary at the specified
     /// TODO: Support other binary formats (PE, Macho-O, etc)
-    fn get_arch(&self, bin: &str) -> Result<Arch, SolverError> {
-        let mut f = File::open(bin)?;
+    fn get_arch(&self, path: &Path) -> Result<Arch, SolverError> {
+        let mut f = File::open(path.canonicalize()?)?;
         let mut buf = Vec::new();
         f.read_to_end(&mut buf)?;
 
@@ -39,17 +40,26 @@ impl InstCounter for DynamorioSolver {
     // Handles basic proc spawning and running under dino
     // only works on 64 bit for now
     fn get_inst_count(&self, data: &InstCountData) -> Result<i64, SolverError> {
-        let dynpath = data.vars.get("dynpath").unwrap();
+        let dynpath = PathBuf::from(data.vars.get("dynpath").unwrap());
 
-        let (build_dir, bin_dir) = match self.get_arch(&data.path)? {
+        let (build_dir, bin_dir) = match self.get_arch(&PathBuf::from(&data.path))? {
             Arch::ThirtyTwo => ("build_32", "bin32"),
             Arch::SixtyFour => ("build_64", "bin64")
         };
 
-        let base_path = format!("{}/{}", dynpath, build_dir);
-        let drrun = format!("{}/{}/drrun", base_path, bin_dir);
-        let libinscount = format!("{}/api/bin/libinscount.so", base_path);
-        let mut proccess = Process::new(&drrun);
+        let mut base_path = dynpath.clone();
+        base_path.push(build_dir);
+
+        let mut drrun = base_path.clone();
+        drrun.push(bin_dir);
+        drrun.push("drrun");
+
+        let mut libinscount = base_path.clone();
+        libinscount.push("api");
+        libinscount.push("bin");
+        libinscount.push("libinscount.so");
+
+        let mut proccess = Process::new(&drrun.to_str().unwrap());
         proccess.arg("-c");
         proccess.arg(libinscount);
         proccess.arg("--");
