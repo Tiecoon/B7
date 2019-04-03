@@ -27,7 +27,7 @@ To ensure your code is formatted correctly
 
 
 1. Fork B7 repository (requires GItlab Account)
-2. Make any contributions to your local repo
+2. Make any contributions to your local repo. Create your own branch before comitting anything (master is protected)
 *Be sure to thoroughly comment your code according to [These](https://doc.rust-lang.org/rust-by-example/meta/doc.html) examples so B7 can automatically generate official documentation supporting your contribution
-3. Submit a pull request to the master branch
+3. Submit a pull request to the branch, master
 4. Your code will be reviewed and either merged into the branch or rejected with useful comments to improve your submission attempt.
