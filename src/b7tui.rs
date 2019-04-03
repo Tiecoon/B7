@@ -20,7 +20,7 @@ enum Format {
     Decimal,
 }
 
-// Trait that all Uis will implement to ensure genericness
+/// Trait that all Uis will implement to ensure genericness
 pub trait Ui {
     // handle a new ui check
     fn update<
@@ -36,7 +36,7 @@ pub trait Ui {
     fn done(&mut self) -> bool;
 }
 
-// struct for Tui-rs implementation
+/// struct for Tui-rs implementation
 pub struct Tui {
     // TODO probably can be shortened with generics
     terminal: tui::Terminal<
@@ -217,7 +217,7 @@ impl Default for Tui {
 
 // implement Tuis Ui trait
 impl Ui for Tui {
-    // draw bargraph for new input
+    /// draw bargraph for new input
     fn update<
         I: 'static + std::fmt::Display + Clone + std::fmt::Debug + std::marker::Send + std::cmp::Ord,
     >(

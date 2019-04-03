@@ -2,6 +2,7 @@
 extern crate log;
 
 use b7::brute::InstCounter;
+use b7::errors::*;
 use b7::*;
 
 use clap::{App, Arg};
@@ -10,6 +11,7 @@ use std::io::prelude::*;
 use std::process::exit;
 use std::time::Duration;
 
+/// parses program arguements
 fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
     App::new("B7")
         .version("0.1.0")
@@ -67,12 +69,13 @@ fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
         .get_matches()
 }
 
+/// output the help menu based on input
 fn print_usage(matches: &clap::ArgMatches) -> ! {
     println!("{}", matches.usage());
     exit(-1);
 }
 
-fn main() {
+fn main() -> Result<(), SolverError> {
     // handle command line arguements
     let matches = handle_cli_args();
 
@@ -110,8 +113,7 @@ fn main() {
     let mut file = std::fs::OpenOptions::new()
         .write(true)
         .create(true)
-        .open(format!("{}.cache", path))
-        .expect("cache file cannot be opened");
+        .open(format!("{}.cache", path))?;
 
     let results = match &*terminal {
         "tui" => B7Opts::new(
@@ -135,15 +137,16 @@ fn main() {
         )
         .run(),
         _ => panic!("unknown tui {}", terminal),
-    };
+    }?;
 
     if !results.arg_brute.is_empty() {
         info!("Writing argv to cache");
-        write!(file, "argv: {}", results.arg_brute).expect("Failed to write argv to cache!");
+        write!(file, "argv: {}", results.arg_brute)?;
     };
 
     if !results.stdin_brute.is_empty() {
         info!("Writing stdin to cache");
-        write!(file, "stdin: {}", results.stdin_brute).expect("Failed to write stdin to cache!");
+        write!(file, "stdin: {}", results.stdin_brute)?;
     };
+    Ok(())
 }

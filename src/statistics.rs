@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+/// returns average of slice
 fn get_average(input: &[i64]) -> i64 {
     if input.is_empty() {
         panic!("Divide by zero!");
@@ -10,8 +11,7 @@ fn get_average(input: &[i64]) -> i64 {
     }) / (input.len() as i64)
 }
 
-// Find the most distant point from the average.
-// Returns (index, value) of this point.
+/// find the largest outlier in given slice
 pub fn find_outlier<I: Debug>(counts: &[(I, i64)]) -> &(I, i64) {
     let second: Vec<i64> = counts.iter().map(|i| i.1).collect();
     let avg: i64 = get_average(&second[..]);

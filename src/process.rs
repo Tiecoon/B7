@@ -309,6 +309,7 @@ pub struct ProcessHandle {
 }
 
 impl ProcessHandle {
+    /// run process until it exits or times out
     pub fn finish(&self, timeout: Duration) -> Result<Pid, SolverError> {
         let start = Instant::now();
         let mut time_left = timeout;
@@ -350,7 +351,7 @@ impl ProcessHandle {
         self.pid
     }
 
-    // read buf to process then close it
+    /// reads process stdout into buf and returns number of bytes read
     pub fn read_stdout(&mut self, buf: &mut Vec<u8>) -> Result<usize, SolverError> {
         if self.proc.child.is_none() {
             return Err(SolverError::new(
@@ -378,10 +379,12 @@ impl Process {
         }
     }
 
+    /// set what stdin should be sent to process
     pub fn input(&mut self, stdin: Vec<u8>) {
         self.input = stdin
     }
 
+    /// returns PID of child process
     pub fn child_id(&self) -> Result<u32, SolverError> {
         match &self.child {
             Some(a) => Ok(a.id()),
@@ -389,6 +392,7 @@ impl Process {
         }
     }
 
+    /// writes self.input to the process's stdin
     pub fn write_input(&mut self) -> Result<(), SolverError> {
         self.write_stdin(&self.input.clone())
     }
@@ -405,7 +409,7 @@ impl Process {
         self.cmd.arg(arg);
     }
 
-    // initialize process and wait it
+    /// initialize process according to settings
     pub fn start(&mut self) -> Result<(), SolverError> {
         if self.child.is_some() {
             return Err(SolverError::new(Runner::Unknown, "child already running"));
@@ -425,7 +429,6 @@ impl Process {
         let child = self.cmd.spawn();
 
         // spawn process and wait after fork
-        //let child = self.cmd.spawn_ptrace();
         match child {
             Ok(c) => {
                 self.child = Some(c);
@@ -435,7 +438,7 @@ impl Process {
         }
     }
 
-    // write buf to process then close it
+    /// write buf to process stdin then close stdin
     pub fn write_stdin(&mut self, buf: &[u8]) -> Result<(), SolverError> {
         if self.child.is_none() {
             return Err(SolverError::new(
@@ -450,7 +453,9 @@ impl Process {
         }
     }
 
-    // close stdin to prevent any reads hanging
+    /// close process stdin
+    ///
+    /// helps if child process is hanging on a read from stdin
     pub fn close_stdin(&mut self) -> Result<(), SolverError> {
         if self.child.is_none() {
             return Err(SolverError::new(
@@ -467,10 +472,12 @@ impl Process {
         }
     }
 
+    /// set wether or not the process should be run under ptrace
     pub fn with_ptrace(&mut self, ptrace: bool) {
         self.ptrace = ptrace;
     }
 
+    /// spawn process
     pub fn spawn(self) -> ProcessHandle {
         WAITER.spawn_process(self)
     }

@@ -3,6 +3,7 @@ use std::fmt;
 use std::io;
 
 #[derive(Debug)]
+/// b7 errors type
 pub struct SolverError {
     runner: Runner,
     message: String,
@@ -19,6 +20,7 @@ impl SolverError {
 }
 
 #[derive(Debug)]
+/// enum for types of errors
 pub enum Runner {
     RunnerError,
     MissingArgs,

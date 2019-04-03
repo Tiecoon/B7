@@ -51,7 +51,7 @@ fn run_wyvern() {
         Duration::new(5, 0),
     );
 
-    let res = opts.run();
+    let res = opts.run().unwrap();
     let mut stdin = res.stdin_brute;
 
     // Last character is currently non-deterministic
