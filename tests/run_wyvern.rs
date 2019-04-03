@@ -25,7 +25,7 @@ fn on_init() {
 }
 
 #[test]
-fn run_wyv() {
+fn run_wyvern() {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let mut dynpath = path.clone();
 
@@ -33,7 +33,6 @@ fn run_wyv() {
     path.push("wyvern");
 
     dynpath.push("dynamorio");
-    dynpath.push("build");
 
     let mut term = Env::new();
     let mut vars = HashMap::new();

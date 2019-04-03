@@ -43,6 +43,13 @@ impl error::Error for SolverError {
     }
 }
 
+// TODO: Make this better
+impl From<goblin::error::Error> for SolverError {
+    fn from(error: goblin::error::Error) -> Self {
+        SolverError::new(Runner::IoError, error::Error::description(&error))
+    }
+}
+
 impl From<io::Error> for SolverError {
     fn from(error: io::Error) -> Self {
         SolverError::new(Runner::IoError, error::Error::description(&error))
