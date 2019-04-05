@@ -22,6 +22,7 @@ cargo install --path .
 * Necessary
 	* Dynamorio
 		* https://github.com/DynamoRIO/dynamorio/wiki/How-To-Build
+		* currently requires both a c and c++ compiler and multilib/32 bit counterparts
 * Optional
 	* perf
 		* linux-perf-x.xx for your kernel version
