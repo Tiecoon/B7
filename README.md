@@ -1,6 +1,6 @@
 # B7
 
-[![Build Status](https://gitlab.com/tiecoon/B7/badges/master/build.svg)](https://gitlab.com/tiecoon/B7/commits/master)
+[![Build Status](https://gitlab.com/tiecoon/B7/badges/master/build.svg)](https://gitlab.com/tiecoon/B7/pipelines)
 
 A WIP project that aims to ease/automatically perform instruction counting by running programs with
 various input under multiple harnesses like perf or Dynamorio.
