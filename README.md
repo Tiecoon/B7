@@ -3,7 +3,7 @@
 [![Build Status](https://gitlab.com/tiecoon/B7/badges/master/build.svg)](https://gitlab.com/tiecoon/B7/commits/master)
 
 A WIP project that aims to ease/automatically perform instruction counting by running programs with
-various input under multiple harnesses like perf or dynamorio.
+various input under multiple harnesses like perf or Dynamorio.
 
 ## Installation
 
@@ -16,6 +16,16 @@ git submodule init
 git submodule update
 cargo install --path .
 ```
+
+## Requirements
+
+* Necessary
+	* Dynamorio
+		* https://github.com/DynamoRIO/dynamorio/wiki/How-To-Build
+* Optional
+	* perf
+		* linux-perf-x.xx for your kernel version
+		* sysctl kernel.perf_event_paranoid < 3
 
 ## Documentation
 
