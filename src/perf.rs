@@ -14,6 +14,14 @@ const PERF_EVENT_OPEN_SYSCALL: i64 = 298;
 
 /// initiliaze perf on a process
 ///
+/// # Arguments
+///
+/// * `hw_event` - perf_attr struct contains perf configuration
+/// * `pid` - process id
+/// * `cpu` - allows measuring of specified cpu, -1 is all
+/// * `group_fc` - group file descriptor, allows event groups to be created
+/// * `flags` - flags information
+///
 /// # Return
 /// * i32 unix file descriptor id
 fn perf_event_open(
@@ -50,6 +58,7 @@ fn get_perf_fd(pid: pid_t) -> Result<i32, SolverError> {
         ioctl(fd, 9219, 0); // PERF_EVENT_IOC_RESET
         ioctl(fd, 9216, 0); // PERF_EVENT_IOC_ENABLE
     }
+    trace!("initialized perf on pid {} return fd {}", pid, fd);
     Ok(fd)
 }
 
@@ -65,7 +74,7 @@ fn perf_get_inst_count(fd: c_int) -> Result<i64, SolverError> {
         _ => Err(SolverError::new(
             Runner::IoError,
             "Could not read from perf fd",
-        )), //TODO implement from Nix error
+        )),
     }
 }
 
@@ -79,7 +88,6 @@ impl InstCounter for PerfSolver {
     /// # Return
     /// * number of instructions perf says were executed or error
     fn get_inst_count(&self, data: &InstCountData) -> Result<i64, SolverError> {
-        // TODO: error checking...
         let mut process = Process::new(&data.path);
         for arg in data.inp.argv.iter() {
             process.arg(OsStr::from_bytes(arg));
