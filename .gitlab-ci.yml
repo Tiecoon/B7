@@ -23,7 +23,7 @@ test:
   script:
     - rustc --version
     - cargo --version
-    - cargo test --verbose
+    - cargo test --verbose -- --test-threads=1
 
 cache:
   paths:

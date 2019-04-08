@@ -1,5 +1,6 @@
 use b7::b7tui::Env;
 use b7::dynamorio;
+use b7::perf;
 use b7::B7Opts;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -25,7 +26,7 @@ fn on_init() {
 }
 
 #[test]
-fn run_wyvern() {
+fn run_wyvern_dynamorio() {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let mut dynpath = path.clone();
 
@@ -46,6 +47,34 @@ fn run_wyvern() {
         false,
         true,
         Box::new(dynamorio::DynamorioSolver),
+        &mut term,
+        vars,
+        Duration::new(5, 0),
+    );
+
+    let res = opts.run().unwrap();
+    let mut stdin = res.stdin_brute;
+
+    // Last character is currently non-deterministic
+    stdin.pop();
+    assert_eq!(&stdin, "dr4g0n_or_p4tric1an_it5_LLVM");
+}
+
+#[test]
+fn run_wyvern_perf() {
+    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+
+    path.push("tests");
+    path.push("wyvern");
+
+    let mut term = Env::new();
+    let mut vars = HashMap::new();
+
+    let mut opts = B7Opts::new(
+        path.to_string_lossy().into_owned(),
+        false,
+        true,
+        Box::new(perf::PerfSolver),
         &mut term,
         vars,
         Duration::new(5, 0),

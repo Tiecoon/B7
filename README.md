@@ -28,6 +28,10 @@ cargo install --path .
 		* linux-perf-x.xx for your kernel version
 		* sysctl kernel.perf_event_paranoid < 3
 
+## Testing
+
+To run multiple tests at the same time pass `-- --test-threads=1` to cargo test
+
 ## Documentation
 
 Currently there is no hosted documentation but you can get local docs with
