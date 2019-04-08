@@ -380,9 +380,9 @@ impl Env {
     // initialize the logging
     pub fn new() -> Env {
         let env = env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "info");
-        env_logger::Builder::from_env(env)
+        let _ = env_logger::Builder::from_env(env)
             .default_format_timestamp(false)
-            .init();
+            .try_init();
         Env {}
     }
 }

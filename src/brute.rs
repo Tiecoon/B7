@@ -105,7 +105,6 @@ pub fn brute<
         for inp_pair in gen.by_ref() {
             data.push(inp_pair);
         }
-
         let counter = Arc::new(counter);
 
         pool.scoped(|scope| {
@@ -162,6 +161,7 @@ pub fn brute<
         // inform generator of the result
         if results.is_empty() {
             warn!("Results empty {:?}", results);
+            return Err(SolverError::new(Runner::Unknown, "No valid results found"));
         }
         let good_idx = statistics::find_outlier(results.as_slice());
         if !gen.update(&good_idx.0) {
