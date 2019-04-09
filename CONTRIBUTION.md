@@ -23,7 +23,7 @@ cargo fmt -all
 To ensure your code is formatted correctly.
 
 
-##Basic Contributing Guidelines
+## Basic Contributing Guidelines
 
 
 1. Fork B7 repository (requires GitLab Account).
