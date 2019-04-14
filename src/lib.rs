@@ -113,6 +113,7 @@ fn default_arg_brute<B: b7tui::Ui>(
         1,
         &mut argcgen,
         solver,
+        Input::new(),
         terminal,
         timeout,
         vars.clone(),
@@ -128,6 +129,7 @@ fn default_arg_brute<B: b7tui::Ui>(
             5,
             &mut argvlengen,
             solver,
+            Input::new(),
             terminal,
             timeout,
             vars.clone(),
@@ -141,6 +143,7 @@ fn default_arg_brute<B: b7tui::Ui>(
             5,
             &mut argvgen,
             solver,
+            Input::new(),
             terminal,
             timeout,
             vars.clone(),
@@ -164,20 +167,39 @@ fn default_stdin_brute<B: b7tui::Ui>(
     terminal: &mut B,
 ) -> Result<String, SolverError> {
     // solve stdin len
+    let mut res = Input::new();
     let mut lgen = StdinLenGenerator::new(0, 51);
-    brute(path, 1, &mut lgen, solver, terminal, timeout, vars.clone())?;
-    let stdinlen = lgen.get_length();
+    brute(
+        path,
+        1,
+        &mut lgen,
+        solver,
+        Input::new(),
+        terminal,
+        timeout,
+        vars.clone(),
+    )?;
+    res.stdinlen = lgen.get_length();
     // solve strin if there is stuff to solve
-    if stdinlen > 0 {
+    if res.stdinlen > 0 {
         // TODO: We should have a good way of configuring the range
         let empty = String::new();
         let stdin_input = vars.get("start").unwrap_or(&empty);
         let mut gen = if stdin_input == "" {
-            StdinCharGenerator::new(stdinlen, 0x20, 0x7e)
+            StdinCharGenerator::new(res, 0x20, 0x7e)
         } else {
-            StdinCharGenerator::new_start(stdinlen, 0x20, 0x7e, stdin_input.as_bytes())
+            StdinCharGenerator::new_start(res, 0x20, 0x7e, stdin_input.as_bytes())
         };
-        brute(path, 1, &mut gen, solver, terminal, timeout, vars.clone())?;
+        brute(
+            path,
+            1,
+            &mut gen,
+            solver,
+            Input::new(),
+            terminal,
+            timeout,
+            vars.clone(),
+        )?;
 
         return Ok(gen.to_string());
     }

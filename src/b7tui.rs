@@ -1,3 +1,4 @@
+use crate::generators::Input;
 use log::LevelFilter;
 use std::fs::File;
 use std::io;
@@ -27,7 +28,7 @@ pub trait Ui {
         I: 'static + std::fmt::Display + Clone + std::fmt::Debug + std::marker::Send + std::cmp::Ord,
     >(
         &mut self,
-        results: &[(I, i64)],
+        results: Box<Vec<(i64, (I, Input))>>,
         min: u64,
     ) -> bool;
     // allow gui to pause if user doesn't want to continue
@@ -222,16 +223,17 @@ impl Ui for Tui {
         I: 'static + std::fmt::Display + Clone + std::fmt::Debug + std::marker::Send + std::cmp::Ord,
     >(
         &mut self,
-        results: &[(I, i64)],
+        mut results: Box<Vec<(i64, (I, Input))>>,
         min: u64,
     ) -> bool {
         // convertcachefor barchart
+        results.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
 
         // TODO implement multiple formats
         let graph: Vec<(String, u64)>;
         graph = results
             .iter()
-            .map(|s| (format!("{}", s.0), s.1 as u64))
+            .map(|s| (format!("{}", (s.1).0), s.0 as u64))
             .collect();
         self.cache.push((
             graph
@@ -393,7 +395,7 @@ impl Ui for Env {
         I: 'static + std::fmt::Display + Clone + std::fmt::Debug + std::marker::Send + std::cmp::Ord,
     >(
         &mut self,
-        _results: &[(I, i64)],
+        mut _results: Box<Vec<(i64, (I, Input))>>,
         _min: u64,
     ) -> bool {
         true

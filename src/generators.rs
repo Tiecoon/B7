@@ -4,13 +4,37 @@ type ArgumentType = Vec<StringType>;
 #[derive(Debug, Clone)]
 /// Holds the various input the runner is expected to use
 pub struct Input {
+    pub argc: u32,
     pub argv: ArgumentType,
+    pub stdinlen: u32,
     pub stdin: StringType,
 }
 
 impl Input {
-    pub fn new(argv: ArgumentType, stdin: StringType) -> Input {
-        Input { argv, stdin }
+    pub fn new() -> Input {
+        Input {
+            argv: Vec::new(),
+            stdin: Vec::new(),
+            argc: 0,
+            stdinlen: 0,
+        }
+    }
+    pub fn combine(self, tmp: Input) -> Input {
+        let mut res = self.clone();
+        if tmp.argv.len() != 0 {
+            res.argv = tmp.argv;
+        }
+        if tmp.argc != 0 {
+            res.argc = res.argc;
+        }
+        if tmp.stdinlen != 0 {
+            res.stdinlen = tmp.stdinlen;
+        }
+        if tmp.stdin.len() != 0 {
+            res.stdin = tmp.stdin;
+        }
+
+        res
     }
 }
 
@@ -85,7 +109,10 @@ impl Iterator for StdinLenGenerator {
         }
         let sz = self.len;
         self.len += 1;
-        Some((sz, Input::new(vec![], vec![0x41; sz as usize])))
+        let mut res = Input::new();
+        res.stdinlen = sz;
+        res.stdin = vec![0x41; sz as usize];
+        Some((sz, res))
     }
 }
 
@@ -128,9 +155,9 @@ impl std::fmt::Display for StdinCharGenerator {
 }
 
 impl StdinCharGenerator {
-    pub fn new(padlen: u32, min: u16, max: u16) -> StdinCharGenerator {
+    pub fn new(input: Input, min: u16, max: u16) -> StdinCharGenerator {
         StdinCharGenerator {
-            padlen,
+            padlen: input.stdinlen,
             padchr: 0x41,
             prefix: vec![],
             suffix: vec![],
@@ -142,10 +169,10 @@ impl StdinCharGenerator {
         }
     }
 
-    pub fn new_start(padlen: u32, min: u16, max: u16, start: &[u8]) -> StdinCharGenerator {
+    pub fn new_start(input: Input, min: u16, max: u16, start: &[u8]) -> StdinCharGenerator {
         warn!("{:?}", start);
         StdinCharGenerator {
-            padlen,
+            padlen: input.stdinlen,
             padchr: 0x41,
             prefix: start.to_vec(),
             suffix: vec![],
@@ -196,7 +223,9 @@ impl Iterator for StdinCharGenerator {
         while inp.len() < self.padlen as usize {
             inp.push(self.padchr);
         }
-        Some((chr, Input::new(vec![], inp)))
+        let mut res = Input::new();
+        res.stdin = inp;
+        Some((chr, res))
     }
 }
 
@@ -260,7 +289,10 @@ impl Iterator for ArgcGenerator {
         }
         let sz = self.len;
         self.len += 1;
-        Some((sz, Input::new(vec![vec![]; sz as usize], vec![])))
+        let mut res = Input::new();
+        res.argv = vec![vec![]; sz as usize];
+        res.argc = sz;
+        Some((sz, res))
     }
 }
 
@@ -340,7 +372,9 @@ impl Iterator for ArgvLenGenerator {
                 argv.push(vec![0x41; self.correct[i as usize] as usize]);
             }
         }
-        Some((sz, Input::new(argv, vec![])))
+        let mut res = Input::new();
+        res.argv = argv;
+        Some((sz, res))
     }
 }
 
@@ -454,7 +488,9 @@ impl Iterator for ArgvGenerator {
                 argv.push(vec![self.padchr as u8; self.len[i as usize] as usize]);
             }
         }
-        Some((chr, Input::new(argv, vec![])))
+        let mut res = Input::new();
+        res.argv = argv;
+        Some((chr, res))
     }
 }
 

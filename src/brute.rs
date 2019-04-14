@@ -37,6 +37,7 @@ pub trait InstCounter: Send + Sync + 'static {
 /// * `repeat` - an int to tell how many runs to average for each input
 /// * `gen` - a generators::generator that has Display trait to use to generate additional input
 /// * `counter` - the inst_counter function to run the binary under
+/// * `Solved` - other constraints to pass to the binary
 /// * `terminal` - a b7tui::Ui to present data to, so it can display it
 /// * `timeout` - a duration in seconds to timeout program after
 /// * `vars` - additional variables that the counter function might need
@@ -47,6 +48,7 @@ pub trait InstCounter: Send + Sync + 'static {
 /// # use crate::b7::errors::*;
 /// # use crate::b7::generators;
 /// # use crate::b7::perf;
+/// # use crate::b7::generators::Input;
 /// # use crate::b7::b7tui;
 /// # use b7::brute::brute;
 /// # use b7::brute::InstCounter;
@@ -62,6 +64,7 @@ pub trait InstCounter: Send + Sync + 'static {
 ///        1,
 ///        &mut task,
 ///        &perf::PerfSolver,
+///        Input::new(),
 ///        &mut b7tui::Env,
 ///        Duration::new(5,0),
 ///        HashMap::new(),
@@ -82,10 +85,11 @@ pub fn brute<
     repeat: u32,
     gen: &mut G,
     counter: &InstCounter,
+    solved: Input,
     terminal: &mut B,
     timeout: Duration,
     vars: HashMap<String, String>,
-) -> Result<(), SolverError> {
+) -> Result<Input, SolverError> {
     let n_workers = num_cpus::get();
 
     let pool = Pool::new(n_workers);
@@ -95,7 +99,6 @@ pub fn brute<
         // Number of threads to spawn
 
         let mut num_jobs: i64 = 0;
-        let mut results: Vec<(I, i64)> = Vec::new();
 
         let (tx, rx) = channel();
 
@@ -103,8 +106,9 @@ pub fn brute<
 
         // run each case of the generators
         for inp_pair in gen.by_ref() {
-            data.push(inp_pair);
+            data.push((inp_pair.0, solved.clone().combine(inp_pair.1)));
         }
+        let mut results: Box<Vec<(i64, (I, Input))>> = Box::new(Vec::with_capacity(data.len()));
         let counter = Arc::new(counter);
 
         pool.scoped(|scope| {
@@ -117,7 +121,7 @@ pub fn brute<
                 let counter = counter.clone();
 
                 scope.execute(move || {
-                    let inp = inp_pair.1;
+                    let inp = (inp_pair.1).clone();
                     let data = InstCountData {
                         path: test,
                         inp,
@@ -130,7 +134,7 @@ pub fn brute<
                         inst_count = counter.get_inst_count(&data);
                         trace!("inst_count: {:?}", inst_count);
                     }
-                    let _ = tx.send((inp_pair.0, inst_count));
+                    let _ = tx.send((inst_count, (inp_pair)));
                 });
             }
         });
@@ -140,21 +144,21 @@ pub fn brute<
 
         for _ in 0..num_jobs {
             let tmp = rx.recv().unwrap();
-            match tmp.1 {
+            match tmp.0 {
                 Ok(x) => {
                     if (x as u64) < min {
                         min = x as u64;
                     }
-                    results.push((tmp.0, x));
+                    results.push((x, (tmp.1)));
                 }
                 Err(x) => {
-                    warn!("{:?} \n returned: {:?}", tmp.0, x);
+                    warn!("{:?} \n returned: {:?}", (tmp.1).0, x);
                     continue;
                 }
             }
         }
-        results.sort();
-        terminal.update(&results, min);
+        results.shrink_to_fit();
+        terminal.update(results.clone(), min);
 
         terminal.wait();
 
@@ -164,8 +168,8 @@ pub fn brute<
             return Err(SolverError::new(Runner::Unknown, "No valid results found"));
         }
         let good_idx = statistics::find_outlier(results.as_slice());
-        if !gen.update(&good_idx.0) {
-            break Ok(());
+        if !gen.update(&(good_idx.1).0) {
+            break Ok((good_idx.1).1.clone());
         }
     }
 }
