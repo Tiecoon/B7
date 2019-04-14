@@ -35,7 +35,6 @@ pub fn find_outlier<I: Debug>(counts: &[(i64, (I, Input))]) -> &((i64, (I, Input
 mod tests {
     use super::{find_outlier, get_average};
     use crate::generators::Input;
-    use std::str::FromStr;
 
     #[test]
     fn test_average() {

@@ -68,7 +68,7 @@ fn run_wyvern_perf() {
     path.push("wyvern");
 
     let mut term = Env::new();
-    let mut vars = HashMap::new();
+    let vars = HashMap::new();
 
     let mut opts = B7Opts::new(
         path.to_string_lossy().into_owned(),
