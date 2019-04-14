@@ -19,6 +19,17 @@ impl Input {
             stdinlen: 0,
         }
     }
+    /// Takes in an Input to essentially copy over self
+    /// ## example
+    /// ```
+    /// use crate::b7::generators::Input;
+    /// let mut one = Input::new();
+    /// let mut two = Input::new();
+    /// one.stdin = vec!['A' as u8,'b' as u8];
+    /// two.argc = 2;
+    /// let new = one.combine(two);
+    /// println!("{:?}",new);
+    /// ```
     pub fn combine(self, tmp: Input) -> Input {
         let mut res = self.clone();
         if tmp.argv.len() != 0 {
