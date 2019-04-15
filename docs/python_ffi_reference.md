@@ -75,4 +75,70 @@ $ python main.py
 12
 ```
 
+## Example 2: Passing Structs
+Because there are many functions that take in structs, it's important to understand how to define structs
+and pass tehm into functions. 
+In this we will create a function that calculates the hypotenous of a struct that provides the length
+of two sides for a triangle
+
+First, you need to define the struct in Rust and tell Rust that oyu want it laid out like a C struct
+
+```
+#[repr(C)]
+pub struct TwoSide {
+    pub a: f64,
+    pub b: f64,
+}
+```
+
+Because of the way that CFFI handles stack allocated structures, the Rust function we code
+will have to accept a pointer to a struct
+
+```
+#[no_mangle]
+pub extern "C" fn length(ptr: *const TwoSide) -> f64 {
+    let two_side = unsafe {
+        assert!(!ptr.is)null());
+        &*ptr
+    };
+    (two_side.a.powi(2) + two_side.b.powi(2)).sqrt()
+}
+```
+This extern function takes a raw pointer to a TwoSide object.
+Because dereferencing raw pointers is unsafe, we need to wrap it in an `unsafe` block and convert it to a 
+Rust pointer.
+Next, we compute the value for the 3rd side of this hypothetical triangle.
+
+The python code will look like this
+```
+from cffi import FFI
+ffi = FFI()
+ffi.cdef("""
+        typedef struct {
+            double a, b;
+        } twoSide;
+
+        double length(const twoSide * ts);
+""")
+
+C = ffi.dlopen("python_test_ffi/target/debug/libpython_tst_ffi.so"
+
+answer = ffi.new("twoSide *")
+answer.a = 1.0
+answer.b = 1.0
+
+print(C.length(answer))
+```
+We define a struct that matches the TwoSide struct we defined in Rust along with the
+signature of the length function.
+We also have to open the library with the Rust function
+Next we have to allocate memory for the struct, which is done with ffi.new().
+We need to pay attention to ownership because the struct will be allocated by Python so it will
+also have to be freed by Python. 
+Because of this simple case, Python will handle the garbage collection and we can ignore it for now.
+
+```
+$ python main.py
+1.4142135623730951
+```
 
