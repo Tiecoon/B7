@@ -1,7 +1,7 @@
 // use std::cmp::Ord;
 use scoped_pool::Pool;
 use std::collections::HashMap;
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 use std::marker::Send;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
@@ -74,7 +74,7 @@ pub trait InstCounter: Send + Sync + 'static {
 /// }
 /// ```
 pub fn brute<
-    G: Generate<I> + Display,
+    G: Generate<I>,
     I: 'static + std::fmt::Display + Clone + Debug + Send + Ord,
     B: b7tui::Ui,
 >(

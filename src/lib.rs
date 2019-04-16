@@ -18,6 +18,11 @@ use crate::generators::*;
 use std::collections::HashMap;
 use std::time::Duration;
 
+use serde::{Serialize, Deserialize};
+use serde::de::DeserializeOwned;
+
+
+
 /// simpified structure to consolate all neccessary structs to run
 pub struct B7Opts<'a, B: b7tui::Ui> {
     path: String,
@@ -34,6 +39,187 @@ pub struct B7Opts<'a, B: b7tui::Ui> {
 pub struct B7Results {
     pub arg_brute: String,
     pub stdin_brute: String,
+}
+
+/// Holds the current state of all generators
+/// This can be serialized and deserialized to/from disk,
+/// to support resuming B7 from previous state
+#[derive(Serialize, Deserialize)]
+pub struct B7State {
+    pub arg_state: Option<ArgState>,
+    pub stdin_state: Option<StdinState>
+}
+
+impl B7State {
+    fn new(use_args: bool, use_stdin: bool) -> B7State {
+        let mut arg_state = None;
+        let mut stdin_state = None;
+
+        if use_args {
+            arg_state = Some(ArgState::default());
+        }
+        if use_stdin {
+            stdin_state = Some(StdinState::default());
+        }
+
+        B7State {
+            arg_state,
+            stdin_state
+        }
+    }
+
+    fn run<B: b7tui::Ui>(
+        &mut self,
+        path: &str,
+        solver: &InstCounter,
+        vars: HashMap<String, String>,
+        timeout: Duration,
+        terminal: &mut B,
+    ) -> Result<B7Results, SolverError> {
+        let arg_brute = self.arg_state.as_mut().map(|s| s.run(path, solver, vars.clone(), timeout, terminal))
+            .unwrap_or_else(|| Ok(String::new()))?;
+
+        let stdin_brute = self.stdin_state.as_mut().map(|s| s.run(path, solver, vars.clone(), timeout, terminal))
+            .unwrap_or_else(|| Ok(String::new()))?;
+
+        Ok(B7Results {
+            arg_brute,
+            stdin_brute
+        })
+
+    }
+
+}
+
+
+trait GeneratorState: Serialize + DeserializeOwned {
+    fn run<B: b7tui::Ui>(
+        &mut self,
+        path: &str,
+        solver: &InstCounter,
+        vars: HashMap<String, String>,
+        timeout: Duration,
+        terminal: &mut B,
+    ) -> Result<String, SolverError>;
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum ArgState {
+    Argc(ArgcGenerator),
+    ArgvLen(ArgvLenGenerator),
+    Argv(ArgvGenerator),
+    Done(String)
+    /*argcgen: ArgcGenerator,
+    argvlengen: Option<ArgvLenGenerator>,
+    argvgen: Option<ArgvGenerator>*/
+}
+
+
+impl Default for ArgState {
+    fn default() -> Self {
+        ArgState::Argc(ArgcGenerator::new(0, 5))
+    }
+}
+
+impl GeneratorState for ArgState {
+    fn run<B: b7tui::Ui>(
+        &mut self,
+        path: &str,
+        solver: &InstCounter,
+        vars: HashMap<String, String>,
+        timeout: Duration,
+        terminal: &mut B,
+    ) -> Result<String, SolverError> {
+        loop {
+            match self {
+                &mut ArgState::Argc(ref mut gen) => {
+                    brute(path, 1, gen, solver, terminal, timeout, vars.clone())?;
+                    let argc = gen.get_length();
+                    if argc == 0 {
+                        //TODO should be an error
+                        *self = ArgState::Done(String::new());
+                        continue;
+                    } else {
+                        let mut argvlengen = ArgvLenGenerator::new(argc, 0, 20);
+                        *self = ArgState::ArgvLen(argvlengen);
+                    }
+                },
+                &mut ArgState::ArgvLen(ref mut gen) => {
+                    brute(path, 5, gen, solver, terminal, timeout, vars.clone())?;
+                    let argc = gen.get_argc();
+                    let argvlens = gen.get_lengths();
+                    *self = ArgState::Argv(ArgvGenerator::new(argc, argvlens, 0x20, 0x7e));
+                },
+                &mut ArgState::Argv(ref mut gen) => {
+                    brute(path, 5, gen, solver, terminal, timeout, vars.clone())?;
+                    *self = ArgState::Done(gen.to_string());
+                }
+                &mut ArgState::Done(ref s) => {
+                    return Ok(s.clone());
+                }
+            }
+        }
+    }
+
+}
+
+
+#[derive(Serialize, Deserialize)]
+pub enum StdinState {
+    StdinLen(StdinLenGenerator),
+    StdinGen(StdinCharGenerator),
+    Done(String)
+    //lgen: StdinLenGenerator,
+    //gen: Option<StdinCharGenerator>
+}
+
+impl Default for StdinState {
+    fn default() -> Self {
+        StdinState::StdinLen(StdinLenGenerator::new(0, 51))
+    }
+}
+
+impl GeneratorState for StdinState {
+    fn run<B: b7tui::Ui>(
+        &mut self,
+        path: &str,
+        solver: &InstCounter,
+        vars: HashMap<String, String>,
+        timeout: Duration,
+        terminal: &mut B,
+    ) -> Result<String, SolverError> {
+        loop {
+            match self {
+                &mut StdinState::StdinLen(ref mut gen) => {
+                    brute(path, 1, gen, solver, terminal, timeout, vars.clone())?;
+                    let stdinlen = gen.get_length();
+
+                    if stdinlen == 0 {
+                        //TODO should be an error
+                        *self = StdinState::Done(String::new());
+                    } else {
+                        let empty = String::new();
+                        let stdin_input = vars.get("start").unwrap_or(&empty);
+                        let mut gen = if stdin_input == "" {
+                            StdinCharGenerator::new(stdinlen, 0x20, 0x7e)
+                        } else {
+                            StdinCharGenerator::new_start(stdinlen, 0x20, 0x7e, stdin_input.as_bytes())
+                        };
+
+                        *self = StdinState::StdinGen(gen);
+                    }
+                },
+                &mut StdinState::StdinGen(ref mut gen) => {
+                    brute(path, 1, gen, solver, terminal, timeout, vars.clone())?;
+                    *self = StdinState::Done(gen.to_string());
+                },
+                &mut StdinState::Done(ref s) => {
+                    return Ok(s.clone())
+                }
+            }
+        }
+    }
+
 }
 
 impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
@@ -63,7 +249,11 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
     pub fn run(&mut self) -> Result<B7Results, SolverError> {
         let mut arg_brute = String::new();
         let mut stdin_brute = String::new();
-        if self.argstate {
+
+        let mut state = B7State::new(self.argstate, self.stdinstate);
+        let res = state.run(&self.path, &*self.solver, self.vars.clone(), self.timeout, self.terminal)?;
+
+        /*if self.argstate {
             arg_brute = default_arg_brute(
                 &self.path,
                 &*self.solver,
@@ -81,15 +271,17 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
                 self.timeout,
                 self.terminal,
             )?;
-        }
+        }*/
 
         // let terminal decide if it should wait for user
         self.terminal.done();
 
-        Ok(B7Results {
+        Ok(res)
+
+        /*Ok(B7Results {
             arg_brute,
             stdin_brute,
-        })
+        })*/
     }
 }
 

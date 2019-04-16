@@ -1,3 +1,7 @@
+use std::fmt::Display;
+use serde::{Serialize, Deserialize};
+use serde::de::DeserializeOwned;
+
 type StringType = Vec<u8>;
 type ArgumentType = Vec<StringType>;
 
@@ -15,7 +19,7 @@ impl Input {
 }
 
 // sub-trait might not be needed...
-pub trait Update: Iterator {
+pub trait Update: Iterator + Serialize + DeserializeOwned + Display {
     type Id;
     /// signals to the generator to start solving with chosen as the next constraint
     ///
@@ -47,7 +51,7 @@ pub trait Events {
 impl<T: Iterator<Item = (U, Input)> + Update<Id = U>, U> Generate<U> for T {}
 
 /* code for stdin generators */
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct StdinLenGenerator {
     len: u32,
     max: u32,
@@ -107,7 +111,7 @@ impl Update for StdinLenGenerator {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct StdinCharGenerator {
     padlen: u32,
     padchr: u8,
@@ -221,7 +225,7 @@ impl Update for StdinCharGenerator {
 }
 
 /* code for argv generators */
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ArgcGenerator {
     len: u32,
     max: u32,
@@ -282,7 +286,7 @@ impl Update for ArgcGenerator {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ArgvLenGenerator {
     len: u32,
     min: u32,
@@ -313,6 +317,10 @@ impl ArgvLenGenerator {
             argc,
             correct: vec![0; argc as usize],
         }
+    }
+
+    pub fn get_argc(&self) -> u32 {
+        self.argc
     }
 
     pub fn get_lengths(&self) -> &Vec<u32> {
@@ -367,7 +375,7 @@ impl Update for ArgvLenGenerator {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ArgvGenerator {
     len: Vec<u32>,
     padchr: u8,
