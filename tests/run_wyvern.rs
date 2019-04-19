@@ -52,12 +52,14 @@ fn run_wyvern_dynamorio() {
         Duration::new(5, 0),
     );
 
-    let res = opts.run().unwrap();
-    let mut stdin = res.stdin_brute;
+    let mut res = opts.run().unwrap();
 
     // Last character is currently non-deterministic
-    stdin.pop();
-    assert_eq!(&stdin, "dr4g0n_or_p4tric1an_it5_LLVM");
+    res.stdin.pop();
+    assert_eq!(
+        &String::from_utf8_lossy(&res.stdin),
+        "dr4g0n_or_p4tric1an_it5_LLVM"
+    );
 }
 
 #[test]
@@ -79,11 +81,12 @@ fn run_wyvern_perf() {
         vars,
         Duration::new(5, 0),
     );
-
-    let res = opts.run().unwrap();
-    let mut stdin = res.stdin_brute;
+    let mut res = opts.run().unwrap();
 
     // Last character is currently non-deterministic
-    stdin.pop();
-    assert_eq!(&stdin, "dr4g0n_or_p4tric1an_it5_LLVM");
+    res.stdin.pop();
+    assert_eq!(
+        &String::from_utf8_lossy(&res.stdin),
+        "dr4g0n_or_p4tric1an_it5_LLVM"
+    );
 }

@@ -60,36 +60,32 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
     }
 
     /// run b7 under given state and args
-    pub fn run(&mut self) -> Result<B7Results, SolverError> {
-        let mut arg_brute = String::new();
-        let mut stdin_brute = String::new();
+    pub fn run(&mut self) -> Result<Input, SolverError> {
+        let mut res = Input::new();
         if self.argstate {
-            arg_brute = default_arg_brute(
+            res = res.combine(default_arg_brute(
                 &self.path,
                 &*self.solver,
                 self.vars.clone(),
                 self.timeout,
                 self.terminal,
-            )?;
+            )?);
         }
 
         if self.stdinstate {
-            stdin_brute = default_stdin_brute(
+            res = res.combine(default_stdin_brute(
                 &self.path,
                 &*self.solver,
                 self.vars.clone(),
                 self.timeout,
                 self.terminal,
-            )?;
+            )?);
         }
 
         // let terminal decide if it should wait for user
         self.terminal.done();
 
-        Ok(B7Results {
-            arg_brute,
-            stdin_brute,
-        })
+        Ok(res)
     }
 }
 
@@ -105,7 +101,7 @@ fn default_arg_brute<B: b7tui::Ui>(
     vars: HashMap<String, String>,
     timeout: Duration,
     terminal: &mut B,
-) -> Result<String, SolverError> {
+) -> Result<Input, SolverError> {
     // Solve for argc
     let mut argcgen = ArgcGenerator::new(0, 5);
     brute(
@@ -138,7 +134,7 @@ fn default_arg_brute<B: b7tui::Ui>(
 
         // solve argv values
         let mut argvgen = ArgvGenerator::new(argc, argvlens, 0x20, 0x7e);
-        brute(
+        let res = brute(
             path,
             5,
             &mut argvgen,
@@ -149,9 +145,9 @@ fn default_arg_brute<B: b7tui::Ui>(
             vars.clone(),
         )?;
 
-        return Ok(argvgen.to_string());
+        return Ok(res);
     }
-    Ok(String::new()) //TODO should be an error
+    Err(SolverError::new(Runner::RunnerError, "arg brute failed")) //TODO should be an error
 }
 
 /// solves "default" stdin case
@@ -165,7 +161,7 @@ fn default_stdin_brute<B: b7tui::Ui>(
     vars: HashMap<String, String>,
     timeout: Duration,
     terminal: &mut B,
-) -> Result<String, SolverError> {
+) -> Result<Input, SolverError> {
     // solve stdin len
     let mut res = Input::new();
     let mut lgen = StdinLenGenerator::new(0, 51);
@@ -190,7 +186,7 @@ fn default_stdin_brute<B: b7tui::Ui>(
         } else {
             StdinCharGenerator::new_start(res, 0x20, 0x7e, stdin_input.as_bytes())
         };
-        brute(
+        let stdin = brute(
             path,
             1,
             &mut gen,
@@ -201,7 +197,10 @@ fn default_stdin_brute<B: b7tui::Ui>(
             vars.clone(),
         )?;
 
-        return Ok(gen.to_string());
+        return Ok(stdin);
     }
-    Ok(String::new()) //TODO should be an error
+    Err(SolverError::new(
+        Runner::RunnerError,
+        "stdin generator failed",
+    ))
 }

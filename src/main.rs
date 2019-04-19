@@ -139,14 +139,14 @@ fn main() -> Result<(), SolverError> {
         _ => panic!("unknown tui {}", terminal),
     }?;
 
-    if !results.arg_brute.is_empty() {
+    if !results.argv.is_empty() {
         info!("Writing argv to cache");
-        write!(file, "argv: {}", results.arg_brute)?;
+        write!(file, "argv: {:?}", results.argv)?;
     };
 
-    if !results.stdin_brute.is_empty() {
+    if !results.stdin.is_empty() {
         info!("Writing stdin to cache");
-        write!(file, "stdin: {}", results.stdin_brute)?;
+        write!(file, "stdin: {:?}", results.stdin)?;
     };
     Ok(())
 }

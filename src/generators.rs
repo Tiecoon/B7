@@ -49,6 +49,24 @@ impl Input {
     }
 }
 
+impl PartialEq for Input {
+    fn eq(&self, other: &Input) -> bool {
+        if self.argc != other.argc {
+            return false;
+        }
+        if self.argv != other.argv {
+            return false;
+        }
+        if self.stdinlen != other.stdinlen {
+            return false;
+        }
+        if self.stdin != other.stdin {
+            return false;
+        }
+        return true;
+    }
+}
+
 // sub-trait might not be needed...
 pub trait Update: Iterator {
     type Id;
