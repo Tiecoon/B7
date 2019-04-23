@@ -29,6 +29,13 @@
             <a href = "https://github.com/tiecoon/b7" target = "_blank">https://github.com/tiecoon/b7</a>
         </B>
 
+        <P> <B>
+            RCOS Observatory Page:
+            <a href = "https://rcos.io/projects/tiecoon/b7/profile" target = "_blank">https://rcos.io/projects/tiecoon/b7/profile</a>
+        </B>
+
+        <HR>
+
         <P><B>
             Installation:
         </B>
@@ -40,20 +47,55 @@
                     <li>cargo install --path .</li>
                 </ol>
 
-        <P> <B>
-            Blog:
-            <a href = "https://rcos.io/projects/tiecoon/b7/blog" target = "_blank">https://rcos.io/projects/tiecoon/b7/blog</a>
-        </B>
+        <b>
+            Requirements:
+        </b>
+            <ul>
+                <li>Necessary</li>
+                <ul>
+                    <li>Dynamorio</li>
+                    <ul>
+                        <li>
+                            <a href = "https://github.com/DynamoRIO/dynamorio/wiki/How-To-Build" target = "_blank">https://github.com/DynamoRIO/dynamorio/wiki/How-To-Build</a>
+                        </li>
+                        <li>Currently requires both a c and c++ compiler and multilib/32 bit counterparts</li>
+                    </ul>
+                </ul>
+                <li>Optional</li>
+                <ul>
+                    <li>perf</li>
+                    <ul>
+                        <li>linux-perf-x.xx for your kernel version</li>
+                        <li>sysctl kernel.perf_event_paranoid < 3</li>
+                    </ul>
+                </ul>
+            </ul>
 
-        <P> <B>
-            RCOS Observatory Page:
-            <a href = "https://rcos.io/projects/tiecoon/b7/profile" target = "_blank">https://rcos.io/projects/tiecoon/b7/profile</a>
-        </B>
+        <b>Testing:</b>
+        <p>To run multiple tests at the same time pass "-- --test-threads=1" to cargo test.</p>
+
+        <b>Documentation:</b>
+        <p>Currently there is no hosted documentation but you can get local docs with:
+        <ul>
+            <li>cargo docs --open</li>
+        </ul>
+
+        <b>Contribution:</b>
+        <p>To get involved in the project, read the
+            <a href = "https://gitlab.com/tiecoon/B7/blob/master/CONTRIBUTION.md" target = "_blank">Contribution Guidelines.</a>
+        </p>
+
+        <b>Communication:</b>
+        <p>To be kept up to date on the project and communicate with the developers, the B7 blog is 
+            <a href = "https://rcos.io/projects/tiecoon/b7/blog" target = "_blank">here.</a>
+        </p>
 
         <P> <B>
             Code of Conduct:
-            <a href = "https://gitlab.com/tiecoon/B7/blob/master/CodeOfConduct.md" target = "_blank">https://gitlab.com/tiecoon/B7/blob/master/CodeOfConduct.md</a>
-        </B>
+        </B></P>
+            Please abide by the
+            <a href = "https://gitlab.com/tiecoon/B7/blob/master/CodeOfConduct.md" target = "_blank">B7 Code of Conduct</a>
+            when contributing to the project and interacting with the community.
 
         <HR>
 
