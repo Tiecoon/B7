@@ -84,7 +84,7 @@ pub fn brute<
     path: &str,
     repeat: u32,
     gen: &mut G,
-    counter: &InstCounter,
+    counter: &dyn InstCounter,
     solved: Input,
     terminal: &mut B,
     timeout: Duration,

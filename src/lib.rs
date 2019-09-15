@@ -23,7 +23,7 @@ pub struct B7Opts<'a, B: b7tui::Ui> {
     path: String,
     argstate: bool,
     stdinstate: bool,
-    solver: Box<InstCounter>,
+    solver: Box<dyn InstCounter>,
     terminal: &'a mut B,
     timeout: Duration,
     vars: HashMap<String, String>,
@@ -42,7 +42,7 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
         // TODO make states into an enum
         argstate: bool,
         stdinstate: bool,
-        solver: Box<InstCounter>,
+        solver: Box<dyn InstCounter>,
         terminal: &'a mut B,
         vars: HashMap<String, String>,
         timeout: Duration,
@@ -101,7 +101,7 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
 /// * `argvchars` - 0x20-0x7e (standard ascii char range)
 fn default_arg_brute<B: b7tui::Ui>(
     path: &str,
-    solver: &InstCounter,
+    solver: &dyn InstCounter,
     vars: HashMap<String, String>,
     timeout: Duration,
     terminal: &mut B,
@@ -161,7 +161,7 @@ fn default_arg_brute<B: b7tui::Ui>(
 /// * `stdinchars` - 0x20-0x7e
 fn default_stdin_brute<B: b7tui::Ui>(
     path: &str,
-    solver: &InstCounter,
+    solver: &dyn InstCounter,
     vars: HashMap<String, String>,
     timeout: Duration,
     terminal: &mut B,
