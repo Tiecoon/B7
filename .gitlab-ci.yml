@@ -2,6 +2,7 @@ stages:
   - format
   - build
   - test
+  - docs
 
 variables:
   CARGO_HOME: $CI_PROJECT_DIR/cargo
@@ -24,6 +25,18 @@ test:
     - rustc --version
     - cargo --version
     - cargo test --verbose -- --test-threads=1
+
+docs:
+  stage: docs
+  only:
+    - master
+  script:
+    - cargo doc
+    - rm -rf public
+    - mv target/doc/ public
+  artifacts:
+    paths:
+      - public
 
 cache:
   paths:
