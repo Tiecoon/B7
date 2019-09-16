@@ -129,7 +129,7 @@ impl ProcessWaiter {
     /// Spawns a process, returing a ProcessHandle which can be
     /// used to interact with the spawned process.
     pub fn spawn_process(&self, mut process: Process) -> ProcessHandle {
-        let mut recv;
+        let recv;
         process.start().expect("Failed to spawn process!");
         process.write_input().unwrap();
         process.close_stdin().unwrap();
@@ -420,10 +420,12 @@ impl Process {
 
         if self.ptrace {
             // Copied from spawn_ptrace
-            self.cmd.before_exec(|| {
-                ptrace::traceme().expect("TRACEME failed!");
-                Ok(())
-            });
+            unsafe {
+                self.cmd.pre_exec(|| {
+                    ptrace::traceme().expect("TRACEME failed!");
+                    Ok(())
+                });
+            }
         }
 
         let child = self.cmd.spawn();
