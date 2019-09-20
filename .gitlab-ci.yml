@@ -28,8 +28,8 @@ test:
 
 docs:
   stage: docs
-  # only:
-  #   - master
+  only:
+    - master
   script:
     - cargo doc
     - rm -rf public
