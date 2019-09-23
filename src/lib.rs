@@ -16,11 +16,13 @@ use crate::brute::{brute, InstCounter};
 use crate::errors::*;
 use crate::generators::*;
 use std::collections::HashMap;
+use std::ffi::OsString;
 use std::time::Duration;
 
 /// simpified structure to consolate all neccessary structs to run
 pub struct B7Opts<'a, B: b7tui::Ui> {
     path: String,
+    args: Vec<OsString>,
     argstate: bool,
     stdinstate: bool,
     solver: Box<dyn InstCounter>,
@@ -39,6 +41,7 @@ pub struct B7Results {
 impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
     pub fn new(
         path: String,
+        args: Vec<OsString>,
         // TODO make states into an enum
         argstate: bool,
         stdinstate: bool,
@@ -50,6 +53,7 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
         process::block_signal();
         B7Opts {
             path,
+            args,
             argstate,
             stdinstate,
             solver,
@@ -66,6 +70,7 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
         if self.argstate {
             arg_brute = default_arg_brute(
                 &self.path,
+                &self.args,
                 &*self.solver,
                 self.vars.clone(),
                 self.timeout,
@@ -76,6 +81,7 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
         if self.stdinstate {
             stdin_brute = default_stdin_brute(
                 &self.path,
+                &self.args,
                 &*self.solver,
                 self.vars.clone(),
                 self.timeout,
@@ -101,6 +107,7 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
 /// * `argvchars` - 0x20-0x7e (standard ascii char range)
 fn default_arg_brute<B: b7tui::Ui>(
     path: &str,
+    args: &[OsString],
     solver: &dyn InstCounter,
     vars: HashMap<String, String>,
     timeout: Duration,
@@ -110,6 +117,7 @@ fn default_arg_brute<B: b7tui::Ui>(
     let mut argcgen = ArgcGenerator::new(0, 5);
     brute(
         path,
+        args,
         1,
         &mut argcgen,
         solver,
@@ -126,6 +134,7 @@ fn default_arg_brute<B: b7tui::Ui>(
         let mut argvlengen = ArgvLenGenerator::new(argc, 0, 20);
         brute(
             path,
+            args,
             5,
             &mut argvlengen,
             solver,
@@ -140,6 +149,7 @@ fn default_arg_brute<B: b7tui::Ui>(
         let mut argvgen = ArgvGenerator::new(argc, argvlens, 0x20, 0x7e);
         brute(
             path,
+            args,
             5,
             &mut argvgen,
             solver,
@@ -161,6 +171,7 @@ fn default_arg_brute<B: b7tui::Ui>(
 /// * `stdinchars` - 0x20-0x7e
 fn default_stdin_brute<B: b7tui::Ui>(
     path: &str,
+    args: &[OsString],
     solver: &dyn InstCounter,
     vars: HashMap<String, String>,
     timeout: Duration,
@@ -171,6 +182,7 @@ fn default_stdin_brute<B: b7tui::Ui>(
     let mut lgen = StdinLenGenerator::new(0, 51);
     brute(
         path,
+        args,
         1,
         &mut lgen,
         solver,
@@ -192,6 +204,7 @@ fn default_stdin_brute<B: b7tui::Ui>(
         };
         brute(
             path,
+            args,
             1,
             &mut gen,
             solver,

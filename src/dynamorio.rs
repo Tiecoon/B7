@@ -63,6 +63,7 @@ impl InstCounter for DynamorioSolver {
         proccess.arg(libinscount);
         proccess.arg("--");
         proccess.arg(&data.path);
+        proccess.args(&data.args);
         for arg in data.inp.argv.iter() {
             proccess.arg(OsStr::from_bytes(arg));
         }

@@ -7,6 +7,7 @@ use b7::*;
 
 use clap::{App, Arg};
 use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::io::prelude::*;
 use std::process::exit;
 use std::time::Duration;
@@ -20,6 +21,11 @@ fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
                 .help("Binary to brute force input for")
                 .index(1)
                 .required(true),
+        )
+        .arg(
+            Arg::with_name("args")
+                .help("Initial arguments to binary")
+                .multiple(true),
         )
         .arg(
             Arg::with_name("solver")
@@ -84,6 +90,11 @@ fn main() -> Result<(), SolverError> {
         None => print_usage(&matches),
     };
 
+    let args = match matches.values_of_os("args") {
+        Some(args) => args.map(OsStr::to_os_string).collect(),
+        None => Vec::new(),
+    };
+
     let argstate = matches.occurrences_of("argstate") < 1;
     let stdinstate = matches.occurrences_of("stdinstate") < 1;
 
@@ -118,6 +129,7 @@ fn main() -> Result<(), SolverError> {
     let results = match &*terminal {
         "tui" => B7Opts::new(
             path.to_string(),
+            args,
             argstate,
             stdinstate,
             solver,
@@ -128,6 +140,7 @@ fn main() -> Result<(), SolverError> {
         .run(),
         "env" => B7Opts::new(
             path.to_string(),
+            args,
             argstate,
             stdinstate,
             solver,

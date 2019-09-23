@@ -44,6 +44,7 @@ fn run_wyvern_dynamorio() {
 
     let mut opts = B7Opts::new(
         path.to_string_lossy().into_owned(),
+        Vec::new(),
         false,
         true,
         Box::new(dynamorio::DynamorioSolver),
@@ -72,6 +73,7 @@ fn run_wyvern_perf() {
 
     let mut opts = B7Opts::new(
         path.to_string_lossy().into_owned(),
+        Vec::new(),
         false,
         true,
         Box::new(perf::PerfSolver),

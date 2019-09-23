@@ -1,6 +1,7 @@
 // use std::cmp::Ord;
 use scoped_pool::Pool;
 use std::collections::HashMap;
+use std::ffi::OsString;
 use std::fmt::{Debug, Display};
 use std::marker::Send;
 use std::sync::mpsc::channel;
@@ -16,6 +17,7 @@ use crate::statistics;
 /// holds information that is universal to InstCounters
 pub struct InstCountData {
     pub path: String,
+    pub args: Vec<OsString>,
     pub inp: Input,
     pub vars: HashMap<String, String>,
     pub timeout: Duration,
@@ -34,6 +36,7 @@ pub trait InstCounter: Send + Sync + 'static {
 /// # Arguements
 ///
 /// * `path` - a string slice that holds the path to the binary
+/// * `args` - a slice of OS strings with arguments that are always passed first
 /// * `repeat` - an int to tell how many runs to average for each input
 /// * `gen` - a generators::generator that has Display trait to use to generate additional input
 /// * `counter` - the inst_counter function to run the binary under
@@ -61,6 +64,7 @@ pub trait InstCounter: Send + Sync + 'static {
 ///
 ///    brute(
 ///        "./tests/wyvern",
+///        &[],
 ///        1,
 ///        &mut task,
 ///        &perf::PerfSolver,
@@ -82,6 +86,7 @@ pub fn brute<
     B: b7tui::Ui,
 >(
     path: &str,
+    args: &[OsString],
     repeat: u32,
     gen: &mut G,
     counter: &dyn InstCounter,
@@ -124,6 +129,7 @@ pub fn brute<
                     let inp = (inp_pair.1).clone();
                     let data = InstCountData {
                         path: test,
+                        args: args.to_vec(),
                         inp,
                         vars,
                         timeout,
