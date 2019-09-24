@@ -62,7 +62,6 @@ pub trait InstCounter: Send + Sync + 'static {
 ///
 ///    brute(
 ///        "./tests/wyvern",
-///        &[],
 ///        1,
 ///        &mut task,
 ///        &perf::PerfSolver,
