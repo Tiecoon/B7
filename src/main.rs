@@ -3,12 +3,13 @@ extern crate log;
 
 use b7::brute::InstCounter;
 use b7::errors::*;
+use b7::generators::Input;
 use b7::*;
 
 use clap::{App, Arg};
 use std::collections::HashMap;
-use std::ffi::OsStr;
 use std::io::prelude::*;
+use std::os::unix::ffi::OsStrExt;
 use std::process::exit;
 use std::time::Duration;
 
@@ -91,7 +92,7 @@ fn main() -> Result<(), SolverError> {
     };
 
     let args = match matches.values_of_os("args") {
-        Some(args) => args.map(OsStr::to_os_string).collect(),
+        Some(args) => args.map(|arg| arg.as_bytes().to_vec()).collect(),
         None => Vec::new(),
     };
 
@@ -126,10 +127,13 @@ fn main() -> Result<(), SolverError> {
         .create(true)
         .open(format!("{}.cache", path))?;
 
+    let mut input = Input::new();
+    input.argv = args;
+
     let results = match &*terminal {
         "tui" => B7Opts::new(
             path.to_string(),
-            args,
+            input,
             argstate,
             stdinstate,
             solver,
@@ -140,7 +144,7 @@ fn main() -> Result<(), SolverError> {
         .run(),
         "env" => B7Opts::new(
             path.to_string(),
-            args,
+            input,
             argstate,
             stdinstate,
             solver,

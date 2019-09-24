@@ -1,7 +1,6 @@
 // use std::cmp::Ord;
 use scoped_pool::Pool;
 use std::collections::HashMap;
-use std::ffi::OsString;
 use std::fmt::{Debug, Display};
 use std::marker::Send;
 use std::sync::mpsc::channel;
@@ -17,7 +16,6 @@ use crate::statistics;
 /// holds information that is universal to InstCounters
 pub struct InstCountData {
     pub path: String,
-    pub args: Vec<OsString>,
     pub inp: Input,
     pub vars: HashMap<String, String>,
     pub timeout: Duration,
@@ -86,7 +84,6 @@ pub fn brute<
     B: b7tui::Ui,
 >(
     path: &str,
-    args: &[OsString],
     repeat: u32,
     gen: &mut G,
     counter: &dyn InstCounter,
@@ -129,7 +126,6 @@ pub fn brute<
                     let inp = (inp_pair.1).clone();
                     let data = InstCountData {
                         path: test,
-                        args: args.to_vec(),
                         inp,
                         vars,
                         timeout,

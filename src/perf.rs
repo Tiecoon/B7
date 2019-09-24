@@ -89,7 +89,6 @@ impl InstCounter for PerfSolver {
     /// * number of instructions perf says were executed or error
     fn get_inst_count(&self, data: &InstCountData) -> Result<i64, SolverError> {
         let mut process = Process::new(&data.path);
-        process.args(&data.args);
         for arg in data.inp.argv.iter() {
             process.arg(OsStr::from_bytes(arg));
         }
