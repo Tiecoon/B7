@@ -34,7 +34,6 @@ pub trait InstCounter: Send + Sync + 'static {
 /// # Arguements
 ///
 /// * `path` - a string slice that holds the path to the binary
-/// * `args` - a slice of OS strings with arguments that are always passed first
 /// * `repeat` - an int to tell how many runs to average for each input
 /// * `gen` - a generators::generator that has Display trait to use to generate additional input
 /// * `counter` - the inst_counter function to run the binary under
