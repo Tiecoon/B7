@@ -28,8 +28,8 @@ test:
 
 pages:
   stage: deploy
-  # only:
-  #  - master
+  only:
+    - master
   script:
     - cargo doc
     - rm -rf public
