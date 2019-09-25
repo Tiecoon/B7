@@ -2,7 +2,7 @@ stages:
   - format
   - build
   - test
-  - pages
+  - deploy
 
 variables:
   CARGO_HOME: $CI_PROJECT_DIR/cargo
