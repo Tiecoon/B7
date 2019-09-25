@@ -44,6 +44,8 @@ cargo docs --open
 
 To get involved in the project, read the [Contribution Guidelines](./CONTRIBUTION.md)
 
+[Documentation](https://tiecoon.gitlab.io/B7/b7/index.html)
+
 ## Communication
 
 The B7 blog is located in the Rensselaer Center for Open Source Observatory project page [here](https://rcos.io/projects/tiecoon/b7/](https://rcos.io/projects/tiecoon/b7/profile)

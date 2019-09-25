@@ -2,7 +2,7 @@ stages:
   - format
   - build
   - test
-  - docs
+  - deploy
 
 variables:
   CARGO_HOME: $CI_PROJECT_DIR/cargo
@@ -14,7 +14,7 @@ build:
     RUST_BACKTRACE=1 cargo build
 
 format:
-  stage: format
+  stage: test
   script:
     cargo fmt --all -- --check
   allow_failure: true
@@ -26,8 +26,8 @@ test:
     - cargo --version
     - cargo test --verbose -- --test-threads=1
 
-docs:
-  stage: docs
+pages:
+  stage: deploy
   only:
     - master
   script:
