@@ -30,11 +30,10 @@ cargo install --path .
 
 ## Testing
 
-To run multiple tests at the same time pass `-- --test-threads=1` to cargo test
+To run multiple tests at the same time pass `-- --test-threads=1` to cargo test to ensure stability
 
-## Documentation
+## [Documentation](https://b7-re.gitlab.io/B7/b7/index.html)
 
-Currently there is no hosted documentation but you can get local docs with
 
 ```
 cargo docs --open
@@ -44,7 +43,6 @@ cargo docs --open
 
 To get involved in the project, read the [Contribution Guidelines](./CONTRIBUTION.md)
 
-[Documentation](https://tiecoon.gitlab.io/B7/b7/index.html)
 
 ## Communication
 
