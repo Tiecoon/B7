@@ -30,9 +30,9 @@ cargo install --path .
 
 ## Testing
 
-To run multiple tests at the same time pass `-- --test-threads=1` to cargo test
+To run multiple tests at the same time pass `-- --test-threads=1` to cargo test to ensure stability
 
-## [Documentation](https://tiecoon.gitlab.io/B7/b7/index.html)
+## [Documentation](https://b7-re.gitlab.io/B7/b7/index.html)
 
 
 ```
