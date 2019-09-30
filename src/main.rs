@@ -15,7 +15,7 @@ use std::process::exit;
 use std::time::Duration;
 
 /// Parse memory inputs from args
-fn mem_inputs_from_args(matches: &clap::ArgMatches) -> SolverResult<Vec<MemInput>> {
+fn mem_inputs_from_args(matches: &clap::ArgMatches) -> Vec<MemInput> {
     matches
         .values_of("mem-brute")
         .unwrap_or_default()
@@ -150,7 +150,7 @@ fn main() -> Result<(), SolverError> {
 
     let input = Input {
         argv: args,
-        mem: mem_inputs_from_args(&matches)?,
+        mem: mem_inputs_from_args(&matches),
         ..Default::default()
     };
 
