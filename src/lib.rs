@@ -35,6 +35,7 @@ pub struct B7Opts<'a, B: b7tui::Ui> {
 pub struct B7Results {
     pub arg_brute: String,
     pub stdin_brute: String,
+    pub mem_brute: Vec<MemInput>,
 }
 
 impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
@@ -66,6 +67,8 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
     pub fn run(&mut self) -> Result<B7Results, SolverError> {
         let mut arg_brute = String::new();
         let mut stdin_brute = String::new();
+        let mut mem_brute = Vec::new();
+
         if self.argstate {
             arg_brute = default_arg_brute(
                 &self.path,
@@ -88,12 +91,24 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
             )?;
         }
 
+        if !self.init_input.mem.is_empty() {
+            mem_brute = default_mem_brute(
+                &self.path,
+                &self.init_input,
+                &*self.solver,
+                self.vars.clone(),
+                self.timeout,
+                self.terminal,
+            )?;
+        }
+
         // let terminal decide if it should wait for user
         self.terminal.done();
 
         Ok(B7Results {
             arg_brute,
             stdin_brute,
+            mem_brute,
         })
     }
 }
@@ -211,4 +226,35 @@ fn default_stdin_brute<B: b7tui::Ui>(
         return Ok(gen.to_string());
     }
     Ok(String::new()) //TODO should be an error
+}
+
+/// Brute force memory regions and collect results
+fn default_mem_brute<B: b7tui::Ui>(
+    path: &str,
+    init_input: &Input,
+    solver: &dyn InstCounter,
+    vars: HashMap<String, String>,
+    timeout: Duration,
+    terminal: &mut B,
+) -> Result<Vec<MemInput>, SolverError> {
+    init_input
+        .mem
+        .iter()
+        .map(|init_mem| {
+            let mut gen = MemGenerator::new(init_mem.clone());
+
+            brute(
+                path,
+                1,
+                &mut gen,
+                solver,
+                init_input.clone(),
+                terminal,
+                timeout,
+                vars.clone(),
+            )?;
+
+            Ok(gen.get_mem_input())
+        })
+        .collect::<Result<Vec<MemInput>, SolverError>>()
 }
