@@ -1,23 +1,88 @@
+use itertools::Itertools;
+use std::collections::HashMap;
+
+use crate::errors::Runner::ArgError;
+use crate::errors::SolverError;
+use crate::errors::SolverResult;
+
 type StringType = Vec<u8>;
 type ArgumentType = Vec<StringType>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
+/// Input to a memory buffer
+pub struct MemInput {
+    /// Size of memory buffer
+    pub size: usize,
+    /// Address of memory buffer
+    pub addr: usize,
+    /// Bytes to load in memory buffer
+    pub bytes: StringType,
+}
+
+impl MemInput {
+    /// Parse a set of memory inputs from an argument of the format:
+    ///
+    /// ``` text
+    /// addr=XXX,size=YYY,init=ZZZ
+    /// ```
+    pub fn parse_from_arg(arg: &str) -> SolverResult<Self> {
+        // Parse comma separated key-value list into a `HashMap`
+        let opts = arg
+            .split(',')
+            .map(|opt| {
+                opt.split('=')
+                    .collect_tuple::<(&str, &str)>()
+                    .ok_or_else(|| SolverError::new(ArgError, "Invalid memory input usage"))
+            })
+            .collect::<SolverResult<HashMap<&str, &str>>>()?;
+
+        // Parse initial input to bytes
+        let bytes = opts.get("init").unwrap_or(&"");
+        let bytes = hex::decode(bytes);
+        let bytes =
+            bytes.map_err(|_| SolverError::new(ArgError, "Invalid initial memory input"))?;
+
+        // Parse address to integer
+        let addr = opts.get("addr");
+        let addr = addr.ok_or_else(|| SolverError::new(ArgError, "Memory input has no address"))?;
+        let addr = usize::from_str_radix(addr, 0x10);
+        let addr = addr.map_err(|_| SolverError::new(ArgError, "Invalid memory input address"))?;
+
+        // Parse size to integer
+        let size = opts.get("size");
+        let size = size.ok_or_else(|| SolverError::new(ArgError, "Memory input has no size"))?;
+        let size = usize::from_str_radix(size, 0x10);
+        let size = size.map_err(|_| SolverError::new(ArgError, "Invalid memory input size"))?;
+
+        Ok(Self { bytes, addr, size })
+    }
+}
+
+impl std::fmt::Display for MemInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{:#x}[{}] = {}",
+            self.addr,
+            self.size,
+            hex::encode(&self.bytes)
+        )
+    }
+}
+
+#[derive(Debug, Clone, Default)]
 /// Holds the various input the runner is expected to use
 pub struct Input {
     pub argc: u32,
     pub argv: ArgumentType,
     pub stdinlen: u32,
     pub stdin: StringType,
+    pub mem: Vec<MemInput>,
 }
 
 impl Input {
     pub fn new() -> Input {
-        Input {
-            argv: Vec::new(),
-            stdin: Vec::new(),
-            argc: 0,
-            stdinlen: 0,
-        }
+        Input::default()
     }
     /// Takes in an Input to essentially copy over self
     /// ## example
@@ -43,6 +108,9 @@ impl Input {
         }
         if tmp.stdin.len() != 0 {
             res.stdin = tmp.stdin;
+        }
+        if tmp.mem.len() != 0 {
+            res.mem = tmp.mem;
         }
 
         res
@@ -537,5 +605,89 @@ impl Update for ArgvGenerator {
         }
 
         (self.pos as u32) < self.argc
+    }
+}
+
+#[derive(Debug)]
+/// Generator for brute forcing inputs to a memory region
+pub struct MemGenerator {
+    /// Current byte being tested
+    cur: u16,
+    /// Correct portion of the input
+    correct: MemInput,
+}
+
+impl MemGenerator {
+    /// Make `MemGenerator` from a `MemInput`
+    pub fn new(mem_input: MemInput) -> Self {
+        Self {
+            cur: 0,
+            correct: mem_input,
+        }
+    }
+
+    /// Get correct portion of input so far
+    pub fn get_mem_input(self) -> MemInput {
+        self.correct
+    }
+
+    /// Is brute forcing done?
+    pub fn finished(&self) -> bool {
+        self.correct.bytes.len() == self.correct.size
+    }
+}
+
+impl Iterator for MemGenerator {
+    type Item = (u8, Input);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.cur > 255 || self.finished() {
+            return None;
+        }
+
+        let cur = self.cur as u8;
+        self.cur += 1;
+
+        let mut try_bytes = self.correct.bytes.clone();
+        try_bytes.push(cur);
+
+        let mem = MemInput {
+            size: self.correct.size,
+            addr: self.correct.addr,
+            bytes: try_bytes,
+        };
+
+        let mem = vec![mem];
+
+        let input = Input {
+            mem,
+            ..Default::default()
+        };
+
+        Some((cur, input))
+    }
+}
+
+impl Update for MemGenerator {
+    type Id = u8;
+
+    /// Tell generator which byte was correct
+    fn update(&mut self, chosen: &u8) -> bool {
+        self.correct.bytes.push(*chosen);
+        self.cur = 0;
+        self.on_update();
+        !self.finished()
+    }
+}
+
+impl std::fmt::Display for MemGenerator {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.correct)
+    }
+}
+
+impl Events for MemGenerator {
+    fn on_update(&self) {
+        info!("mem: {}", self);
     }
 }

@@ -92,7 +92,8 @@ impl InstCounter for PerfSolver {
         for arg in data.inp.argv.iter() {
             process.arg(OsStr::from_bytes(arg));
         }
-        process.input(data.inp.stdin.clone());
+        process.stdin_input(data.inp.stdin.clone());
+        process.mem_input(data.inp.mem.clone());
         process.with_ptrace(true);
 
         let handle = process.spawn();
