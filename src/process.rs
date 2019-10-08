@@ -312,6 +312,30 @@ pub struct ProcessHandle {
 }
 
 impl ProcessHandle {
+    fn get_base_addr(&self) -> usize {
+        let proc = procfs::Process::new(self.pid.as_raw())
+            .expect("Failed to get proc while writing memory input");
+
+        let maps = proc
+            .maps()
+            .expect("Failed to get proc maps while writing memory input");
+
+        let exe_path = proc
+            .exe()
+            .expect("Failed to get proc exe path while writing memory input");
+
+        let base_map = maps
+            .iter()
+            .filter(|map| match map.pathname {
+                procfs::MMapPath::Path(ref path) => path == &exe_path,
+                _ => false,
+            })
+            .next()
+            .expect("Failed to get proc base address while writing memory input");
+
+        base_map.address.0 as usize
+    }
+
     /// Write each memory input range to the process
     /// NOTE: This assumes `self.proc.ptrace` is `true`
     fn write_mem_input(&self) -> Result<(), SolverError> {
@@ -319,7 +343,8 @@ impl ProcessHandle {
 
         for mem in &self.proc.mem_input {
             for word in mem.bytes.chunks(word_size) {
-                let addr = mem.addr as ptrace::AddressType;
+                let addr = mem.addr + self.get_base_addr();
+                let addr = addr as ptrace::AddressType;
 
                 // Pad to word size
                 let word = {
