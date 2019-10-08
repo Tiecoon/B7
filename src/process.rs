@@ -341,7 +341,7 @@ impl ProcessHandle {
 
         for mem in &self.proc.mem_input {
             for word in mem.bytes.chunks(word_size) {
-                let addr = mem.addr + self.get_base_addr();
+                let addr = mem.addr + self.get_base_addr()?;
                 let addr = addr as ptrace::AddressType;
 
                 // Pad to word size
