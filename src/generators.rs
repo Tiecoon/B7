@@ -1,6 +1,10 @@
 use itertools::Itertools;
 use std::collections::HashMap;
 
+use crate::errors::Runner::ArgError;
+use crate::errors::SolverError;
+use crate::errors::SolverResult;
+
 type StringType = Vec<u8>;
 type ArgumentType = Vec<StringType>;
 
@@ -21,35 +25,36 @@ impl MemInput {
     /// ``` text
     /// addr=XXX,size=YYY,init=ZZZ
     /// ```
-    pub fn parse_from_arg(arg: &str) -> Self {
+    pub fn parse_from_arg(arg: &str) -> SolverResult<Self> {
         // Parse comma separated key-value list into a `HashMap`
         let opts = arg
             .split(',')
             .map(|opt| {
                 opt.split('=')
                     .collect_tuple::<(&str, &str)>()
-                    .expect("Invalid memory input usage")
+                    .ok_or_else(|| SolverError::new(ArgError, "Invalid memory input usage"))
             })
-            .collect::<HashMap<&str, &str>>();
+            .collect::<SolverResult<HashMap<&str, &str>>>()?;
 
         // Parse initial input to bytes
         let bytes = opts.get("init").unwrap_or(&"");
         let bytes = hex::decode(bytes);
-        let bytes = bytes.expect("Invalid initial memory input");
+        let bytes =
+            bytes.map_err(|_| SolverError::new(ArgError, "Invalid initial memory input"))?;
 
         // Parse address to integer
         let addr = opts.get("addr");
-        let addr = addr.expect("Memory input has no address");
+        let addr = addr.ok_or_else(|| SolverError::new(ArgError, "Memory input has no address"))?;
         let addr = usize::from_str_radix(addr, 0x10);
-        let addr = addr.expect("Invalid memory input address");
+        let addr = addr.map_err(|_| SolverError::new(ArgError, "Invalid memory input address"))?;
 
         // Parse size to integer
         let size = opts.get("size");
-        let size = size.expect("Memory input has no size");
+        let size = size.ok_or_else(|| SolverError::new(ArgError, "Memory input has no size"))?;
         let size = usize::from_str_radix(size, 0x10);
-        let size = size.expect("Invalid memory input size");
+        let size = size.map_err(|_| SolverError::new(ArgError, "Invalid memory input size"))?;
 
-        Self { bytes, addr, size }
+        Ok(Self { bytes, addr, size })
     }
 }
 
