@@ -1,4 +1,5 @@
 use crate::binary::Binary;
+use crate::errors::Runner::ProcfsError;
 use crate::errors::*;
 use crate::generators::MemInput;
 use byteorder::ByteOrder;
@@ -312,18 +313,10 @@ pub struct ProcessHandle {
 }
 
 impl ProcessHandle {
-    fn get_base_addr(&self) -> usize {
-        let proc = procfs::Process::new(self.pid.as_raw())
-            .expect("Failed to get proc while writing memory input");
-
-        let maps = proc
-            .maps()
-            .expect("Failed to get proc maps while writing memory input");
-
-        let exe_path = proc
-            .exe()
-            .expect("Failed to get proc exe path while writing memory input");
-
+    fn get_base_addr(&self) -> SolverResult<usize> {
+        let proc = procfs::Process::new(self.pid.as_raw())?;
+        let maps = proc.maps()?;
+        let exe_path = proc.exe()?;
         let base_map = maps
             .iter()
             .filter(|map| match map.pathname {
@@ -331,9 +324,14 @@ impl ProcessHandle {
                 _ => false,
             })
             .next()
-            .expect("Failed to get proc base address while writing memory input");
+            .ok_or_else(|| {
+                SolverError::new(
+                    ProcfsError,
+                    "Failed to get proc base address while writing memory input",
+                )
+            })?;
 
-        base_map.address.0 as usize
+        Ok(base_map.address.0 as usize)
     }
 
     /// Write each memory input range to the process

@@ -28,6 +28,7 @@ pub enum Runner {
     ArgError,
     IoError,
     NixError,
+    ProcfsError,
     Timeout,
     Unknown,
 }
@@ -63,5 +64,11 @@ impl From<io::Error> for SolverError {
 impl From<nix::Error> for SolverError {
     fn from(error: nix::Error) -> Self {
         SolverError::new(Runner::NixError, error::Error::description(&error))
+    }
+}
+
+impl From<procfs::ProcError> for SolverError {
+    fn from(error: procfs::ProcError) -> Self {
+        SolverError::new(Runner::ProcfsError, error::Error::description(&error))
     }
 }
