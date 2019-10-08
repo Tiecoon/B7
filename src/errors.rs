@@ -2,6 +2,8 @@ use std::error;
 use std::fmt;
 use std::io;
 
+pub type SolverResult<T> = Result<T, SolverError>;
+
 #[derive(Debug)]
 /// b7 errors type
 pub struct SolverError {
@@ -23,7 +25,7 @@ impl SolverError {
 /// enum for types of errors
 pub enum Runner {
     RunnerError,
-    MissingArgs,
+    ArgError,
     IoError,
     NixError,
     Timeout,
