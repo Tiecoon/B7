@@ -13,7 +13,7 @@ pub struct Binary {
     elf_header: ElfHeader,
 }
 
-/// holds the path to the binary possibly expanded later
+/// holds the path to the binary and its ELF header
 impl Binary {
     pub fn new(path: &str) -> SolverResult<Binary> {
         let elf_header = {
