@@ -313,6 +313,7 @@ pub struct ProcessHandle {
 }
 
 impl ProcessHandle {
+    /// Get the process's base address from /proc/<pid>/maps
     fn get_base_addr(&self) -> SolverResult<usize> {
         let proc = procfs::Process::new(self.pid.as_raw())?;
         let maps = proc.maps()?;
