@@ -88,7 +88,10 @@ fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
                 .long("mem-brute")
                 .help(
                     "Address, size, and initial input (optional) of memory \
-                     buffer to brute force.\n    Example: `--mem-brute \
+                     buffer to brute force. For PIE binaries, the address is \
+                     relative to the executable base. Otherwise, the address is \
+                     absolute.\
+                     \n    Example: `--mem-brute \
                      addr=404060,size=64,init=666c61677b0a`",
                 )
                 .takes_value(true)

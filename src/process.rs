@@ -1,4 +1,5 @@
 use crate::binary::Binary;
+use crate::errors::Runner::ProcfsError;
 use crate::errors::*;
 use crate::generators::MemInput;
 use byteorder::ByteOrder;
@@ -312,14 +313,44 @@ pub struct ProcessHandle {
 }
 
 impl ProcessHandle {
+    /// Get the process's base address from /proc/<pid>/maps
+    fn get_base_addr(&self) -> SolverResult<usize> {
+        let proc = procfs::Process::new(self.pid.as_raw())?;
+        let maps = proc.maps()?;
+        let exe_path = proc.exe()?;
+        let base_map = maps
+            .iter()
+            .filter(|map| match map.pathname {
+                procfs::MMapPath::Path(ref path) => path == &exe_path,
+                _ => false,
+            })
+            .next()
+            .ok_or_else(|| {
+                SolverError::new(
+                    ProcfsError,
+                    "Failed to get proc base address while writing memory input",
+                )
+            })?;
+
+        Ok(base_map.address.0 as usize)
+    }
+
     /// Write each memory input range to the process
     /// NOTE: This assumes `self.proc.ptrace` is `true`
     fn write_mem_input(&self) -> Result<(), SolverError> {
         let word_size = std::mem::size_of::<usize>();
+        let is_pie = self.proc.binary.is_pie()?;
 
         for mem in &self.proc.mem_input {
             for word in mem.bytes.chunks(word_size) {
-                let addr = mem.addr as ptrace::AddressType;
+                // Use relative address if binary is PIE
+                let addr = if is_pie {
+                    mem.addr + self.get_base_addr()?
+                } else {
+                    mem.addr
+                };
+
+                let addr = addr as ptrace::AddressType;
 
                 // Pad to word size
                 let word = {
@@ -403,15 +434,15 @@ impl ProcessHandle {
 
 // Handle running a process
 impl Process {
-    pub fn new(path: &str) -> Process {
-        Process {
-            binary: Binary::new(path),
+    pub fn new(path: &str) -> SolverResult<Process> {
+        Ok(Process {
+            binary: Binary::new(path)?,
             cmd: Command::new(path),
             stdin_input: Vec::new(),
             mem_input: Vec::new(),
             child: None,
             ptrace: false,
-        }
+        })
     }
 
     /// set what stdin should be sent to process
