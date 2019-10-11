@@ -342,14 +342,14 @@ impl ProcessHandle {
         let is_pie = self.proc.binary.is_pie()?;
 
         for mem in &self.proc.mem_input {
-            for word in mem.bytes.chunks(word_size) {
+            for (nth_word, word) in mem.bytes.chunks(word_size).enumerate() {
                 // Use relative address if binary is PIE
                 let addr = if is_pie {
                     mem.addr + self.get_base_addr()?
                 } else {
                     mem.addr
                 };
-
+                let addr = addr + nth_word * word_size;
                 let addr = addr as ptrace::AddressType;
 
                 // Pad to word size
