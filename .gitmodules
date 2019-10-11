@@ -4,4 +4,4 @@
 	ignore = dirty
 [submodule "tests"]
 	path = tests
-	url = git@gitlab.com:b7-re/b7-test-binaries.git
+	url = https://gitlab.com/b7-re/b7-test-binaries.git
