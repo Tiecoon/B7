@@ -14,6 +14,8 @@ use std::os::unix::ffi::OsStrExt;
 use std::process::exit;
 use std::time::Duration;
 
+use is_executable::IsExecutable;
+
 /// Parse memory inputs from args
 fn mem_inputs_from_args(matches: &clap::ArgMatches) -> SolverResult<Vec<MemInput>> {
     matches
@@ -114,6 +116,10 @@ fn main() -> Result<(), SolverError> {
         Some(a) => a,
         None => print_usage(&matches),
     };
+
+    if !std::path::Path::new(path).is_executable(){
+        panic!("File type provided is not executable.");
+    }
 
     let args = match matches.values_of_os("args") {
         Some(args) => args.map(|arg| arg.as_bytes().to_vec()).collect(),
