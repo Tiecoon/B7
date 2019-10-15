@@ -8,7 +8,7 @@ use crate::errors::SolverResult;
 type StringType = Vec<u8>;
 type ArgumentType = Vec<StringType>;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 /// Input to a memory buffer
 pub struct MemInput {
     /// Size of memory buffer
@@ -17,6 +17,9 @@ pub struct MemInput {
     pub addr: usize,
     /// Bytes to load in memory buffer
     pub bytes: StringType,
+    /// Address to place breakpoint before `bytes` is loaded into the memory
+    /// buffer. If `None`, then write the buffer at the beginning of execution.
+    pub breakpoint: Option<usize>,
 }
 
 impl MemInput {
@@ -54,7 +57,21 @@ impl MemInput {
         let size = usize::from_str_radix(size, 0x10);
         let size = size.map_err(|_| SolverError::new(ArgError, "Invalid memory input size"))?;
 
-        Ok(Self { bytes, addr, size })
+        // Parse breakpoint address to integer
+        let breakpoint = opts.get("breakpoint");
+        let breakpoint = match breakpoint {
+            Some(bp) => usize::from_str_radix(bp, 0x10).map_err(|_| {
+                SolverError::new(ArgError, "Invalid memory input breakpoint address")
+            })?,
+            None => None,
+        };
+
+        Ok(Self {
+            bytes,
+            addr,
+            size,
+            breakpoint,
+        })
     }
 }
 
