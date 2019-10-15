@@ -8,7 +8,7 @@ use crate::errors::SolverResult;
 type StringType = Vec<u8>;
 type ArgumentType = Vec<StringType>;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 /// Input to a memory buffer
 pub struct MemInput {
     /// Size of memory buffer
