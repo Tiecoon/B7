@@ -60,11 +60,20 @@ impl MemInput {
         // Parse breakpoint address to integer
         let breakpoint = opts.get("breakpoint");
         let breakpoint = match breakpoint {
-            Some(bp) => usize::from_str_radix(bp, 0x10).map_err(|_| {
-                SolverError::new(ArgError, "Invalid memory input breakpoint address")
-            })?,
+            Some(bp) => {
+                let bp = usize::from_str_radix(bp, 0x10);
+                let bp = bp.map_err(|_| {
+                    SolverError::new(ArgError, "Invalid memory input breakpoint address")
+                })?;
+                Some(bp)
+            }
             None => None,
         };
+
+        let is_x86 = cfg!(target_arch = "x86") || cfg!(target_arch = "x86_64");
+        if breakpoint.is_some() && !is_x86 {
+            return Err(SolverError::new(ArgError, "Breakpoints only work on x86"));
+        }
 
         Ok(Self {
             bytes,
@@ -672,6 +681,7 @@ impl Iterator for MemGenerator {
             size: self.correct.size,
             addr: self.correct.addr,
             bytes: try_bytes,
+            breakpoint: self.correct.breakpoint,
         };
 
         let mem = vec![mem];

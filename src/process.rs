@@ -19,6 +19,8 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+const WORD_SIZE: usize = std::mem::size_of::<usize>();
+
 // Represents data returned from a call to waitpid()
 // For convenience, we include the pid directly in the
 // struct, to avoid needing to unwrap it from WaitStatus
@@ -302,6 +304,10 @@ pub struct Process {
     child: Option<Child>,
     stdin_input: Vec<u8>,
     mem_input: Vec<MemInput>,
+    /// Creating a breakpoint requires injecting the breakpoint opcode into the
+    /// process's code. The bytes that were overwritten for each breakpoint are
+    /// saved here so they can be restored when the breakpoint is reached.
+    breakpoint_saves: HashMap<usize, usize>,
     ptrace: bool,
 }
 
@@ -337,34 +343,59 @@ impl ProcessHandle {
 
     /// Write each memory input range to the process
     /// NOTE: This assumes `self.proc.ptrace` is `true`
-    fn write_mem_input(&self) -> Result<(), SolverError> {
-        let word_size = std::mem::size_of::<usize>();
+    fn write_mem_input(&self, mem: &MemInput) -> Result<(), SolverError> {
         let is_pie = self.proc.binary.is_pie()?;
 
+        for (nth_word, word) in mem.bytes.chunks(WORD_SIZE).enumerate() {
+            // Use relative address if binary is PIE
+            let addr = if is_pie {
+                mem.addr + self.get_base_addr()?
+            } else {
+                mem.addr
+            };
+            let addr = addr + nth_word * WORD_SIZE;
+            let addr = addr as ptrace::AddressType;
+
+            // Pad to word size
+            let word = {
+                let mut word = word.to_vec();
+                word.resize(WORD_SIZE, 0x00);
+                word
+            };
+
+            // Convert from bytes to word
+            let word = byteorder::NativeEndian::read_uint(&word, WORD_SIZE);
+            let word = word as ptrace::AddressType;
+
+            // Do the write
+            ptrace::write(self.pid, addr, word)?;
+        }
+
+        Ok(())
+    }
+
+    fn insert_breakpoint(&mut self, addr: usize) -> Result<(), SolverError> {
+        let bytes = ptrace::read(self.pid, addr as ptrace::AddressType)? as usize;
+
+        // 0xcc is the x86 int3 breakpoint opcode. We can assume little endian
+        // here, since breakpoints are only supported on x86.
+        let bp_bytes = bytes & (std::usize::MAX ^ 0xff) | 0xcc;
+        ptrace::write(
+            self.pid,
+            addr as ptrace::AddressType,
+            bp_bytes as ptrace::AddressType,
+        )?;
+
+        self.proc.breakpoint_saves.insert(addr, bp_bytes);
+
+        Ok(())
+    }
+
+    fn init_mem_input(&self) -> Result<(), SolverError> {
         for mem in &self.proc.mem_input {
-            for (nth_word, word) in mem.bytes.chunks(word_size).enumerate() {
-                // Use relative address if binary is PIE
-                let addr = if is_pie {
-                    mem.addr + self.get_base_addr()?
-                } else {
-                    mem.addr
-                };
-                let addr = addr + nth_word * word_size;
-                let addr = addr as ptrace::AddressType;
-
-                // Pad to word size
-                let word = {
-                    let mut word = word.to_vec();
-                    word.resize(word_size, 0x00);
-                    word
-                };
-
-                // Convert from bytes to word
-                let word = byteorder::NativeEndian::read_uint(&word, word_size);
-                let word = word as ptrace::AddressType;
-
-                // Do the write
-                ptrace::write(self.pid, addr, word)?;
+            match mem.breakpoint {
+                Some(bp) => self.insert_breakpoint(bp)?,
+                None => self.write_mem_input(mem)?,
             }
         }
 
@@ -397,7 +428,7 @@ impl ProcessHandle {
                     };
 
                     if self.proc.ptrace {
-                        self.write_mem_input()?;
+                        self.init_mem_input()?;
 
                         // Continue process
                         ptrace::cont(self.pid, None).unwrap_or_else(|e| {
