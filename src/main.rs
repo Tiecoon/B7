@@ -117,7 +117,7 @@ fn main() -> Result<(), SolverError> {
         None => print_usage(&matches),
     };
 
-    if !std::path::Path::new(path).is_executable(){
+    if !std::path::Path::new(path).is_executable() {
         panic!("File type provided is not executable.");
     }
 
