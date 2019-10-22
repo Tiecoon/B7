@@ -17,7 +17,6 @@ format:
   stage: test
   script:
     cargo fmt --all -- --check
-  allow_failure: true
 
 test:
   stage: test
