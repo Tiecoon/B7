@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use crate::errors::Runner::ArgError;
 use crate::errors::SolverError;
 use crate::errors::SolverResult;
+use crate::IS_X86;
 
 type StringType = Vec<u8>;
 type ArgumentType = Vec<StringType>;
@@ -70,8 +71,7 @@ impl MemInput {
             None => None,
         };
 
-        let is_x86 = cfg!(target_arch = "x86") || cfg!(target_arch = "x86_64");
-        if breakpoint.is_some() && !is_x86 {
+        if breakpoint.is_some() && !IS_X86 {
             return Err(SolverError::new(ArgError, "Breakpoints only work on x86"));
         }
 

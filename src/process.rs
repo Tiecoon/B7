@@ -21,6 +21,9 @@ use std::time::{Duration, Instant};
 
 const WORD_SIZE: usize = std::mem::size_of::<usize>();
 
+/// Map between breakpoint addresses and breakpoint information
+type BreakpointMap = HashMap<usize, BreakpointInfo>;
+
 // Represents data returned from a call to waitpid()
 // For convenience, we include the pid directly in the
 // struct, to avoid needing to unwrap it from WaitStatus
@@ -298,16 +301,23 @@ impl ProcessWaiter {
 }
 
 #[derive(Debug)]
+struct BreakpointInfo {
+    /// Creating a breakpoint requires injecting the breakpoint opcode into the
+    /// process's code. The bytes that were overwritten for a breakpoint are
+    /// saved here so they can be restored when the breakpoint is reached.
+    saved_bytes: usize,
+    /// Memory input associated with breakpoint
+    mem_input: MemInput,
+}
+
+#[derive(Debug)]
 pub struct Process {
     binary: Binary,
     cmd: Command,
     child: Option<Child>,
     stdin_input: Vec<u8>,
     mem_input: Vec<MemInput>,
-    /// Creating a breakpoint requires injecting the breakpoint opcode into the
-    /// process's code. The bytes that were overwritten for each breakpoint are
-    /// saved here so they can be restored when the breakpoint is reached.
-    breakpoint_saves: HashMap<usize, usize>,
+    breakpoints: BreakpointMap,
     ptrace: bool,
 }
 
@@ -343,7 +353,7 @@ impl ProcessHandle {
 
     /// Write each memory input range to the process
     /// NOTE: This assumes `self.proc.ptrace` is `true`
-    fn write_mem_input(&self, mem: &MemInput) -> Result<(), SolverError> {
+    fn write_mem_input(&self, mem: &MemInput) -> SolverResult<()> {
         let is_pie = self.proc.binary.is_pie()?;
 
         for (nth_word, word) in mem.bytes.chunks(WORD_SIZE).enumerate() {
@@ -374,7 +384,7 @@ impl ProcessHandle {
         Ok(())
     }
 
-    fn insert_breakpoint(&mut self, addr: usize) -> Result<(), SolverError> {
+    fn add_breakpoint(&self, addr: usize, mem_input: &MemInput) -> SolverResult<BreakpointInfo> {
         let bytes = ptrace::read(self.pid, addr as ptrace::AddressType)? as usize;
 
         // 0xcc is the x86 int3 breakpoint opcode. We can assume little endian
@@ -386,15 +396,19 @@ impl ProcessHandle {
             bp_bytes as ptrace::AddressType,
         )?;
 
-        self.proc.breakpoint_saves.insert(addr, bp_bytes);
-
-        Ok(())
+        Ok(BreakpointInfo {
+            saved_bytes: bytes,
+            mem_input: mem_input.clone(),
+        })
     }
 
-    fn init_mem_input(&self) -> Result<(), SolverError> {
+    fn init_mem_input(&self, breakpoints: &mut BreakpointMap) -> SolverResult<()> {
         for mem in &self.proc.mem_input {
             match mem.breakpoint {
-                Some(bp) => self.insert_breakpoint(bp)?,
+                Some(bp_addr) => {
+                    let bp_info = self.add_breakpoint(bp_addr, mem)?;
+                    breakpoints.insert(bp_addr, bp_info);
+                }
                 None => self.write_mem_input(mem)?,
             }
         }
@@ -402,10 +416,46 @@ impl ProcessHandle {
         Ok(())
     }
 
+    fn handle_ptrace_stop(
+        &self,
+        init_ptrace: &mut bool,
+        breakpoints: &mut BreakpointMap,
+    ) -> SolverResult<()> {
+        if *init_ptrace {
+            self.init_mem_input(breakpoints)?;
+            *init_ptrace = false;
+        }
+
+        // Check if the instruction pointer is at a breakpoint
+        let ip = ptrace::getregs(self.pid)?.rip as usize; // TODO: check for other archs
+        if let Some(bp_info) = breakpoints.get(&ip) {
+            self.write_mem_input(&bp_info.mem_input)?;
+
+            // Remove breakpoint
+            ptrace::write(
+                self.pid,
+                ip as ptrace::AddressType,
+                bp_info.saved_bytes as ptrace::AddressType,
+            )?;
+        }
+
+        // Continue process
+        ptrace::cont(self.pid, None).unwrap_or_else(|e| {
+            panic!(
+                "Failed to call ptrace::cont for pid {:?}: {:?}",
+                self.pid, e
+            )
+        });
+
+        Ok(())
+    }
+
     /// run process until it exits or times out
-    pub fn finish(&self, timeout: Duration) -> Result<Pid, SolverError> {
+    pub fn finish(&self, timeout: Duration) -> SolverResult<Pid> {
         let start = Instant::now();
         let mut time_left = timeout;
+        let mut init_ptrace = true;
+        let mut breakpoints = BreakpointMap::new();
 
         loop {
             let data = self.recv.recv_timeout(time_left).expect("Receieve error!");
@@ -428,15 +478,7 @@ impl ProcessHandle {
                     };
 
                     if self.proc.ptrace {
-                        self.init_mem_input()?;
-
-                        // Continue process
-                        ptrace::cont(self.pid, None).unwrap_or_else(|e| {
-                            panic!(
-                                "Failed to call ptrace::cont for pid {:?}: {:?}",
-                                self.pid, e
-                            )
-                        })
+                        self.handle_ptrace_stop(&mut init_ptrace, &mut breakpoints);
                     }
                 }
             }
@@ -472,6 +514,7 @@ impl Process {
             stdin_input: Vec::new(),
             mem_input: Vec::new(),
             child: None,
+            breakpoints: HashMap::new(),
             ptrace: false,
         })
     }

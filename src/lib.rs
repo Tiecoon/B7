@@ -18,6 +18,9 @@ use crate::generators::*;
 use std::collections::HashMap;
 use std::time::Duration;
 
+/// Is B7 compiled for x86?
+pub const IS_X86: bool = cfg!(target_arch = "x86") || cfg!(target_arch = "x86_64");
+
 /// simpified structure to consolate all neccessary structs to run
 pub struct B7Opts<'a, B: b7tui::Ui> {
     path: String,
