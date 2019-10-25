@@ -3,17 +3,46 @@ use log::LevelFilter;
 use std::fs::File;
 use std::io;
 use std::io::Read;
+use std::time::Duration;
 use termion::event::Key;
 use termion::input::MouseTerminal;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::screen::AlternateScreen;
 use tui::backend::TermionBackend;
-use tui::layout::{Constraint, Direction, Layout};
+use tui::layout::{Constraint, Direction, Layout,Alignment};
 use tui::style::{Color, Modifier, Style};
-use tui::widgets::{BarChart, Block, Borders, SelectableList, Widget};
+use tui::widgets::{BarChart, Block, Borders, SelectableList, Widget,Paragraph,Text, Tabs};
 use tui::Terminal;
 use tui_logger::*;
+
+
+//structs to help opranize the tabs
+pub struct TabsState<'a> {
+    pub titles: Vec<&'a str>,
+    pub index: usize,
+}
+
+impl<'a> TabsState<'a> {
+    pub fn new(titles: Vec<&'a str>) -> TabsState {
+        TabsState { titles, index: 0 }
+    }
+    pub fn next(&mut self) {
+        self.index = (self.index + 1) % self.titles.len();
+    }
+
+    pub fn previous(&mut self) {
+        if self.index > 0 {
+            self.index -= 1;
+        } else {
+            self.index = self.titles.len() - 1;
+        }
+    }
+}
+
+struct App<'a> {
+    tabs: TabsState<'a>,
+}
 
 enum Format {
     Hex,
@@ -57,6 +86,10 @@ pub struct Tui {
     path: Option<String>,
     history: Vec<String>,
     selected: Option<usize>,
+    app: App<'static>,
+    repeat: u32,
+    timeout: Duration,
+    options: Vec<String>
 }
 
 // constructor
@@ -76,6 +109,14 @@ impl Tui {
         let size = terminal.size().unwrap();
         let cache = Vec::new();
         let history = Vec::new();
+        let timeout = Duration::new(5,0);
+        let options = vec!["Repeat".to_string(), "Timeout".to_string()];
+
+        //adding App for multiple tabs
+        let app = App {
+            tabs: TabsState::new(vec!["Tab1","Tab2"]),
+        };
+
         Tui {
             terminal,
             size,
@@ -88,6 +129,10 @@ impl Tui {
             path,
             history,
             selected: None,
+            app,
+            repeat: 1,
+            timeout,
+            options
         }
     }
     pub fn set_path(&mut self, path: String) {
@@ -139,69 +184,149 @@ impl Tui {
 
             let mut graph2: Vec<(&str, u64)> = Vec::new();
             let gap = self.gap;
+            let app = &self.app;
+            let options = &self.options;
+            let selected = self.selected;
             self.terminal
                 .draw(|mut f| {
                     let chunks = Layout::default()
                         .direction(Direction::Vertical)
-                        .margin(1)
+                        .margin(0)
                         .constraints(
                             [
-                                Constraint::Percentage(60),
-                                Constraint::Percentage(25),
+                                Constraint::Percentage(8),
+                                Constraint::Percentage(50),
+                                Constraint::Percentage(20),
                                 Constraint::Percentage(15),
+                                Constraint::Percentage(8),
                             ]
                             .as_ref(),
                         )
-                        .split(size);
+                        .split(size);         
 
-                    BarChart::default()
-                        .block(Block::default().title("B7").borders(Borders::ALL))
-                        .data({
-                            // convert String to &str and chop off uneccesary instructions
-                            graph2 = graph3
-                                .iter()
-                                .map(|s| {
-                                    let adjusted = s.1 - graph.1;
-                                    (&*s.0, adjusted)
-                                })
-                                .collect::<Vec<(&str, u64)>>();
-                            &graph2
-                        })
-                        .bar_width(2)
-                        .style(Style::default().fg(Color::Yellow))
-                        .value_style(Style::default().fg(Color::Black).bg(Color::Yellow))
-                        .bar_gap(gap)
+                    let chunks2 = Layout::default()
+                        .direction(Direction::Vertical)
+                        .margin(0)
+                        .constraints(
+                            [
+                                Constraint::Percentage(8),
+                                Constraint::Percentage(80),
+                                
+                            ]
+                            .as_ref(),
+                        )
+                        .split(size);               
+
+                    //tabs widget
+                    Tabs::default()
+                        .block(Block::default().title("Tabs").borders(Borders::ALL))
+                        .titles(&app.tabs.titles)
+                        .select(app.tabs.index)
                         .render(&mut f, chunks[0]);
 
-                    // Widget for log levels
-                    TuiLoggerWidget::default()
-                        .block(
-                            Block::default()
-                                .title("Log Output")
-                                .title_style(Style::default().fg(Color::White).bg(Color::Black))
-                                .border_style(Style::default().fg(Color::White).bg(Color::Black))
-                                .borders(Borders::ALL),
-                        )
-                        .style(Style::default().fg(Color::White))
-                        .render(&mut f, chunks[1]);
+                    match app.tabs.index {
+                        0 => {
+                            BarChart::default()
+                                .block(Block::default().title("B7").borders(Borders::ALL))
+                                .data({
+                                    // convert String to &str and chop off uneccesary instructions
+                                    graph2 = graph3
+                                        .iter()
+                                        .map(|s| {
+                                            let adjusted = s.1 - graph.1;
+                                            (&*s.0, adjusted)
+                                        })
+                                        .collect::<Vec<(&str, u64)>>();
+                                    &graph2
+                                })
+                                .bar_width(2)
+                                .style(Style::default().fg(Color::Yellow))
+                                .value_style(Style::default().fg(Color::Black).bg(Color::Yellow))
+                                .bar_gap(gap)
+                                .render(&mut f, chunks[1]);
 
-                    // List widget for cache
-                    SelectableList::default()
-                        .block(
-                            Block::default()
-                                .borders(Borders::ALL)
-                                .title("Cached Results"),
-                        )
-                        .items(&history)
-                        //.select(self.selected)
-                        .style(Style::default().fg(Color::White))
-                        .highlight_style(
-                            Style::default()
-                                .fg(Color::LightGreen)
-                                .modifier(Modifier::Bold),
-                        )
-                        .highlight_symbol(">")
-                        .render(&mut f, chunks[2]);
+                            // Widget for log levels
+                            TuiLoggerWidget::default()
+                                .block(
+                                    Block::default()
+                                        .title("Log Output")
+                                        .title_style(Style::default().fg(Color::White).bg(Color::Black))
+                                        .border_style(Style::default().fg(Color::White).bg(Color::Black))
+                                        .borders(Borders::ALL),
+                                )
+                                .style(Style::default().fg(Color::White))
+                                .render(&mut f, chunks[2]);
+
+                            // List widget for cache
+                            SelectableList::default()
+                                .block(
+                                    Block::default()
+                                        .borders(Borders::ALL)
+                                        .title("Cached Results"),
+                                )
+                                .items(&history)
+                                //.select(self.selected)
+                                .style(Style::default().fg(Color::White))
+                                .highlight_style(
+                                    Style::default()
+                                        .fg(Color::LightGreen)
+                                        .modifier(Modifier::Bold),
+                                )
+                                .highlight_symbol(">")
+                                .render(&mut f, chunks[3]);
+                            //Adding another box listing commands to be taken
+                            let text = [
+                                Text::raw("right key for next input, left key for previous input\n"),
+                                Text::styled("c", Style::default().modifier(Modifier::Bold)),
+                                Text::raw(" to continue, "),
+                                Text::styled("q", Style::default().modifier(Modifier::Bold)),
+                                Text::raw(" to quit, "),
+                                Text::styled("h", Style::default().modifier(Modifier::Bold)),
+                                Text::raw(" to convert to hex, "),
+                                Text::styled("d", Style::default().modifier(Modifier::Bold)),
+                                Text::raw(" to convert to decimal, "),
+                                Text::styled("s", Style::default().modifier(Modifier::Bold)),
+                                Text::raw(" to convert to string\n"),
+                                Text::styled("-", Style::default().modifier(Modifier::Bold)),
+                                Text::raw(" and "),
+                                Text::styled("=", Style::default().modifier(Modifier::Bold)),
+                                Text::raw(" to control barchart spacing, "),
+                                Text::styled(",", Style::default().modifier(Modifier::Bold)),
+                                Text::raw(" and "),
+                                Text::styled(".", Style::default().modifier(Modifier::Bold)),
+                                Text::raw(" to switch tabs"),
+                            ];
+                            //Widget for displaying instructions to the user
+                            Paragraph::new(text.iter())
+                            .block(
+                                Block::default()
+                                    .borders(Borders::NONE)
+                            )
+                            .alignment(Alignment::Center)
+                            //.wrap(true)
+                            .render(&mut f, chunks[4]);
+                        }
+                        1 => {
+                            SelectableList::default()
+                                .block (
+                                    Block::default()
+                                        .borders(Borders::ALL)
+                                        .title("Options"),
+                                )
+                                .style(Style::default().fg(Color::White))
+                                .highlight_style(
+                                    Style::default()
+                                        .fg(Color::LightGreen)
+                                        .modifier(Modifier::Bold),
+                                )
+                                .items(options)
+                                .select(selected)
+                                .highlight_symbol(">")
+                                .render(&mut f, chunks2[1]);
+                        }
+                        _ => {}
+                    }
+                    
                 })
                 .unwrap();
         }
@@ -294,7 +419,7 @@ impl Ui for Tui {
                     Ok(Key::Down) => {
                         match self.selected {
                             Some(x) => {
-                                if x < self.history.len() {
+                                if x < self.options.len()-1 {
                                     self.selected = Some(x + 1);
                                 }
                             }
@@ -310,6 +435,17 @@ impl Ui for Tui {
                     Ok(Key::Char('-')) => {
                         if self.gap > 0 {
                             self.gap -= 1;
+                        }
+                    }
+                    //switching tabs
+                    Ok(Key::Char('.')) => {
+                        if self.app.tabs.index < self.app.tabs.titles.len()-1{
+                            self.app.tabs.index+=1;
+                        }
+                    }
+                    Ok(Key::Char(',')) => {
+                        if self.app.tabs.index > 0 {
+                            self.app.tabs.index -= 1;
                         }
                     }
                     _ => {}
@@ -366,6 +502,15 @@ impl Ui for Tui {
                     }
                     self.redraw();
                 }
+                //allow for bar resizing even if done
+                Ok(Key::Char('=')) => {
+                        self.gap += 1;
+                    }
+                    Ok(Key::Char('-')) => {
+                        if self.gap > 0 {
+                            self.gap -= 1;
+                        }
+                    }
                 _ => {}
             }
             let _ = self.redraw();
