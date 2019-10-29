@@ -300,11 +300,13 @@ impl ProcessWaiter {
     }
 }
 
+/// Information associated with a breakpoint
 #[derive(Debug)]
 struct BreakpointInfo {
     /// Creating a breakpoint requires injecting the breakpoint opcode into the
     /// process's code. The bytes that were overwritten for a breakpoint are
-    /// saved here so they can be restored when the breakpoint is reached.
+    /// saved here so they can be restored when the breakpoint is reached and
+    /// removed.
     saved_bytes: usize,
     /// Memory input associated with breakpoint
     mem_input: MemInput,
