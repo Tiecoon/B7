@@ -351,18 +351,40 @@ impl ProcessHandle {
         Ok(base_map.address.0 as usize)
     }
 
+    /// If the binary is PIE, convert from an address relative to the executable
+    /// base to an absolute address
+    fn abs_addr(&self, addr: usize) -> SolverResult<usize> {
+        let is_pie = self.proc.binary.is_pie()?;
+
+        let addr = if is_pie {
+            addr + self.get_base_addr()?
+        } else {
+            addr
+        };
+
+        Ok(addr)
+    }
+
+    /// If the binary is PIE, convert from an absolute address to an address
+    /// relative to the executable base
+    fn rel_addr(&self, addr: usize) -> SolverResult<usize> {
+        let is_pie = self.proc.binary.is_pie()?;
+
+        let addr = if is_pie {
+            addr - self.get_base_addr()?
+        } else {
+            addr
+        };
+
+        Ok(addr)
+    }
+
     /// Write each memory input range to the process
     /// NOTE: This assumes `self.proc.ptrace` is `true`
     fn write_mem_input(&self, mem: &MemInput) -> SolverResult<()> {
-        let is_pie = self.proc.binary.is_pie()?;
-
         for (nth_word, word) in mem.bytes.chunks(WORD_SIZE).enumerate() {
             // Use relative address if binary is PIE
-            let addr = if is_pie {
-                mem.addr + self.get_base_addr()?
-            } else {
-                mem.addr
-            };
+            let addr = self.abs_addr(mem.addr)?;
             let addr = addr + nth_word * WORD_SIZE;
             let addr = addr as ptrace::AddressType;
 
@@ -430,10 +452,13 @@ impl ProcessHandle {
         // Check if the instruction pointer is at a breakpoint
         // TODO: check for other archs
         let mut regs = ptrace::getregs(self.pid)?;
+
         // If a breakpoint was reached, the instruction pointer will be one byte
         // ahead of the breakpoint opcode
         regs.rip -= 1;
-        let ip = regs.rip as usize;
+
+        let ip = self.rel_addr(regs.rip as usize)?;
+
         if let Some(bp_info) = breakpoints.get(&ip) {
             self.write_mem_input(&bp_info.mem_input)?;
 
