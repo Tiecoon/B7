@@ -421,6 +421,7 @@ impl ProcessHandle {
         init_ptrace: &mut bool,
         breakpoints: &mut BreakpointMap,
     ) -> SolverResult<()> {
+        // Write breakpoints if first stop
         if *init_ptrace {
             self.init_mem_input(breakpoints)?;
             *init_ptrace = false;
