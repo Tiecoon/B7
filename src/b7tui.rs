@@ -10,12 +10,11 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::screen::AlternateScreen;
 use tui::backend::TermionBackend;
-use tui::layout::{Constraint, Direction, Layout,Alignment};
+use tui::layout::{Alignment, Constraint, Direction, Layout};
 use tui::style::{Color, Modifier, Style};
-use tui::widgets::{BarChart, Block, Borders, SelectableList, Widget,Paragraph,Text, Tabs};
+use tui::widgets::{BarChart, Block, Borders, Paragraph, SelectableList, Tabs, Text, Widget};
 use tui::Terminal;
 use tui_logger::*;
-
 
 //structs to help opranize the tabs
 pub struct TabsState<'a> {
@@ -89,7 +88,7 @@ pub struct Tui {
     app: App<'static>,
     repeat: u32,
     timeout: Duration,
-    options: Vec<String>
+    options: Vec<String>,
 }
 
 // constructor
@@ -109,12 +108,12 @@ impl Tui {
         let size = terminal.size().unwrap();
         let cache = Vec::new();
         let history = Vec::new();
-        let timeout = Duration::new(5,0);
+        let timeout = Duration::new(5, 0);
         let options = vec!["Repeat".to_string(), "Timeout".to_string()];
 
         //adding App for multiple tabs
         let app = App {
-            tabs: TabsState::new(vec!["Tab1","Tab2"]),
+            tabs: TabsState::new(vec!["Tab1", "Tab2"]),
         };
 
         Tui {
@@ -132,7 +131,7 @@ impl Tui {
             app,
             repeat: 1,
             timeout,
-            options
+            options,
         }
     }
     pub fn set_path(&mut self, path: String) {
@@ -202,20 +201,15 @@ impl Tui {
                             ]
                             .as_ref(),
                         )
-                        .split(size);         
+                        .split(size);
 
                     let chunks2 = Layout::default()
                         .direction(Direction::Vertical)
                         .margin(0)
                         .constraints(
-                            [
-                                Constraint::Percentage(8),
-                                Constraint::Percentage(80),
-                                
-                            ]
-                            .as_ref(),
+                            [Constraint::Percentage(8), Constraint::Percentage(80)].as_ref(),
                         )
-                        .split(size);               
+                        .split(size);
 
                     //tabs widget
                     Tabs::default()
@@ -250,8 +244,12 @@ impl Tui {
                                 .block(
                                     Block::default()
                                         .title("Log Output")
-                                        .title_style(Style::default().fg(Color::White).bg(Color::Black))
-                                        .border_style(Style::default().fg(Color::White).bg(Color::Black))
+                                        .title_style(
+                                            Style::default().fg(Color::White).bg(Color::Black),
+                                        )
+                                        .border_style(
+                                            Style::default().fg(Color::White).bg(Color::Black),
+                                        )
                                         .borders(Borders::ALL),
                                 )
                                 .style(Style::default().fg(Color::White))
@@ -276,7 +274,9 @@ impl Tui {
                                 .render(&mut f, chunks[3]);
                             //Adding another box listing commands to be taken
                             let text = [
-                                Text::raw("right key for next input, left key for previous input\n"),
+                                Text::raw(
+                                    "right key for next input, left key for previous input\n",
+                                ),
                                 Text::styled("c", Style::default().modifier(Modifier::Bold)),
                                 Text::raw(" to continue, "),
                                 Text::styled("q", Style::default().modifier(Modifier::Bold)),
@@ -298,21 +298,14 @@ impl Tui {
                             ];
                             //Widget for displaying instructions to the user
                             Paragraph::new(text.iter())
-                            .block(
-                                Block::default()
-                                    .borders(Borders::NONE)
-                            )
-                            .alignment(Alignment::Center)
-                            //.wrap(true)
-                            .render(&mut f, chunks[4]);
+                                .block(Block::default().borders(Borders::NONE))
+                                .alignment(Alignment::Center)
+                                //.wrap(true)
+                                .render(&mut f, chunks[4]);
                         }
                         1 => {
                             SelectableList::default()
-                                .block (
-                                    Block::default()
-                                        .borders(Borders::ALL)
-                                        .title("Options"),
-                                )
+                                .block(Block::default().borders(Borders::ALL).title("Options"))
                                 .style(Style::default().fg(Color::White))
                                 .highlight_style(
                                     Style::default()
@@ -326,7 +319,6 @@ impl Tui {
                         }
                         _ => {}
                     }
-                    
                 })
                 .unwrap();
         }
@@ -419,7 +411,7 @@ impl Ui for Tui {
                     Ok(Key::Down) => {
                         match self.selected {
                             Some(x) => {
-                                if x < self.options.len()-1 {
+                                if x < self.options.len() - 1 {
                                     self.selected = Some(x + 1);
                                 }
                             }
@@ -439,8 +431,8 @@ impl Ui for Tui {
                     }
                     //switching tabs
                     Ok(Key::Char('.')) => {
-                        if self.app.tabs.index < self.app.tabs.titles.len()-1{
-                            self.app.tabs.index+=1;
+                        if self.app.tabs.index < self.app.tabs.titles.len() - 1 {
+                            self.app.tabs.index += 1;
                         }
                     }
                     Ok(Key::Char(',')) => {
@@ -504,13 +496,13 @@ impl Ui for Tui {
                 }
                 //allow for bar resizing even if done
                 Ok(Key::Char('=')) => {
-                        self.gap += 1;
+                    self.gap += 1;
+                }
+                Ok(Key::Char('-')) => {
+                    if self.gap > 0 {
+                        self.gap -= 1;
                     }
-                    Ok(Key::Char('-')) => {
-                        if self.gap > 0 {
-                            self.gap -= 1;
-                        }
-                    }
+                }
                 _ => {}
             }
             let _ = self.redraw();
