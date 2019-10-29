@@ -2,6 +2,7 @@ stages:
   - format
   - build
   - test
+  - deploy
 
 variables:
   CARGO_HOME: $CI_PROJECT_DIR/cargo
@@ -13,7 +14,7 @@ build:
     RUST_BACKTRACE=1 cargo build
 
 format:
-  stage: format
+  stage: test
   script:
     cargo fmt --all -- --check
   allow_failure: true
@@ -24,6 +25,18 @@ test:
     - rustc --version
     - cargo --version
     - cargo test --verbose -- --test-threads=1
+
+pages:
+  stage: deploy
+  only:
+    - master
+  script:
+    - cargo doc
+    - rm -rf public
+    - mv target/doc/ public
+  artifacts:
+    paths:
+      - public
 
 cache:
   paths:

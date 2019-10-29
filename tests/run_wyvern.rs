@@ -1,5 +1,6 @@
 use b7::b7tui::Env;
 use b7::dynamorio;
+use b7::generators::Input;
 use b7::perf;
 use b7::B7Opts;
 use std::collections::HashMap;
@@ -44,6 +45,7 @@ fn run_wyvern_dynamorio() {
 
     let mut opts = B7Opts::new(
         path.to_string_lossy().into_owned(),
+        Input::new(),
         false,
         true,
         Box::new(dynamorio::DynamorioSolver),
@@ -72,6 +74,7 @@ fn run_wyvern_perf() {
 
     let mut opts = B7Opts::new(
         path.to_string_lossy().into_owned(),
+        Input::new(),
         false,
         true,
         Box::new(perf::PerfSolver),
