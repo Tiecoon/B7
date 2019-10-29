@@ -2,6 +2,8 @@ use std::error;
 use std::fmt;
 use std::io;
 
+pub type SolverResult<T> = Result<T, SolverError>;
+
 #[derive(Debug)]
 /// b7 errors type
 pub struct SolverError {
@@ -23,9 +25,10 @@ impl SolverError {
 /// enum for types of errors
 pub enum Runner {
     RunnerError,
-    MissingArgs,
+    ArgError,
     IoError,
     NixError,
+    ProcfsError,
     Timeout,
     Unknown,
 }
@@ -61,5 +64,11 @@ impl From<io::Error> for SolverError {
 impl From<nix::Error> for SolverError {
     fn from(error: nix::Error) -> Self {
         SolverError::new(Runner::NixError, error::Error::description(&error))
+    }
+}
+
+impl From<procfs::ProcError> for SolverError {
+    fn from(error: procfs::ProcError) -> Self {
+        SolverError::new(Runner::ProcfsError, error::Error::description(&error))
     }
 }

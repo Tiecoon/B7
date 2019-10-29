@@ -4,6 +4,7 @@ extern crate log;
 use b7::brute::InstCounter;
 use b7::errors::*;
 use b7::generators::Input;
+use b7::generators::MemInput;
 use b7::*;
 
 use clap::{App, Arg};
@@ -12,6 +13,17 @@ use std::io::prelude::*;
 use std::os::unix::ffi::OsStrExt;
 use std::process::exit;
 use std::time::Duration;
+
+use is_executable::IsExecutable;
+
+/// Parse memory inputs from args
+fn mem_inputs_from_args(matches: &clap::ArgMatches) -> SolverResult<Vec<MemInput>> {
+    matches
+        .values_of("mem-brute")
+        .unwrap_or_default()
+        .map(MemInput::parse_from_arg)
+        .collect()
+}
 
 /// parses program arguements
 fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
@@ -73,6 +85,20 @@ fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
                 .help("per-thread timeout to use when waiting for results, in seconds")
                 .takes_value(true),
         )
+        .arg(
+            Arg::with_name("mem-brute")
+                .long("mem-brute")
+                .help(
+                    "Address, size, and initial input (optional) of memory \
+                     buffer to brute force. For PIE binaries, the address is \
+                     relative to the executable base. Otherwise, the address is \
+                     absolute.\
+                     \n    Example: `--mem-brute \
+                     addr=404060,size=64,init=666c61677b0a`",
+                )
+                .takes_value(true)
+                .multiple(true),
+        )
         .get_matches()
 }
 
@@ -90,6 +116,10 @@ fn main() -> Result<(), SolverError> {
         Some(a) => a,
         None => print_usage(&matches),
     };
+
+    if !std::path::Path::new(path).is_executable() {
+        panic!("File type provided is not executable.");
+    }
 
     let args = match matches.values_of_os("args") {
         Some(args) => args.map(|arg| arg.as_bytes().to_vec()).collect(),
@@ -127,8 +157,11 @@ fn main() -> Result<(), SolverError> {
         .create(true)
         .open(format!("{}.cache", path))?;
 
-    let mut input = Input::new();
-    input.argv = args;
+    let input = Input {
+        argv: args,
+        mem: mem_inputs_from_args(&matches)?,
+        ..Default::default()
+    };
 
     let results = match &*terminal {
         "tui" => B7Opts::new(

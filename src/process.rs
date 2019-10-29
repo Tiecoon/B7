@@ -1,5 +1,8 @@
 use crate::binary::Binary;
+use crate::errors::Runner::ProcfsError;
 use crate::errors::*;
+use crate::generators::MemInput;
+use byteorder::ByteOrder;
 use lazy_static::lazy_static;
 use nix::errno::Errno;
 use nix::sys::ptrace;
@@ -297,7 +300,8 @@ pub struct Process {
     binary: Binary,
     cmd: Command,
     child: Option<Child>,
-    input: Vec<u8>,
+    stdin_input: Vec<u8>,
+    mem_input: Vec<MemInput>,
     ptrace: bool,
 }
 
@@ -309,6 +313,64 @@ pub struct ProcessHandle {
 }
 
 impl ProcessHandle {
+    /// Get the process's base address from /proc/<pid>/maps
+    fn get_base_addr(&self) -> SolverResult<usize> {
+        let proc = procfs::Process::new(self.pid.as_raw())?;
+        let maps = proc.maps()?;
+        let exe_path = proc.exe()?;
+        let base_map = maps
+            .iter()
+            .filter(|map| match map.pathname {
+                procfs::MMapPath::Path(ref path) => path == &exe_path,
+                _ => false,
+            })
+            .next()
+            .ok_or_else(|| {
+                SolverError::new(
+                    ProcfsError,
+                    "Failed to get proc base address while writing memory input",
+                )
+            })?;
+
+        Ok(base_map.address.0 as usize)
+    }
+
+    /// Write each memory input range to the process
+    /// NOTE: This assumes `self.proc.ptrace` is `true`
+    fn write_mem_input(&self) -> Result<(), SolverError> {
+        let word_size = std::mem::size_of::<usize>();
+        let is_pie = self.proc.binary.is_pie()?;
+
+        for mem in &self.proc.mem_input {
+            for (nth_word, word) in mem.bytes.chunks(word_size).enumerate() {
+                // Use relative address if binary is PIE
+                let addr = if is_pie {
+                    mem.addr + self.get_base_addr()?
+                } else {
+                    mem.addr
+                };
+                let addr = addr + nth_word * word_size;
+                let addr = addr as ptrace::AddressType;
+
+                // Pad to word size
+                let word = {
+                    let mut word = word.to_vec();
+                    word.resize(word_size, 0x00);
+                    word
+                };
+
+                // Convert from bytes to word
+                let word = byteorder::NativeEndian::read_uint(&word, word_size);
+                let word = word as ptrace::AddressType;
+
+                // Do the write
+                ptrace::write(self.pid, addr, word)?;
+            }
+        }
+
+        Ok(())
+    }
+
     /// run process until it exits or times out
     pub fn finish(&self, timeout: Duration) -> Result<Pid, SolverError> {
         let start = Instant::now();
@@ -335,6 +397,9 @@ impl ProcessHandle {
                     };
 
                     if self.proc.ptrace {
+                        self.write_mem_input()?;
+
+                        // Continue process
                         ptrace::cont(self.pid, None).unwrap_or_else(|e| {
                             panic!(
                                 "Failed to call ptrace::cont for pid {:?}: {:?}",
@@ -369,19 +434,25 @@ impl ProcessHandle {
 
 // Handle running a process
 impl Process {
-    pub fn new(path: &str) -> Process {
-        Process {
-            binary: Binary::new(path),
+    pub fn new(path: &str) -> SolverResult<Process> {
+        Ok(Process {
+            binary: Binary::new(path)?,
             cmd: Command::new(path),
-            input: Vec::new(),
+            stdin_input: Vec::new(),
+            mem_input: Vec::new(),
             child: None,
             ptrace: false,
-        }
+        })
     }
 
     /// set what stdin should be sent to process
-    pub fn input(&mut self, stdin: Vec<u8>) {
-        self.input = stdin
+    pub fn stdin_input(&mut self, stdin: Vec<u8>) {
+        self.stdin_input = stdin
+    }
+
+    /// set what memory input should be sent to process
+    pub fn mem_input(&mut self, mem: Vec<MemInput>) {
+        self.mem_input = mem
     }
 
     /// returns PID of child process
@@ -392,9 +463,9 @@ impl Process {
         }
     }
 
-    /// writes self.input to the process's stdin
+    /// writes self.stdin_input to the process's stdin
     pub fn write_input(&mut self) -> Result<(), SolverError> {
-        self.write_stdin(&self.input.clone())
+        self.write_stdin(&self.stdin_input.clone())
     }
 
     pub fn args<I, S>(&mut self, args: I)

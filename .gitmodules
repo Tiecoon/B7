@@ -2,3 +2,6 @@
 	path = dynamorio
 	url = https://github.com/DynamoRIO/dynamorio
 	ignore = dirty
+[submodule "tests"]
+	path = tests
+	url = https://gitlab.com/b7-re/b7-test-binaries.git

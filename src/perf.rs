@@ -88,11 +88,12 @@ impl InstCounter for PerfSolver {
     /// # Return
     /// * number of instructions perf says were executed or error
     fn get_inst_count(&self, data: &InstCountData) -> Result<i64, SolverError> {
-        let mut process = Process::new(&data.path);
+        let mut process = Process::new(&data.path)?;
         for arg in data.inp.argv.iter() {
             process.arg(OsStr::from_bytes(arg));
         }
-        process.input(data.inp.stdin.clone());
+        process.stdin_input(data.inp.stdin.clone());
+        process.mem_input(data.inp.mem.clone());
         process.with_ptrace(true);
 
         let handle = process.spawn();
