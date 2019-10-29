@@ -407,6 +407,8 @@ impl ProcessHandle {
     }
 
     fn add_breakpoint(&self, addr: usize, mem_input: &MemInput) -> SolverResult<BreakpointInfo> {
+        let addr = self.abs_addr(addr)?;
+
         let bytes = ptrace::read(self.pid, addr as ptrace::AddressType)? as usize;
 
         // 0xcc is the x86 int3 breakpoint opcode. We can assume little endian
@@ -457,15 +459,15 @@ impl ProcessHandle {
         // ahead of the breakpoint opcode
         regs.rip -= 1;
 
-        let ip = self.rel_addr(regs.rip as usize)?;
+        let rel_ip = self.rel_addr(regs.rip as usize)?;
 
-        if let Some(bp_info) = breakpoints.get(&ip) {
+        if let Some(bp_info) = breakpoints.get(&rel_ip) {
             self.write_mem_input(&bp_info.mem_input)?;
 
             // Remove breakpoint
             ptrace::write(
                 self.pid,
-                ip as ptrace::AddressType,
+                regs.rip as ptrace::AddressType,
                 bp_info.saved_bytes as ptrace::AddressType,
             )?;
 
