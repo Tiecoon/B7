@@ -428,7 +428,12 @@ impl ProcessHandle {
         }
 
         // Check if the instruction pointer is at a breakpoint
-        let ip = ptrace::getregs(self.pid)?.rip as usize; // TODO: check for other archs
+        // TODO: check for other archs
+        let mut regs = ptrace::getregs(self.pid)?;
+        // If a breakpoint was reached, the instruction pointer will be one byte
+        // ahead of the breakpoint opcode
+        regs.rip -= 1;
+        let ip = regs.rip as usize;
         if let Some(bp_info) = breakpoints.get(&ip) {
             self.write_mem_input(&bp_info.mem_input)?;
 
@@ -438,6 +443,9 @@ impl ProcessHandle {
                 ip as ptrace::AddressType,
                 bp_info.saved_bytes as ptrace::AddressType,
             )?;
+
+            // Decrement instruction pointer
+            ptrace::setregs(self.pid, regs)?;
         }
 
         // Continue process
