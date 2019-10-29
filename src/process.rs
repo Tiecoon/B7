@@ -379,7 +379,7 @@ impl ProcessHandle {
         Ok(addr)
     }
 
-    /// Write each memory input range to the process
+    /// Write a memory input range to the process
     /// NOTE: This assumes `self.proc.ptrace` is `true`
     fn write_mem_input(&self, mem: &MemInput) -> SolverResult<()> {
         for (nth_word, word) in mem.bytes.chunks(WORD_SIZE).enumerate() {
@@ -406,14 +406,17 @@ impl ProcessHandle {
         Ok(())
     }
 
+    /// Add a breakpoint to the running process
     fn add_breakpoint(&self, addr: usize, mem_input: &MemInput) -> SolverResult<BreakpointInfo> {
         let addr = self.abs_addr(addr)?;
 
+        // Save bytes so the breakpoint can be removed later
         let bytes = ptrace::read(self.pid, addr as ptrace::AddressType)? as usize;
 
         // 0xcc is the x86 int3 breakpoint opcode. We can assume little endian
         // here, since breakpoints are only supported on x86.
         let bp_bytes = bytes & (std::usize::MAX ^ 0xff) | 0xcc;
+
         ptrace::write(
             self.pid,
             addr as ptrace::AddressType,
@@ -426,6 +429,12 @@ impl ProcessHandle {
         })
     }
 
+    /// Initialize memory input
+    ///
+    /// - Set up breakpoints
+    /// - Write memory regions
+    ///
+    /// NOTE: This assumes `self.proc.ptrace` is `true`
     fn init_mem_input(&self, breakpoints: &mut BreakpointMap) -> SolverResult<()> {
         for mem in &self.proc.mem_input {
             match mem.breakpoint {
@@ -440,12 +449,13 @@ impl ProcessHandle {
         Ok(())
     }
 
+    /// Handle a stop while the process is being ptrace'd
     fn handle_ptrace_stop(
         &self,
         init_ptrace: &mut bool,
         breakpoints: &mut BreakpointMap,
     ) -> SolverResult<()> {
-        // Write breakpoints if first stop
+        // Initialize breakpoints and memory regions if first stop
         if *init_ptrace {
             self.init_mem_input(breakpoints)?;
             *init_ptrace = false;
@@ -473,6 +483,8 @@ impl ProcessHandle {
 
             // Decrement instruction pointer
             ptrace::setregs(self.pid, regs)?;
+
+            breakpoints.remove(&rel_ip);
         }
 
         // Continue process
@@ -490,7 +502,7 @@ impl ProcessHandle {
     pub fn finish(&self, timeout: Duration) -> SolverResult<Pid> {
         let start = Instant::now();
         let mut time_left = timeout;
-        let mut init_ptrace = true;
+        let mut init_ptrace = true; // Whether ptrace is initialized
         let mut breakpoints = BreakpointMap::new();
 
         loop {
