@@ -479,7 +479,7 @@ impl ProcessHandle {
                     };
 
                     if self.proc.ptrace {
-                        self.handle_ptrace_stop(&mut init_ptrace, &mut breakpoints);
+                        self.handle_ptrace_stop(&mut init_ptrace, &mut breakpoints)?;
                     }
                 }
             }
