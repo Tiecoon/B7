@@ -451,20 +451,10 @@ impl ProcessHandle {
         Ok(())
     }
 
-    /// Handle a stop while the process is being ptrace'd
-    fn handle_ptrace_stop(
-        &self,
-        init_ptrace: &mut bool,
-        breakpoints: &mut BreakpointMap,
-    ) -> SolverResult<()> {
-        // Initialize breakpoints and memory regions if first stop
-        if *init_ptrace {
-            self.init_mem_input(breakpoints)?;
-            *init_ptrace = false;
-        }
-
+    /// Handle potentially reached breakpoint
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    fn handle_reached_breakpoint(&self, breakpoints: &mut BreakpointMap) -> SolverResult<()> {
         // Check if the instruction pointer is at a breakpoint
-        // TODO: check for other archs
         let mut regs = ptrace::getregs(self.pid)?;
 
         // If a breakpoint was reached, the instruction pointer will be one byte
@@ -488,6 +478,32 @@ impl ProcessHandle {
 
             breakpoints.remove(&rel_ip);
         }
+
+        Ok(())
+    }
+
+    /// Handle potentially reached breakpoint
+    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+    fn handle_reached_breakpoint(&self, _breakpoints: &mut BreakpointMap) -> SolverResult<()> {
+        Err(SolverError::new(
+            Runner::ArgError,
+            "Breakpoints only supported on x86",
+        ))
+    }
+
+    /// Handle a stop while the process is being ptrace'd
+    fn handle_ptrace_stop(
+        &self,
+        init_ptrace: &mut bool,
+        breakpoints: &mut BreakpointMap,
+    ) -> SolverResult<()> {
+        // Initialize breakpoints and memory regions if first stop
+        if *init_ptrace {
+            self.init_mem_input(breakpoints)?;
+            *init_ptrace = false;
+        }
+
+        self.handle_reached_breakpoint(breakpoints)?;
 
         // Continue process
         ptrace::cont(self.pid, None).unwrap_or_else(|e| {
