@@ -125,7 +125,9 @@ pub trait Update: Iterator {
     /// # Arguements
     ///
     /// * `chosen` - the value that was found to be correct
-    fn update(&mut self, chosen: &Self::Id) -> bool;
+    fn update(&mut self, chosen: &Self::Id) -> bool;    
+    //tell we failed 
+    fn failed(&mut self);
 }
 
 // Generate trait: has iteration and updating with right Id type
@@ -138,7 +140,7 @@ pub trait Update: Iterator {
 /// * notify generator which was chosen
 /// * generator updates its internal state
 /// * returns true, next round will return next inputs to try or false if done
-pub trait Generate<T>: Iterator<Item = (T, Input)> + Update<Id = T> {}
+pub trait Generate<T>: Iterator<Item = (T, Input)> + Update<Id = T>  {}
 
 pub trait Events {
     fn on_update(&self) {}
@@ -211,6 +213,10 @@ impl Update for StdinLenGenerator {
         self.on_update();
         false
     }
+
+    fn failed(&mut self) {
+        unimplemented!();
+    }
 }
 
 #[derive(Debug)]
@@ -222,6 +228,7 @@ pub struct StdinCharGenerator {
     idx: u32,
     cur: u16,
     correct: StringType,
+    incorrect: Vec<Option<u8>>,
     min: u16,
     max: u16,
 }
@@ -243,6 +250,8 @@ impl StdinCharGenerator {
             idx: 0,
             cur: min,
             correct: vec![],
+            // slice of options of input.stdinlen none rerun some dont run
+            incorrect: vec![None; input.stdinlen as usize],
             min,
             max,
         }
@@ -258,6 +267,7 @@ impl StdinCharGenerator {
             idx: start.len() as u32,
             cur: min,
             correct: vec![],
+            incorrect: vec![None; input.stdinlen as usize],
             min,
             max,
         }
@@ -321,10 +331,15 @@ impl Update for StdinCharGenerator {
 
     fn update(&mut self, chosen: &u8) -> bool {
         self.correct.push(*chosen);
+        self.incorrect[self.idx as usize] = Some(*chosen);
         self.idx += 1;
         self.cur = self.min as u16;
         self.on_update();
         self.idx < self.padlen
+    }
+
+    fn failed(&mut self) {
+        
     }
 }
 
@@ -390,6 +405,10 @@ impl Update for ArgcGenerator {
         self.correct = *chosen;
         self.on_update();
         false
+    }
+
+    fn failed(&mut self) {
+        unimplemented!();
     }
 }
 
@@ -478,6 +497,10 @@ impl Update for ArgvLenGenerator {
         self.on_update();
         (self.pos as u32) < self.argc
     }
+
+    fn failed(&mut self) {
+        unimplemented!();
+    }
 }
 
 #[derive(Debug)]
@@ -544,6 +567,7 @@ impl Iterator for ArgvGenerator {
         if self.idx >= len || self.cur > 255 || self.cur > self.max {
             return None;
         }
+        
         let chr = self.cur as u8;
         self.cur += 1;
         //generate current string
@@ -606,7 +630,12 @@ impl Update for ArgvGenerator {
 
         (self.pos as u32) < self.argc
     }
+
+    fn failed(&mut self) {
+        unimplemented!();
+    } 
 }
+
 
 #[derive(Debug)]
 /// Generator for brute forcing inputs to a memory region
@@ -678,6 +707,10 @@ impl Update for MemGenerator {
         self.on_update();
         !self.finished()
     }
+
+    fn failed(&mut self) {
+        unimplemented!();
+    } 
 }
 
 impl std::fmt::Display for MemGenerator {

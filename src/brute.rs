@@ -168,8 +168,11 @@ pub fn brute<
             return Err(SolverError::new(Runner::Unknown, "No valid results found"));
         }
         let good_idx = statistics::find_outlier(results.as_slice());
-        if !gen.update(&(good_idx.1).0) {
-            break Ok((good_idx.1).1.clone());
+        match good_idx {
+            Some(good_idx) => if !gen.update(&(good_idx.1).0) {
+                break Ok((good_idx.1).1.clone());
+            }
+            None => gen.failed(),
         }
     }
 }
