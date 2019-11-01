@@ -96,6 +96,12 @@ pub fn brute<
 
     // Loop until generator says we are done
     loop {
+        //if the char is already solved skip that char and move on
+        
+        if gen.skip() == 1 {
+            continue;
+        }
+
         // Number of threads to spawn
 
         let mut num_jobs: i64 = 0;

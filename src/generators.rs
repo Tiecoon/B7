@@ -128,6 +128,8 @@ pub trait Update: Iterator {
     fn update(&mut self, chosen: &Self::Id) -> bool;    
     //tell we failed 
     fn failed(&mut self);
+    //tell the generator to ignore this value
+    fn skip(&mut self) -> i8;
 }
 
 // Generate trait: has iteration and updating with right Id type
@@ -217,7 +219,12 @@ impl Update for StdinLenGenerator {
     fn failed(&mut self) {
         unimplemented!();
     }
+
+    fn skip(&mut self) -> i8 {
+        unimplemented!();
+    }
 }
+
 
 #[derive(Debug)]
 pub struct StdinCharGenerator {
@@ -229,6 +236,7 @@ pub struct StdinCharGenerator {
     cur: u16,
     correct: StringType,
     incorrect: Vec<Option<u8>>,
+    icount: u32,
     min: u16,
     max: u16,
 }
@@ -250,8 +258,10 @@ impl StdinCharGenerator {
             idx: 0,
             cur: min,
             correct: vec![],
-            // slice of options of input.stdinlen none rerun some dont run
+            // Vector of options of input.stdinlen none rerun some dont run
             incorrect: vec![None; input.stdinlen as usize],
+            //holds the amount of incorrect chars
+            icount: input.stdinlen,
             min,
             max,
         }
@@ -268,6 +278,7 @@ impl StdinCharGenerator {
             cur: min,
             correct: vec![],
             incorrect: vec![None; input.stdinlen as usize],
+            icount: input.stdinlen,
             min,
             max,
         }
@@ -333,13 +344,30 @@ impl Update for StdinCharGenerator {
         self.correct.push(*chosen);
         self.incorrect[self.idx as usize] = Some(*chosen);
         self.idx += 1;
+        self.icount -= 1;
         self.cur = self.min as u16;
         self.on_update();
         self.idx < self.padlen
     }
 
+    //need to keep moving but not add to incorrect
     fn failed(&mut self) {
-        
+        if self.idx < self.padlen {
+            self.idx += 1;
+        }
+    }
+
+    fn skip(&mut self) -> i8 {
+        if self.incorrect[self.idx as usize] == None {
+            return 0;
+        } else if self.idx == self.padlen && self.icount > 0 {
+            self.idx = 0;
+            return 1;
+        } else if self.icount > 0 {
+            self.idx += 1;
+            return 1;
+        }
+        return 2;
     }
 }
 
@@ -408,6 +436,10 @@ impl Update for ArgcGenerator {
     }
 
     fn failed(&mut self) {
+        unimplemented!();
+    }
+
+    fn skip(&mut self) -> i8 {
         unimplemented!();
     }
 }
@@ -499,6 +531,10 @@ impl Update for ArgvLenGenerator {
     }
 
     fn failed(&mut self) {
+        unimplemented!();
+    }
+
+    fn skip(&mut self) -> i8 {
         unimplemented!();
     }
 }
@@ -634,6 +670,10 @@ impl Update for ArgvGenerator {
     fn failed(&mut self) {
         unimplemented!();
     } 
+
+    fn skip(&mut self) -> i8 {
+        unimplemented!();
+    }
 }
 
 
@@ -711,6 +751,10 @@ impl Update for MemGenerator {
     fn failed(&mut self) {
         unimplemented!();
     } 
+
+    fn skip(&mut self) -> i8 {
+        unimplemented!();
+    }
 }
 
 impl std::fmt::Display for MemGenerator {
