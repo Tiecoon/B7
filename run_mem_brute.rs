@@ -38,6 +38,7 @@ fn mem_brute_helper(mem_inputs: &[MemInput], filename: &str) {
             size: m.size,
             addr: m.addr,
             bytes: Vec::new(),
+            breakpoint: m.breakpoint,
         })
         .collect::<Vec<MemInput>>();
 
@@ -71,6 +72,7 @@ fn run_mem_brute_perf() {
             size: 26,
             addr: 0x404050,
             bytes: "ABCDEFGHIJKLMNOPQRSTUVWXYZ".bytes().collect(),
+            breakpoint: None,
         }],
         "mem_brute",
     )
@@ -83,7 +85,34 @@ fn run_mem_brute_pie_perf() {
             size: 26,
             addr: 0x4050,
             bytes: "ABCDEFGHIJKLMNOPQRSTUVWXYZ".bytes().collect(),
+            breakpoint: None,
         }],
         "mem_brute_pie",
+    )
+}
+
+#[test]
+fn run_mem_brute_breakpoint_perf() {
+    mem_brute_helper(
+        &[MemInput {
+            size: 26,
+            addr: 0x404050,
+            bytes: "ABCDEFGHIJKLMNOPQRSTUVWXYZ".bytes().collect(),
+            breakpoint: Some(0x4011f7),
+        }],
+        "mem_brute_breakpoint",
+    )
+}
+
+#[test]
+fn run_mem_brute_breakpoint_pie_perf() {
+    mem_brute_helper(
+        &[MemInput {
+            size: 26,
+            addr: 0x4050,
+            bytes: "ABCDEFGHIJKLMNOPQRSTUVWXYZ".bytes().collect(),
+            breakpoint: Some(0x120a),
+        }],
+        "mem_brute_breakpoint_pie",
     )
 }
