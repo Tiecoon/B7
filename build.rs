@@ -9,7 +9,7 @@ use std::process::Command;
 
 fn main() {
     println!("cargo:rerun-if-changed=src/bindgen.h");
-    //println!("cargo:rerun-if-changed=dynamorio/");
+    println!("cargo:rerun-if-changed=dynamorio/");
     let mut out_dir_64 = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let mut out_dir_32 = out_dir_64.clone();
 
