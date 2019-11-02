@@ -138,7 +138,7 @@ fn main() -> Result<(), SolverError> {
     let timeout = Duration::new(
         matches
             .value_of("timeout")
-            .unwrap_or("5")
+            .unwrap_or("200")
             .parse()
             .expect("Failed to parse duration!"),
         0,
