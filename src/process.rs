@@ -496,6 +496,7 @@ impl ProcessHandle {
         &self,
         init_ptrace: &mut bool,
         breakpoints: &mut BreakpointMap,
+        signal: Option<Signal>,
     ) -> SolverResult<()> {
         // Initialize breakpoints and memory regions if first stop
         if *init_ptrace {
@@ -506,7 +507,7 @@ impl ProcessHandle {
         self.handle_reached_breakpoint(breakpoints)?;
 
         // Continue process
-        ptrace::cont(self.pid, None).unwrap_or_else(|e| {
+        ptrace::cont(self.pid, signal).unwrap_or_else(|e| {
             panic!(
                 "Failed to call ptrace::cont for pid {:?}: {:?}",
                 self.pid, e
@@ -531,7 +532,19 @@ impl ProcessHandle {
                     self.inner.lock().unwrap().proc_chans.remove(&data.pid);
                     return Ok(data.pid);
                 }
-                _ => {
+                status => {
+                    let signal = match status {
+                        WaitStatus::Signaled(_, signal, _) => Some(signal),
+                        WaitStatus::Stopped(_, signal) => Some(signal),
+                        WaitStatus::PtraceEvent(_, signal, _) => Some(signal),
+                        _ => None,
+                    };
+                    let signal =
+                        if signal == Some(Signal::SIGILL) || signal == Some(Signal::SIGSEGV) {
+                            signal
+                        } else {
+                            None
+                        };
                     let now = Instant::now();
                     let elapsed = now - start;
                     if elapsed > timeout {
@@ -544,7 +557,7 @@ impl ProcessHandle {
                     };
 
                     if self.proc.ptrace {
-                        self.handle_ptrace_stop(&mut init_ptrace, &mut breakpoints)?;
+                        self.handle_ptrace_stop(&mut init_ptrace, &mut breakpoints, signal)?;
                     }
                 }
             }
