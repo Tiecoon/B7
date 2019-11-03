@@ -532,19 +532,7 @@ impl ProcessHandle {
                     self.inner.lock().unwrap().proc_chans.remove(&data.pid);
                     return Ok(data.pid);
                 }
-                status => {
-                    let signal = match status {
-                        WaitStatus::Signaled(_, signal, _) => Some(signal),
-                        WaitStatus::Stopped(_, signal) => Some(signal),
-                        WaitStatus::PtraceEvent(_, signal, _) => Some(signal),
-                        _ => None,
-                    };
-                    let signal =
-                        if signal == Some(Signal::SIGILL) || signal == Some(Signal::SIGSEGV) {
-                            signal
-                        } else {
-                            None
-                        };
+                _ => {
                     let now = Instant::now();
                     let elapsed = now - start;
                     if elapsed > timeout {
@@ -557,7 +545,7 @@ impl ProcessHandle {
                     };
 
                     if self.proc.ptrace {
-                        self.handle_ptrace_stop(&mut init_ptrace, &mut breakpoints, signal)?;
+                        ptrace::detach(self.pid)?;
                     }
                 }
             }
