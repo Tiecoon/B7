@@ -17,13 +17,13 @@ use tui::Terminal;
 use tui_logger::*;
 
 //structs to help opranize the tabs
-pub struct TabsState<'a> {
-    pub titles: Vec<&'a str>,
+pub struct TabsState {
+    pub titles: Vec<String>,
     pub index: usize,
 }
 
-impl<'a> TabsState<'a> {
-    pub fn new(titles: Vec<&'a str>) -> TabsState {
+impl TabsState {
+    pub fn new(titles: Vec<String>) -> TabsState {
         TabsState { titles, index: 0 }
     }
     pub fn next(&mut self) {
@@ -39,8 +39,8 @@ impl<'a> TabsState<'a> {
     }
 }
 
-struct App<'a> {
-    tabs: TabsState<'a>,
+struct App {
+    tabs: TabsState,
 }
 
 enum Format {
@@ -85,7 +85,7 @@ pub struct Tui {
     path: Option<String>,
     history: Vec<String>,
     selected: Option<usize>,
-    app: App<'static>,
+    app: App,
     repeat: u32,
     timeout: Duration,
     options: Vec<String>,
@@ -113,7 +113,7 @@ impl Tui {
 
         //adding App for multiple tabs
         let app = App {
-            tabs: TabsState::new(vec!["Tab1", "Tab2"]),
+            tabs: TabsState::new(vec!["Tab1".to_string(), "Tab2".to_string()]),
         };
 
         Tui {
@@ -183,9 +183,11 @@ impl Tui {
 
             let mut graph2: Vec<(&str, u64)> = Vec::new();
             let gap = self.gap;
-            let app = &self.app;
-            let options = &self.options;
+            let app = &mut self.app;
+            let options = &mut self.options;
             let selected = self.selected;
+            options[0] = "Repeat: ".to_string() + &self.repeat.to_string();
+            options[1] = "Timeout: ".to_string() + &self.timeout.as_secs().to_string();
             self.terminal
                 .draw(|mut f| {
                     let chunks = Layout::default()
@@ -396,30 +398,35 @@ impl Ui for Tui {
                         }
                     }
                     Ok(Key::Up) => {
-                        match self.selected {
-                            Some(x) => {
-                                if x > 0 {
-                                    self.selected = Some(x - 1);
+                        if self.app.tabs.index == 1{
+                            match self.selected {
+                                Some(x) => {
+                                    if x > 0 {
+                                        self.selected = Some(x - 1);
+                                    }
+                                }
+                                None => {
+                                    self.selected = Some(0);
                                 }
                             }
-                            None => {
-                                self.selected = Some(0);
-                            }
+                            self.redraw();
                         }
-                        self.redraw();
+                        
                     }
                     Ok(Key::Down) => {
-                        match self.selected {
-                            Some(x) => {
-                                if x < self.options.len() - 1 {
-                                    self.selected = Some(x + 1);
+                        if self.app.tabs.index == 1{
+                            match self.selected {
+                                Some(x) => {
+                                    if x < self.options.len() - 1 {
+                                        self.selected = Some(x + 1);
+                                    }
+                                }
+                                None => {
+                                    self.selected = Some(0);
                                 }
                             }
-                            None => {
-                                self.selected = Some(0);
-                            }
+                            self.redraw();
                         }
-                        self.redraw();
                     }
                     Ok(Key::Char('=')) => {
                         self.gap += 1;
@@ -438,6 +445,12 @@ impl Ui for Tui {
                     Ok(Key::Char(',')) => {
                         if self.app.tabs.index > 0 {
                             self.app.tabs.index -= 1;
+                        }
+                    }
+                    Ok(Key::Char('\n')) => {
+                        if self.app.tabs.index == 1{
+                            //TODO implement typing in options
+                            self.redraw();
                         }
                     }
                     _ => {}
