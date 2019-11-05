@@ -334,7 +334,7 @@ struct ProcessFinishState {
     /// Time left before process times out
     time_left: Duration,
 
-    /// Whether ptrace is initialized
+    /// Whether ptrace-specific initialization (like memory input) is finished
     init_ptrace: bool,
 
     /// Placed breakpoints
