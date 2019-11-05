@@ -87,7 +87,7 @@ pub struct Tui {
     selected: Option<usize>,
     app: App,
     repeat: u32,
-    timeout: Duration,
+    timeout: u64,
     options: Vec<String>,
 }
 
@@ -108,7 +108,6 @@ impl Tui {
         let size = terminal.size().unwrap();
         let cache = Vec::new();
         let history = Vec::new();
-        let timeout = Duration::new(5, 0);
         let options = vec!["Repeat".to_string(), "Timeout".to_string()];
 
         //adding App for multiple tabs
@@ -130,7 +129,7 @@ impl Tui {
             selected: None,
             app,
             repeat: 1,
-            timeout,
+            timeout: 5,
             options,
         }
     }
@@ -186,8 +185,9 @@ impl Tui {
             let app = &mut self.app;
             let options = &mut self.options;
             let selected = self.selected;
+            let timeout = Duration::new(self.timeout, 0);
             options[0] = "Repeat: ".to_string() + &self.repeat.to_string();
-            options[1] = "Timeout: ".to_string() + &self.timeout.as_secs().to_string();
+            options[1] = "Timeout: ".to_string() + &timeout.as_secs().to_string();
             self.terminal
                 .draw(|mut f| {
                     let chunks = Layout::default()
@@ -449,8 +449,68 @@ impl Ui for Tui {
                     }
                     Ok(Key::Char('\n')) => {
                         if self.app.tabs.index == 1{
-                            //TODO implement typing in options
-                            self.redraw();
+                            let mut buffer = String::new();
+                            let selection = self.selected;
+                            let mut option_index = 0;
+                            match selection {
+                                Some(x) => {
+                                    option_index = x;
+                                }
+                                None => {
+
+                                }
+
+                            }
+                            for input in io::stdin().keys(){
+                                match input{
+                                    Ok(Key::Char('\n')) => {
+                                        break
+                                    }
+                                    Ok(Key::Char('0')) => {
+                                        buffer.push_str("0");
+                                    }
+                                    Ok(Key::Char('1')) => {
+                                        buffer.push_str("1");
+                                    }
+                                    Ok(Key::Char('2')) => {
+                                        buffer.push_str("2");
+                                    }
+                                    Ok(Key::Char('3')) => {
+                                        buffer.push_str("3");
+                                    }
+                                    Ok(Key::Char('4')) => {
+                                        buffer.push_str("4");
+                                    }
+                                    Ok(Key::Char('5')) => {
+                                        buffer.push_str("5");
+                                    }
+                                    Ok(Key::Char('6')) => {
+                                        buffer.push_str("6");
+                                    }
+                                    Ok(Key::Char('7')) => {
+                                        buffer.push_str("7");
+                                    }
+                                    Ok(Key::Char('8')) => {
+                                        buffer.push_str("8");
+                                    }
+                                    Ok(Key::Char('9')) => {
+                                        buffer.push_str("9");
+                                    }
+                                    _ => {
+        
+                                    }
+                                }
+                                match option_index {
+                                    0 => {
+                                        self.repeat = buffer.parse::<u32>().unwrap();
+                                    }
+                                    1 => {
+                                        self.timeout = buffer.parse::<u64>().unwrap();
+                                    }
+                                    _ => {}
+                                }
+                                self.redraw();
+                            }
                         }
                     }
                     _ => {}
