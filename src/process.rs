@@ -523,7 +523,11 @@ impl ProcessHandle {
     }
 
     /// Handle a stop while the process is being ptrace'd
-    fn handle_ptrace_stop(&self, state: &mut ProcessFinishState) -> SolverResult<()> {
+    fn handle_ptrace_stop(
+        &self,
+        signal: Option<Signal>,
+        state: &mut ProcessFinishState,
+    ) -> SolverResult<()> {
         // Initialize breakpoints and memory regions if first stop
         if !state.init_ptrace {
             self.init_mem_input(&mut state.breakpoints)?;
@@ -533,7 +537,7 @@ impl ProcessHandle {
         self.handle_reached_breakpoint(&mut state.breakpoints)?;
 
         // Continue process
-        ptrace::cont(self.pid, None).unwrap_or_else(|e| {
+        ptrace::cont(self.pid, signal).unwrap_or_else(|e| {
             panic!(
                 "Failed to call ptrace::cont for pid {:?}: {:?}",
                 self.pid, e
@@ -543,7 +547,11 @@ impl ProcessHandle {
         Ok(())
     }
 
-    fn handle_stop(&self, state: &mut ProcessFinishState) -> SolverResult<()> {
+    fn handle_stop(
+        &self,
+        signal: Option<Signal>,
+        state: &mut ProcessFinishState,
+    ) -> SolverResult<()> {
         let now = Instant::now();
         let elapsed = now - state.start;
         if elapsed > state.timeout {
@@ -556,7 +564,7 @@ impl ProcessHandle {
         };
 
         if self.proc.ptrace {
-            self.handle_ptrace_stop(state)?;
+            self.handle_ptrace_stop(signal, state)?;
         }
 
         Ok(())
@@ -577,7 +585,8 @@ impl ProcessHandle {
                     self.inner.lock().unwrap().proc_chans.remove(&data.pid);
                     return Ok(data.pid);
                 }
-                _ => self.handle_stop(&mut state)?,
+                WaitStatus::Stopped(_, signal) => self.handle_stop(Some(signal), &mut state)?,
+                _ => self.handle_stop(None, &mut state)?,
             }
         }
     }
