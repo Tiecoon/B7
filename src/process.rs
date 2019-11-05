@@ -536,6 +536,14 @@ impl ProcessHandle {
 
         self.handle_reached_breakpoint(&mut state.breakpoints)?;
 
+        // SIGTRAP should not be forwarded to the process, since breakpoints and
+        // stopping on execve will crash the process and it will be bad
+        let signal = if signal == Some(Signal::SIGTRAP) {
+            None
+        } else {
+            signal
+        };
+
         // Continue process
         ptrace::cont(self.pid, signal).unwrap_or_else(|e| {
             panic!(
