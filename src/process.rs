@@ -525,9 +525,9 @@ impl ProcessHandle {
     /// Handle a stop while the process is being ptrace'd
     fn handle_ptrace_stop(&self, state: &mut ProcessFinishState) -> SolverResult<()> {
         // Initialize breakpoints and memory regions if first stop
-        if state.init_ptrace {
+        if !state.init_ptrace {
             self.init_mem_input(&mut state.breakpoints)?;
-            state.init_ptrace = false;
+            state.init_ptrace = true;
         }
 
         self.handle_reached_breakpoint(&mut state.breakpoints)?;
