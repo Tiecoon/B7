@@ -323,6 +323,37 @@ pub struct Process {
     ptrace: bool,
 }
 
+/// State for function `ProcessHandle::finish()`
+struct ProcessFinishState {
+    /// Process timeout
+    timeout: Duration,
+
+    /// Process start time
+    start: Instant,
+
+    /// Time left before process times out
+    time_left: Duration,
+
+    /// Whether ptrace is initialized
+    init_ptrace: bool,
+
+    /// Placed breakpoints
+    breakpoints: BreakpointMap,
+}
+
+impl ProcessFinishState {
+    /// Constructor with default values
+    fn new(timeout: Duration) -> Self {
+        Self {
+            timeout,
+            start: Instant::now(),
+            time_left: timeout,
+            init_ptrace: false,
+            breakpoints: BreakpointMap::new(),
+        }
+    }
+}
+
 pub struct ProcessHandle {
     pid: Pid,
     inner: Arc<Mutex<ProcessWaiterInner>>,
@@ -492,18 +523,14 @@ impl ProcessHandle {
     }
 
     /// Handle a stop while the process is being ptrace'd
-    fn handle_ptrace_stop(
-        &self,
-        init_ptrace: &mut bool,
-        breakpoints: &mut BreakpointMap,
-    ) -> SolverResult<()> {
+    fn handle_ptrace_stop(&self, state: &mut ProcessFinishState) -> SolverResult<()> {
         // Initialize breakpoints and memory regions if first stop
-        if *init_ptrace {
-            self.init_mem_input(breakpoints)?;
-            *init_ptrace = false;
+        if state.init_ptrace {
+            self.init_mem_input(&mut state.breakpoints)?;
+            state.init_ptrace = false;
         }
 
-        self.handle_reached_breakpoint(breakpoints)?;
+        self.handle_reached_breakpoint(&mut state.breakpoints)?;
 
         // Continue process
         ptrace::cont(self.pid, None).unwrap_or_else(|e| {
@@ -516,37 +543,41 @@ impl ProcessHandle {
         Ok(())
     }
 
+    fn handle_stop(&self, state: &mut ProcessFinishState) -> SolverResult<()> {
+        let now = Instant::now();
+        let elapsed = now - state.start;
+        if elapsed > state.timeout {
+            // TODO - kill process?
+            return Err(SolverError::new(Runner::Timeout, "child timeout"));
+        }
+        state.time_left = match state.time_left.checked_sub(elapsed) {
+            Some(t) => t,
+            None => return Err(SolverError::new(Runner::Timeout, "child timed out")),
+        };
+
+        if self.proc.ptrace {
+            self.handle_ptrace_stop(state)?;
+        }
+
+        Ok(())
+    }
+
     /// run process until it exits or times out
     pub fn finish(&self, timeout: Duration) -> SolverResult<Pid> {
-        let start = Instant::now();
-        let mut time_left = timeout;
-        let mut init_ptrace = true; // Whether ptrace is initialized
-        let mut breakpoints = BreakpointMap::new();
+        let mut state = ProcessFinishState::new(timeout);
 
         loop {
-            let data = self.recv.recv_timeout(time_left).expect("Receieve error!");
+            let data = self
+                .recv
+                .recv_timeout(state.time_left)
+                .expect("Receieve error!");
             match data.status {
                 WaitStatus::Exited(_, _) => {
                     // Remove process data from the map now that it has exited
                     self.inner.lock().unwrap().proc_chans.remove(&data.pid);
                     return Ok(data.pid);
                 }
-                _ => {
-                    let now = Instant::now();
-                    let elapsed = now - start;
-                    if elapsed > timeout {
-                        // TODO - kill process?
-                        return Err(SolverError::new(Runner::Timeout, "child timeout"));
-                    }
-                    time_left = match time_left.checked_sub(elapsed) {
-                        Some(t) => t,
-                        None => return Err(SolverError::new(Runner::Timeout, "child timed out")),
-                    };
-
-                    if self.proc.ptrace {
-                        self.handle_ptrace_stop(&mut init_ptrace, &mut breakpoints)?;
-                    }
-                }
+                _ => self.handle_stop(&mut state)?,
             }
         }
     }
