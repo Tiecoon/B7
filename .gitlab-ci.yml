@@ -30,7 +30,7 @@ pages:
   only:
     - master
   script:
-    - cargo doc
+    - cargo doc --all-features
     - rm -rf public
     - mv target/doc/ public
   artifacts:

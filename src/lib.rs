@@ -1,3 +1,7 @@
+//! Features
+//! * dynamorio
+//!     * will compile dynamorio in build_* and the code to allow its use
+
 #[macro_use]
 extern crate log;
 
