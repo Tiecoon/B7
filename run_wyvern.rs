@@ -1,4 +1,5 @@
 use b7::b7tui::Env;
+#[cfg(feature = "dynamorio")]
 use b7::dynamorio;
 use b7::generators::Input;
 use b7::perf;
@@ -26,6 +27,7 @@ fn on_init() {
     b7::process::block_signal();
 }
 
+#[cfg(feature = "dynamorio")]
 #[test]
 fn run_wyvern_dynamorio() {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
