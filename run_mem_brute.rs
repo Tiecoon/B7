@@ -62,7 +62,7 @@ fn mem_brute_helper(mem_inputs: &[MemInput], filename: &str) {
     .run()
     .unwrap();
 
-    assert_eq!(res.mem_brute, mem_inputs);
+    assert_eq!(res.mem, mem_inputs);
 }
 
 #[test]

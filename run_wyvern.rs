@@ -85,10 +85,10 @@ fn run_wyvern_perf() {
         Duration::new(5, 0),
     );
 
-    let res = opts.run().unwrap();
-    let mut stdin = res.stdin_brute;
+    let mut res = opts.run().unwrap();
 
+    res.stdin.pop();
+    let stdin = String::from_utf8_lossy(res.stdin.as_slice());
     // Last character is currently non-deterministic
-    stdin.pop();
     assert_eq!(&stdin, "dr4g0n_or_p4tric1an_it5_LLVM");
 }
