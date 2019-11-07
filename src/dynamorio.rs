@@ -1,3 +1,4 @@
+#[cfg(feature = "dynamorio")]
 use crate::brute::*;
 use crate::errors::*;
 use crate::process::Process;

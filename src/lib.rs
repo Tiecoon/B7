@@ -5,6 +5,7 @@ pub mod b7tui;
 pub mod binary;
 pub mod bindings;
 pub mod brute;
+#[cfg(feature = "dynamorio")]
 pub mod dynamorio;
 pub mod errors;
 pub mod generators;

@@ -11,7 +11,7 @@ variables:
 build:
   stage: build
   script:
-    RUST_BACKTRACE=1 cargo build
+    RUST_BACKTRACE=1 cargo build --all-features
 
 format:
   stage: test
