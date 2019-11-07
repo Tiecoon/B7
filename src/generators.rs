@@ -100,6 +100,7 @@ impl std::fmt::Display for MemInput {
 /// Holds the various input the runner is expected to use
 pub struct Input {
     pub argc: u32,
+    pub argvlens: Vec<u32>,
     pub argv: ArgumentType,
     pub stdinlen: u32,
     pub stdin: StringType,
@@ -450,10 +451,6 @@ impl ArgvLenGenerator {
             argc,
             correct: vec![0; argc as usize],
         }
-    }
-
-    pub fn get_lengths(&self) -> &Vec<u32> {
-        &self.correct
     }
 }
 

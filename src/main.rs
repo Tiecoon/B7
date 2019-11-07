@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate log;
 
 use b7::brute::InstCounter;
@@ -9,7 +8,6 @@ use b7::*;
 
 use clap::{App, Arg};
 use std::collections::HashMap;
-use std::io::prelude::*;
 use std::os::unix::ffi::OsStrExt;
 use std::process::exit;
 use std::time::Duration;
@@ -152,18 +150,13 @@ fn main() -> Result<(), SolverError> {
 
     let terminal = String::from(matches.value_of("ui").unwrap_or("tui")).to_lowercase();
 
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .open(format!("{}.cache", path))?;
-
     let input = Input {
         argv: args,
         mem: mem_inputs_from_args(&matches)?,
         ..Default::default()
     };
 
-    let results = match &*terminal {
+    let _results = match &*terminal {
         "tui" => B7Opts::new(
             path.to_string(),
             input,
@@ -189,14 +182,5 @@ fn main() -> Result<(), SolverError> {
         _ => panic!("unknown tui {}", terminal),
     }?;
 
-    if !results.arg_brute.is_empty() {
-        info!("Writing argv to cache");
-        write!(file, "argv: {}", results.arg_brute)?;
-    };
-
-    if !results.stdin_brute.is_empty() {
-        info!("Writing stdin to cache");
-        write!(file, "stdin: {}", results.stdin_brute)?;
-    };
     Ok(())
 }
