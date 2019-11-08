@@ -566,7 +566,7 @@ impl ProcessHandle {
             // TODO - kill process?
             return Err(SolverError::new(Runner::Timeout, "child timeout"));
         }
-        state.time_left = match state.time_left.checked_sub(elapsed) {
+        state.time_left = match state.timeout.checked_sub(elapsed) {
             Some(t) => t,
             None => return Err(SolverError::new(Runner::Timeout, "child timed out")),
         };
