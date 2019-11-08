@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use crate::errors::Runner::ArgError;
 use crate::errors::SolverError;
 use crate::errors::SolverResult;
+use crate::IS_X86;
 
 type StringType = Vec<u8>;
 type ArgumentType = Vec<StringType>;
@@ -17,6 +18,9 @@ pub struct MemInput {
     pub addr: usize,
     /// Bytes to load in memory buffer
     pub bytes: StringType,
+    /// Address to place breakpoint before `bytes` is loaded into the memory
+    /// buffer. If `None`, then write the buffer at the beginning of execution.
+    pub breakpoint: Option<usize>,
 }
 
 impl MemInput {
@@ -54,7 +58,29 @@ impl MemInput {
         let size = usize::from_str_radix(size, 0x10);
         let size = size.map_err(|_| SolverError::new(ArgError, "Invalid memory input size"))?;
 
-        Ok(Self { bytes, addr, size })
+        // Parse breakpoint address to integer
+        let breakpoint = opts.get("breakpoint");
+        let breakpoint = match breakpoint {
+            Some(bp) => {
+                let bp = usize::from_str_radix(bp, 0x10);
+                let bp = bp.map_err(|_| {
+                    SolverError::new(ArgError, "Invalid memory input breakpoint address")
+                })?;
+                Some(bp)
+            }
+            None => None,
+        };
+
+        if breakpoint.is_some() && !IS_X86 {
+            return Err(SolverError::new(ArgError, "Breakpoints only work on x86"));
+        }
+
+        Ok(Self {
+            bytes,
+            addr,
+            size,
+            breakpoint,
+        })
     }
 }
 
@@ -74,6 +100,7 @@ impl std::fmt::Display for MemInput {
 /// Holds the various input the runner is expected to use
 pub struct Input {
     pub argc: u32,
+    pub argvlens: Vec<u32>,
     pub argv: ArgumentType,
     pub stdinlen: u32,
     pub stdin: StringType,
@@ -425,10 +452,6 @@ impl ArgvLenGenerator {
             correct: vec![0; argc as usize],
         }
     }
-
-    pub fn get_lengths(&self) -> &Vec<u32> {
-        &self.correct
-    }
 }
 
 // nice iterator wrapper to generate guesses
@@ -655,6 +678,7 @@ impl Iterator for MemGenerator {
             size: self.correct.size,
             addr: self.correct.addr,
             bytes: try_bytes,
+            breakpoint: self.correct.breakpoint,
         };
 
         let mem = vec![mem];

@@ -40,5 +40,7 @@ pages:
 cache:
   paths:
     - dynamorio/
+    - build_32/
+    - build_64/
     - cargo/
     - target/

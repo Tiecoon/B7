@@ -42,8 +42,8 @@ impl InstCounter for DynamorioSolver {
         let dynpath = PathBuf::from(data.vars.get("dynpath").unwrap());
 
         let (build_dir, bin_dir) = match self.get_arch(&PathBuf::from(&data.path))? {
-            Arch::ThirtyTwo => ("build_32", "bin32"),
-            Arch::SixtyFour => ("build_64", "bin64"),
+            Arch::ThirtyTwo => ("build_32", "dynamorio/bin32"),
+            Arch::SixtyFour => ("build_64", "dynamorio/bin64"),
         };
 
         let mut base_path = dynpath.clone();
@@ -54,6 +54,7 @@ impl InstCounter for DynamorioSolver {
         drrun.push("drrun");
 
         let mut libinscount = base_path.clone();
+        libinscount.push("dynamorio");
         libinscount.push("api");
         libinscount.push("bin");
         libinscount.push("libinscount.so");
