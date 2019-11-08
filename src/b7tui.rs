@@ -451,10 +451,10 @@ impl Ui for Tui {
                         if self.app.tabs.index == 1{
                             let mut buffer = String::new();
                             let selection = self.selected;
-                            let mut option_index = 0;
+                            let mut option_index:i32 = -1;
                             match selection {
                                 Some(x) => {
-                                    option_index = x;
+                                    option_index = x as i32;
                                 }
                                 None => {
 
@@ -466,46 +466,33 @@ impl Ui for Tui {
                                     Ok(Key::Char('\n')) => {
                                         break
                                     }
-                                    Ok(Key::Char('0')) => {
-                                        buffer.push_str("0");
-                                    }
-                                    Ok(Key::Char('1')) => {
-                                        buffer.push_str("1");
-                                    }
-                                    Ok(Key::Char('2')) => {
-                                        buffer.push_str("2");
-                                    }
-                                    Ok(Key::Char('3')) => {
-                                        buffer.push_str("3");
-                                    }
-                                    Ok(Key::Char('4')) => {
-                                        buffer.push_str("4");
-                                    }
-                                    Ok(Key::Char('5')) => {
-                                        buffer.push_str("5");
-                                    }
-                                    Ok(Key::Char('6')) => {
-                                        buffer.push_str("6");
-                                    }
-                                    Ok(Key::Char('7')) => {
-                                        buffer.push_str("7");
-                                    }
-                                    Ok(Key::Char('8')) => {
-                                        buffer.push_str("8");
-                                    }
-                                    Ok(Key::Char('9')) => {
-                                        buffer.push_str("9");
+                                    Ok(Key::Char(x)) =>{
+                                        if x.is_digit(10){
+                                            buffer.push(x);
+                                        }
                                     }
                                     _ => {
-        
+                                        
                                     }
                                 }
                                 match option_index {
                                     0 => {
-                                        self.repeat = buffer.parse::<u32>().unwrap();
+                                        self.repeat = match buffer.parse::<u32>(){
+                                            Ok(x) => {x}
+                                            _ => {
+                                                buffer = String::new();
+                                                0
+                                            } 
+                                        }
                                     }
                                     1 => {
-                                        self.timeout = buffer.parse::<u64>().unwrap();
+                                        self.repeat = match buffer.parse::<u32>(){
+                                            Ok(x) => {x}
+                                            _ => {
+                                                buffer = String::new();
+                                                0
+                                            } 
+                                        }
                                     }
                                     _ => {}
                                 }
