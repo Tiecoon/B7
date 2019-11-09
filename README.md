@@ -20,4 +20,4 @@ solve with `b7 --no-stdin ./strlen_X##`
 
 [swampctf](https://play.swampctf.com/challenges#Future%20Fun)
 
-solve with `b7 future_fun --no-arg --stdin-len 30 --timeout 100`
+solve with `b7 future_fun --no-arg --stdin-len 30 --timeout 100 --drop-ptrace`
