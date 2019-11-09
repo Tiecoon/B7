@@ -69,6 +69,7 @@ pub trait InstCounter: Send + Sync + 'static {
 ///        &mut b7tui::Env,
 ///        Duration::new(5,0),
 ///        HashMap::new(),
+///        false,
 ///    )?;
 ///
 ///    // prints the number of argc it found
