@@ -72,6 +72,12 @@ fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
                 .help("toggle running stdin checks"),
         )
         .arg(
+            Arg::with_name("stdin-len")
+                .long("stdin-len")
+                .help("specify stdin length")
+                .takes_value(true),
+        )
+        .arg(
             Arg::with_name("dynpath")
                 .long("dynpath")
                 .help("Path to DynamoRio build folder")
@@ -126,6 +132,11 @@ fn main() -> Result<(), SolverError> {
 
     let argstate = matches.occurrences_of("argstate") < 1;
     let stdinstate = matches.occurrences_of("stdinstate") < 1;
+    let stdinlen = matches
+        .value_of("stdin-len")
+        .unwrap_or("0")
+        .parse::<u32>()
+        .expect("invalid stdin length");
 
     let solvername = matches.value_of("solver").unwrap_or("perf");
     let solver = match solvername {
@@ -151,6 +162,7 @@ fn main() -> Result<(), SolverError> {
     let terminal = String::from(matches.value_of("ui").unwrap_or("tui")).to_lowercase();
 
     let input = Input {
+        stdinlen,
         argv: args,
         mem: mem_inputs_from_args(&matches)?,
         ..Default::default()

@@ -177,19 +177,20 @@ fn default_stdin_brute<B: b7tui::Ui>(
     timeout: Duration,
     terminal: &mut B,
 ) -> Result<Input, SolverError> {
-    // solve stdin len
-    let mut lgen = StdinLenGenerator::new(0, 51);
+    // solve stdin len if unspecified
     let mut solved = init_input.clone();
-    solved = brute(
-        path,
-        1,
-        &mut lgen,
-        solver,
-        solved,
-        terminal,
-        timeout,
-        vars.clone(),
-    )?;
+    if solved.stdinlen == 0 {
+        solved = brute(
+            path,
+            1,
+            &mut StdinLenGenerator::new(0, 51),
+            solver,
+            solved,
+            terminal,
+            timeout,
+            vars.clone(),
+        )?;
+    }
     // solve stdin if there is stuff to solve
     if solved.stdinlen > 0 {
         // TODO: We should have a good way of configuring the range
