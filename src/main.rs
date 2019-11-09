@@ -141,6 +141,7 @@ fn main() -> Result<(), SolverError> {
     let solvername = matches.value_of("solver").unwrap_or("perf");
     let solver = match solvername {
         "perf" => Box::new(perf::PerfSolver) as Box<dyn InstCounter>,
+        #[cfg(feature = "dynamorio")]
         "dynamorio" => Box::new(dynamorio::DynamorioSolver) as Box<dyn InstCounter>,
         _ => panic!("unknown solver"),
     };

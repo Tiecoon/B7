@@ -8,10 +8,15 @@ variables:
   CARGO_HOME: $CI_PROJECT_DIR/cargo
   GIT_SUBMODULE_STRATEGY: normal
 
-build:
+default-build:
   stage: build
   script:
     RUST_BACKTRACE=1 cargo build
+
+dynamorio-build:
+  stage: build
+  script:
+    RUST_BACKTRACE=1 cargo build --features "dynamorio"
 
 format:
   stage: test
@@ -30,7 +35,7 @@ pages:
   only:
     - master
   script:
-    - cargo doc
+    - cargo doc --all-features
     - rm -rf public
     - mv target/doc/ public
   artifacts:
