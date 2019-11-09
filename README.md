@@ -16,8 +16,8 @@ solve with `b7 --no-stdin ./strlen_X##`
 
 ## Future_fun
 
-Challenge from swamp ctf solved with B7 via patching
+[Movfuscated](https://github.com/xoreaxeaxeax/movfuscator) challenge from swamp ctf
 
 [swampctf](https://play.swampctf.com/challenges#Future%20Fun)
 
-no solution script exists at this time
+solve with `b7 future_fun --no-arg --stdin-len 30 --timeout 100`
