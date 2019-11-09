@@ -8,8 +8,7 @@ use std::time::Duration;
 
 use ctor::ctor;
 
-// Last byte '}' currently not working
-static FLAG: &str = "flag{g00d_th1ng5_f0r_w41ting";
+static FLAG: &str = "flag{g00d_th1ng5_f0r_w41ting}";
 
 // This hack ensures that we block SIGCHLD
 // on every thread. When running tests,
@@ -43,6 +42,7 @@ fn run_future_fun_perf() {
             stdinlen: FLAG.len() as u32,
             ..Default::default()
         },
+        true,
         false,
         true,
         Box::new(perf::PerfSolver),

@@ -78,6 +78,7 @@ fn run_wyvern_perf() {
         path.to_string_lossy().into_owned(),
         Input::new(),
         false,
+        false,
         true,
         Box::new(perf::PerfSolver),
         &mut term,

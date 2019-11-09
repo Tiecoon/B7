@@ -54,6 +54,7 @@ fn mem_brute_helper(mem_inputs: &[MemInput], filename: &str) {
         input,
         false,
         false,
+        false,
         Box::new(perf::PerfSolver),
         &mut term,
         HashMap::new(),
