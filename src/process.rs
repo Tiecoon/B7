@@ -575,10 +575,10 @@ impl ProcessHandle {
             PtraceMode::Always => {
                 self.handle_ptrace_stop(signal, state)?;
             }
-            PtraceMode::Never => {}
-            PtraceMode::Drop => {
+            PtraceMode::Drop if signal.is_some() => {
                 ptrace::detach(self.pid)?;
             }
+            _ => {}
         }
 
         Ok(())
