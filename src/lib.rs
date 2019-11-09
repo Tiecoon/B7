@@ -1,3 +1,7 @@
+//! Features
+//! * dynamorio
+//!     * will compile dynamorio in build_* and the code to allow its use
+
 #[macro_use]
 extern crate log;
 
@@ -5,6 +9,7 @@ pub mod b7tui;
 pub mod binary;
 pub mod bindings;
 pub mod brute;
+#[cfg(feature = "dynamorio")]
 pub mod dynamorio;
 pub mod errors;
 pub mod generators;
