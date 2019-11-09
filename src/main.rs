@@ -103,6 +103,16 @@ fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
                 .takes_value(true)
                 .multiple(true),
         )
+        .arg(
+            Arg::with_name("drop-ptrace")
+                .long("drop-ptrace")
+                .conflicts_with("mem-brute")
+                .help(
+                    "detach from ptrace after the binary starts (use this if the \
+                     binary is movfuscated, has frequently-triggered signal \
+                     handlers, or uses ptrace anti-debugging)",
+                ),
+        )
         .get_matches()
 }
 
@@ -130,6 +140,7 @@ fn main() -> Result<(), SolverError> {
         None => Vec::new(),
     };
 
+    let drop_ptrace = matches.is_present("drop-ptrace");
     let argstate = matches.occurrences_of("argstate") < 1;
     let stdinstate = matches.occurrences_of("stdinstate") < 1;
     let stdinlen = matches
@@ -173,6 +184,7 @@ fn main() -> Result<(), SolverError> {
         "tui" => B7Opts::new(
             path.to_string(),
             input,
+            drop_ptrace,
             argstate,
             stdinstate,
             solver,
@@ -184,6 +196,7 @@ fn main() -> Result<(), SolverError> {
         "env" => B7Opts::new(
             path.to_string(),
             input,
+            drop_ptrace,
             argstate,
             stdinstate,
             solver,

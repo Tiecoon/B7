@@ -30,6 +30,7 @@ pub const IS_X86: bool = cfg!(target_arch = "x86") || cfg!(target_arch = "x86_64
 pub struct B7Opts<'a, B: b7tui::Ui> {
     path: String,
     init_input: Input,
+    drop_ptrace: bool,
     argstate: bool,
     stdinstate: bool,
     solver: Box<dyn InstCounter>,
@@ -43,6 +44,7 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
         path: String,
         init_input: Input,
         // TODO make states into an enum
+        drop_ptrace: bool,
         argstate: bool,
         stdinstate: bool,
         solver: Box<dyn InstCounter>,
@@ -54,6 +56,7 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
         B7Opts {
             path,
             init_input,
+            drop_ptrace,
             argstate,
             stdinstate,
             solver,
@@ -75,6 +78,7 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
                 self.vars.clone(),
                 self.timeout,
                 self.terminal,
+                self.drop_ptrace,
             )?;
         }
 
@@ -86,10 +90,18 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
                 self.vars.clone(),
                 self.timeout,
                 self.terminal,
+                self.drop_ptrace,
             )?;
         }
 
         if !self.init_input.mem.is_empty() {
+            if self.drop_ptrace {
+                return Err(SolverError::new(
+                    Runner::ArgError,
+                    "ptrace dropping and mem input are mutually exclusive",
+                ));
+            }
+
             solved = default_mem_brute(
                 &self.path,
                 &solved,
@@ -120,6 +132,7 @@ fn default_arg_brute<B: b7tui::Ui>(
     vars: HashMap<String, String>,
     timeout: Duration,
     terminal: &mut B,
+    drop_ptrace: bool,
 ) -> Result<Input, SolverError> {
     let mut solved = init_input.clone();
     // Solve for argc
@@ -133,6 +146,7 @@ fn default_arg_brute<B: b7tui::Ui>(
         terminal,
         timeout,
         vars.clone(),
+        drop_ptrace,
     )?;
 
     // check if there is something to be solved
@@ -148,6 +162,7 @@ fn default_arg_brute<B: b7tui::Ui>(
             terminal,
             timeout,
             vars.clone(),
+            drop_ptrace,
         )?;
 
         // solve argv values
@@ -162,6 +177,7 @@ fn default_arg_brute<B: b7tui::Ui>(
             terminal,
             timeout,
             vars.clone(),
+            drop_ptrace,
         )?;
 
         return Ok(solved);
@@ -181,6 +197,7 @@ fn default_stdin_brute<B: b7tui::Ui>(
     vars: HashMap<String, String>,
     timeout: Duration,
     terminal: &mut B,
+    drop_ptrace: bool,
 ) -> Result<Input, SolverError> {
     // solve stdin len if unspecified
     let mut solved = init_input.clone();
@@ -194,6 +211,7 @@ fn default_stdin_brute<B: b7tui::Ui>(
             terminal,
             timeout,
             vars.clone(),
+            drop_ptrace,
         )?;
     }
     // solve stdin if there is stuff to solve
@@ -215,6 +233,7 @@ fn default_stdin_brute<B: b7tui::Ui>(
             terminal,
             timeout,
             vars.clone(),
+            drop_ptrace,
         )?);
     }
     Ok(solved)
@@ -243,6 +262,7 @@ fn default_mem_brute<B: b7tui::Ui>(
             terminal,
             timeout,
             vars.clone(),
+            false,
         )?;
     }
     Ok(solved)
