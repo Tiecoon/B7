@@ -221,7 +221,7 @@ impl Update for StdinLenGenerator {
     }
 
     fn skip(&mut self) -> i8 {
-        unimplemented!();
+        0
     }
 }
 
@@ -234,7 +234,6 @@ pub struct StdinCharGenerator {
     suffix: StringType,
     idx: u32,
     cur: u16,
-    correct: StringType,
     incorrect: Vec<Option<u8>>,
     icount: u32,
     min: u16,
@@ -243,8 +242,10 @@ pub struct StdinCharGenerator {
 
 // allowing printing of string in flag
 impl std::fmt::Display for StdinCharGenerator {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", String::from_utf8_lossy(self.correct.as_slice()))
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { 
+        let tmp = &self.incorrect;
+        let v = tmp.iter().map(|&x| match x { Some(x) => x, None => 32 as u8}).collect::<Vec<_>>();
+        write!(f, "{}", String::from_utf8_lossy(v.as_slice()))
     }
 }
 
@@ -257,7 +258,6 @@ impl StdinCharGenerator {
             suffix: vec![],
             idx: 0,
             cur: min,
-            correct: vec![],
             // Vector of options of input.stdinlen none rerun some dont run
             incorrect: vec![None; input.stdinlen as usize],
             //holds the amount of incorrect chars
@@ -276,7 +276,6 @@ impl StdinCharGenerator {
             suffix: vec![],
             idx: start.len() as u32,
             cur: min,
-            correct: vec![],
             incorrect: vec![None; input.stdinlen as usize],
             icount: input.stdinlen,
             min,
@@ -294,10 +293,6 @@ impl StdinCharGenerator {
     pub fn set_suffix(&mut self, suffix: StringType) {
         self.suffix = suffix;
     }
-
-    pub fn get_input(&self) -> &StringType {
-        &self.correct
-    }
 }
 
 // nice Iterator wrapper for Bruter
@@ -313,16 +308,10 @@ impl Iterator for StdinCharGenerator {
         self.cur += 1;
         let mut inp: StringType = Vec::new();
         inp.extend_from_slice(&self.prefix);
-        inp.extend_from_slice(&self.correct);
-        inp.push(chr);
-        inp.extend_from_slice(&self.suffix);
-        // add padding to reach the required length
-        while inp.len() > self.padlen as usize {
-            inp.pop();
-        }
-        while inp.len() < self.padlen as usize {
-            inp.push(self.padchr);
-        }
+        let tmp = &self.incorrect;
+        let v = tmp.iter().map(|&x| match x { Some(x) => x, None => self.padchr}).collect::<Vec<_>>();
+        inp.extend_from_slice(v.as_slice());
+        inp[self.idx as usize] = chr;
         let mut res = Input::new();
         res.stdin = inp;
         Some((chr, res))
@@ -341,7 +330,6 @@ impl Update for StdinCharGenerator {
     type Id = u8;
 
     fn update(&mut self, chosen: &u8) -> bool {
-        self.correct.push(*chosen);
         self.incorrect[self.idx as usize] = Some(*chosen);
         self.idx += 1;
         self.icount -= 1;
@@ -350,13 +338,18 @@ impl Update for StdinCharGenerator {
         self.idx < self.padlen
     }
 
-    //need to keep moving but not add to incorrect
+    //need to keep moving but not add to incorrect or correct
     fn failed(&mut self) {
         if self.idx < self.padlen {
             self.idx += 1;
+            self.cur = self.min as u16;
+        } else { 
+            self.cur = self.min as u16;
+            self.idx = 0;
         }
     }
 
+    //allow us to move the generator forward if we have already solved this input
     fn skip(&mut self) -> i8 {
         if self.incorrect[self.idx as usize] == None {
             return 0;
@@ -440,7 +433,7 @@ impl Update for ArgcGenerator {
     }
 
     fn skip(&mut self) -> i8 {
-        unimplemented!();
+        0
     }
 }
 
@@ -535,7 +528,7 @@ impl Update for ArgvLenGenerator {
     }
 
     fn skip(&mut self) -> i8 {
-        unimplemented!();
+        0
     }
 }
 
@@ -672,7 +665,7 @@ impl Update for ArgvGenerator {
     } 
 
     fn skip(&mut self) -> i8 {
-        unimplemented!();
+        0
     }
 }
 
@@ -753,7 +746,7 @@ impl Update for MemGenerator {
     } 
 
     fn skip(&mut self) -> i8 {
-        unimplemented!();
+        0
     }
 }
 

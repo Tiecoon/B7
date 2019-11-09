@@ -62,7 +62,10 @@ mod tests {
             (0 as i64, (2, Input::new())),
             (1 as i64, (6, Input::new())),
         ];
-        //assert!(find_outlier(pairs).0 == pairs[2].0);
+        match find_outlier(pairs) {
+           Some(x) => assert!(x.0 == pairs[2].0),
+           None => {}
+        }
     }
 
     #[test]

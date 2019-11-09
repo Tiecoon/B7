@@ -178,6 +178,7 @@ pub fn brute<
             Some(good_idx) => if !gen.update(&(good_idx.1).0) {
                 break Ok((good_idx.1).1.clone());
             }
+            //if failed exit out to the failed function
             None => gen.failed(),
         }
     }
