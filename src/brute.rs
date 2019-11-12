@@ -19,6 +19,7 @@ pub struct InstCountData {
     pub inp: Input,
     pub vars: HashMap<String, String>,
     pub timeout: Duration,
+    pub drop_ptrace: bool,
 }
 
 pub trait InstCounter: Send + Sync + 'static {
@@ -68,6 +69,7 @@ pub trait InstCounter: Send + Sync + 'static {
 ///        &mut b7tui::Env,
 ///        Duration::new(5,0),
 ///        HashMap::new(),
+///        false,
 ///    )?;
 ///
 ///    // prints the number of argc it found
@@ -89,6 +91,7 @@ pub fn brute<
     terminal: &mut B,
     timeout: Duration,
     vars: HashMap<String, String>,
+    drop_ptrace: bool,
 ) -> Result<Input, SolverError> {
     let n_workers = num_cpus::get();
 
@@ -133,6 +136,7 @@ pub fn brute<
                         inp,
                         vars,
                         timeout,
+                        drop_ptrace,
                     };
                     let mut inst_count = counter.get_inst_count(&data);
                     trace!("inst_count: {:?}", inst_count);

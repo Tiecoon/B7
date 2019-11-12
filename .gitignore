@@ -4,3 +4,5 @@
 *.cache
 .vscode
 dynamario
+build_32
+build_64
