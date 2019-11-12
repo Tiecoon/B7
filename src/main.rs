@@ -72,6 +72,12 @@ fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
                 .help("toggle running stdin checks"),
         )
         .arg(
+            Arg::with_name("stdin-len")
+                .long("stdin-len")
+                .help("specify stdin length")
+                .takes_value(true),
+        )
+        .arg(
             Arg::with_name("dynpath")
                 .long("dynpath")
                 .help("Path to DynamoRio build folder")
@@ -96,6 +102,16 @@ fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
                 )
                 .takes_value(true)
                 .multiple(true),
+        )
+        .arg(
+            Arg::with_name("drop-ptrace")
+                .long("drop-ptrace")
+                .conflicts_with("mem-brute")
+                .help(
+                    "detach from ptrace after the binary starts (use this if the \
+                     binary is movfuscated, has frequently-triggered signal \
+                     handlers, or uses ptrace anti-debugging)",
+                ),
         )
         .get_matches()
 }
@@ -124,12 +140,19 @@ fn main() -> Result<(), SolverError> {
         None => Vec::new(),
     };
 
+    let drop_ptrace = matches.is_present("drop-ptrace");
     let argstate = matches.occurrences_of("argstate") < 1;
     let stdinstate = matches.occurrences_of("stdinstate") < 1;
+    let stdinlen = matches
+        .value_of("stdin-len")
+        .unwrap_or("0")
+        .parse::<u32>()
+        .expect("invalid stdin length");
 
     let solvername = matches.value_of("solver").unwrap_or("perf");
     let solver = match solvername {
         "perf" => Box::new(perf::PerfSolver) as Box<dyn InstCounter>,
+        #[cfg(feature = "dynamorio")]
         "dynamorio" => Box::new(dynamorio::DynamorioSolver) as Box<dyn InstCounter>,
         _ => panic!("unknown solver"),
     };
@@ -151,6 +174,7 @@ fn main() -> Result<(), SolverError> {
     let terminal = String::from(matches.value_of("ui").unwrap_or("tui")).to_lowercase();
 
     let input = Input {
+        stdinlen,
         argv: args,
         mem: mem_inputs_from_args(&matches)?,
         ..Default::default()
@@ -160,6 +184,7 @@ fn main() -> Result<(), SolverError> {
         "tui" => B7Opts::new(
             path.to_string(),
             input,
+            drop_ptrace,
             argstate,
             stdinstate,
             solver,
@@ -171,6 +196,7 @@ fn main() -> Result<(), SolverError> {
         "env" => B7Opts::new(
             path.to_string(),
             input,
+            drop_ptrace,
             argstate,
             stdinstate,
             solver,

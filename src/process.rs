@@ -320,7 +320,7 @@ pub struct Process {
     stdin_input: Vec<u8>,
     mem_input: Vec<MemInput>,
     breakpoints: BreakpointMap,
-    ptrace: bool,
+    ptrace_mode: PtraceMode,
 }
 
 /// State for function `ProcessHandle::finish()`
@@ -566,13 +566,19 @@ impl ProcessHandle {
             // TODO - kill process?
             return Err(SolverError::new(Runner::Timeout, "child timeout"));
         }
-        state.time_left = match state.time_left.checked_sub(elapsed) {
+        state.time_left = match state.timeout.checked_sub(elapsed) {
             Some(t) => t,
             None => return Err(SolverError::new(Runner::Timeout, "child timed out")),
         };
 
-        if self.proc.ptrace {
-            self.handle_ptrace_stop(signal, state)?;
+        match self.proc.ptrace_mode {
+            PtraceMode::Always => {
+                self.handle_ptrace_stop(signal, state)?;
+            }
+            PtraceMode::Drop if signal.is_some() => {
+                ptrace::detach(self.pid)?;
+            }
+            _ => {}
         }
 
         Ok(())
@@ -619,6 +625,28 @@ impl ProcessHandle {
     }
 }
 
+/// Mode to run the process under ptrace
+#[derive(Debug, Clone, Copy)]
+pub enum PtraceMode {
+    /// Runner should always be attached to binary
+    Always,
+    /// Runner should never be attached to binary
+    Never,
+    /// Runner should attach to binary, but detach as soon as possible. This
+    /// corresponds to the `--drop-ptrace` flag.
+    Drop,
+}
+
+impl PtraceMode {
+    /// Is ptrace enabled?
+    pub fn enabled(self) -> bool {
+        match self {
+            PtraceMode::Always | PtraceMode::Drop => true,
+            PtraceMode::Never => false,
+        }
+    }
+}
+
 // Handle running a process
 impl Process {
     pub fn new(path: &str) -> SolverResult<Process> {
@@ -629,7 +657,7 @@ impl Process {
             mem_input: Vec::new(),
             child: None,
             breakpoints: HashMap::new(),
-            ptrace: false,
+            ptrace_mode: PtraceMode::Never,
         })
     }
 
@@ -677,7 +705,7 @@ impl Process {
         self.cmd.stdout(Stdio::piped());
         self.cmd.stderr(Stdio::piped());
 
-        if self.ptrace {
+        if self.ptrace_mode.enabled() {
             // Copied from spawn_ptrace
             unsafe {
                 self.cmd.pre_exec(|| {
@@ -734,8 +762,8 @@ impl Process {
     }
 
     /// set wether or not the process should be run under ptrace
-    pub fn with_ptrace(&mut self, ptrace: bool) {
-        self.ptrace = ptrace;
+    pub fn with_ptrace_mode(&mut self, mode: PtraceMode) {
+        self.ptrace_mode = mode;
     }
 
     /// spawn process

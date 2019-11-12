@@ -4,6 +4,10 @@ version = "0.1.0"
 authors = ["Luke Biery <luke@bierysbargainbarn.com>"]
 edition = "2018"
 
+[features]
+
+dynamorio = []
+
 [dependencies]
 nix = "0.13.0"
 libc = "0.2.44"
