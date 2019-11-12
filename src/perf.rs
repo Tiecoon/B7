@@ -1,3 +1,6 @@
+
+
+
 use crate::bindings::*;
 use crate::brute::*;
 use crate::errors::*;
@@ -36,6 +39,7 @@ fn perf_event_open(
 
 /// perform perf struct setup and clear the perf file descriptor
 fn get_perf_fd(pid: pid_t) -> Result<i32, SolverError> {
+    debug!("Executing get_perf_fd");
     let mut pe: perf_event_attr = unsafe { mem::zeroed() };
 
     // perf struct setup
@@ -64,6 +68,7 @@ fn get_perf_fd(pid: pid_t) -> Result<i32, SolverError> {
 
 /// read instruction count from perf file descriptor
 fn perf_get_inst_count(fd: c_int) -> Result<i64, SolverError> {
+    debug!("Executing perf_get_inst_count:");
     let mut count: i64 = 0;
     match unsafe { libc::read(fd, &mut count as *mut i64 as *mut c_void, 8) as i64 } {
         8 => Ok(count),
@@ -88,6 +93,7 @@ impl InstCounter for PerfSolver {
     /// # Return
     /// * number of instructions perf says were executed or error
     fn get_inst_count(&self, data: &InstCountData) -> Result<i64, SolverError> {
+        debug!("Executing get_inst_count:");
         let mut process = Process::new(&data.path)?;
         for arg in data.inp.argv.iter() {
             process.arg(OsStr::from_bytes(arg));

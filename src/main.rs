@@ -1,5 +1,6 @@
 #[macro_use]
 extern crate log;
+extern crate env_logger;
 
 use b7::brute::InstCounter;
 use b7::errors::*;
@@ -18,6 +19,7 @@ use is_executable::IsExecutable;
 
 /// Parse memory inputs from args
 fn mem_inputs_from_args(matches: &clap::ArgMatches) -> SolverResult<Vec<MemInput>> {
+    debug!("Executing mem_inputs_from_args:");
     matches
         .values_of("mem-brute")
         .unwrap_or_default()
@@ -27,6 +29,7 @@ fn mem_inputs_from_args(matches: &clap::ArgMatches) -> SolverResult<Vec<MemInput
 
 /// parses program arguements
 fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
+    debug!("Executing handle_cli_args:");
     App::new("B7")
         .version("0.1.0")
         .arg(
@@ -104,11 +107,14 @@ fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
 
 /// output the help menu based on input
 fn print_usage(matches: &clap::ArgMatches) -> ! {
+    debug!("Executing print_usage:");
     println!("{}", matches.usage());
     exit(-1);
 }
 
 fn main() -> Result<(), SolverError> {
+    debug!("Executing main:");
+    env_logger::init();
     // handle command line arguements
     let matches = handle_cli_args();
 

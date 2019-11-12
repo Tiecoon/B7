@@ -1,8 +1,11 @@
 use crate::generators::Input;
 use std::fmt::Debug;
+extern crate log;
+extern crate env_logger;
 
 /// returns average of slice
 fn get_average(input: &[i64]) -> i64 {
+    debug!("Executing get_average:");
     if input.is_empty() {
         panic!("Divide by zero!");
     }
@@ -14,9 +17,9 @@ fn get_average(input: &[i64]) -> i64 {
 
 /// find the largest outlier in given slice
 pub fn find_outlier<I: Debug>(counts: &[(i64, (I, Input))]) -> &((i64, (I, Input))) {
+    debug!{"Executing find_outlier:"};
     let second: Vec<i64> = counts.iter().map(|i| i.0).collect();
     let avg: i64 = get_average(&second[..]);
-
     // and then find the most distant point
     let mut max_dist: i64 = -1;
     let mut max_idx: usize = 0;
@@ -27,7 +30,6 @@ pub fn find_outlier<I: Debug>(counts: &[(i64, (I, Input))]) -> &((i64, (I, Input
             max_idx = i;
         }
     }
-
     &counts[max_idx]
 }
 
@@ -38,6 +40,7 @@ mod tests {
 
     #[test]
     fn test_average() {
+        debug!("Executing test_average:");
         let pairs: &[(&[i64], i64)] = &[(&[0], 0), (&[1], 1), (&[0, 1], 0), (&[1, 3], 2)];
         for i in pairs {
             assert!(get_average(i.0) == i.1);
@@ -47,11 +50,13 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_average_panic() {
+        debug!("Executing test_average_panic:");
         get_average(&[] as &[i64]);
     }
 
     #[test]
     fn outlier_test() {
+        debug!("Executing outlier_test:");
         let pairs = &[
             (0 as i64, (0, Input::new())),
             (0 as i64, (2, Input::new())),
@@ -63,6 +68,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn outlier_test_panic() {
+        debug!("Executing outlier_test_panic:");
         find_outlier(&[] as &[(i64, (u32, Input))]);
     }
 }

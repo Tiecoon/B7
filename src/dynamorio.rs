@@ -22,6 +22,7 @@ impl DynamorioSolver {
     /// Reads the ELFCLASS of the ELF binary at the specified
     /// TODO: Support other binary formats (PE, Macho-O, etc)
     fn get_arch(&self, path: &Path) -> Result<Arch, SolverError> {
+        debug!("Executing get_arch:");
         let mut f = File::open(path.canonicalize()?)?;
         let mut buf = Vec::new();
         f.read_to_end(&mut buf)?;
@@ -39,6 +40,7 @@ impl InstCounter for DynamorioSolver {
     /// Handles basic proc spawning and running under dynamorio
     /// only works on 64 bit for now
     fn get_inst_count(&self, data: &InstCountData) -> Result<i64, SolverError> {
+        debug!("Executing get_inst_count:");
         let dynpath = PathBuf::from(data.vars.get("dynpath").unwrap());
 
         let (build_dir, bin_dir) = match self.get_arch(&PathBuf::from(&data.path))? {

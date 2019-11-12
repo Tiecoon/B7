@@ -95,6 +95,7 @@ impl ChanPair {
 ///
 /// For an example of what this looks like, see 'tests/run_wyvern.rs'
 pub fn block_signal() {
+    debug!("Executing block_signal:");
     let mut mask = SigSet::empty();
     mask.add(Signal::SIGCHLD);
 
@@ -116,6 +117,7 @@ impl ProcessWaiter {
     }
 
     fn start_thread(&mut self) {
+        debug!("Executing start_thread");
         if self.started {
             panic!("Already started waiter thread!");
         }
@@ -126,12 +128,14 @@ impl ProcessWaiter {
     // Block SIGCHLD for the calling thread
     // Records the initialization for the thread
     pub fn init_for_thread(&self) {
+        debug!("Executing init_for_thread:");
         block_signal();
     }
 
     /// Spawns a process, returing a ProcessHandle which can be
     /// used to interact with the spawned process.
     pub fn spawn_process(&self, mut process: Process) -> ProcessHandle {
+        debug!("Executing spawn process:");
         let recv;
         process.start().expect("Failed to spawn process!");
         process.write_input().unwrap();
@@ -219,6 +223,7 @@ impl ProcessWaiter {
     /// the WaitData will simply remain in the queue until
     /// the spawner thread retrieves the 'Reciever' half of the channel from the map.
     fn spawn_waiting_thread(waiter_lock: Arc<Mutex<ProcessWaiterInner>>) {
+        debug!("Executing spawn_waiting_thread:");
         std::thread::spawn(move || {
             // Block SIGCHLD on this thread, just to be safe (in case
             // it somehow wasn't blocked on the parent thread)
@@ -315,6 +320,7 @@ pub struct ProcessHandle {
 impl ProcessHandle {
     /// Get the process's base address from /proc/<pid>/maps
     fn get_base_addr(&self) -> SolverResult<usize> {
+        debug!("Executing get_base_addr");
         let proc = procfs::Process::new(self.pid.as_raw())?;
         let maps = proc.maps()?;
         let exe_path = proc.exe()?;
@@ -338,9 +344,9 @@ impl ProcessHandle {
     /// Write each memory input range to the process
     /// NOTE: This assumes `self.proc.ptrace` is `true`
     fn write_mem_input(&self) -> Result<(), SolverError> {
+        debug!("Executing write_mem_input");
         let word_size = std::mem::size_of::<usize>();
         let is_pie = self.proc.binary.is_pie()?;
-
         for mem in &self.proc.mem_input {
             for word in mem.bytes.chunks(word_size) {
                 // Use relative address if binary is PIE
@@ -358,7 +364,6 @@ impl ProcessHandle {
                     word.resize(word_size, 0x00);
                     word
                 };
-
                 // Convert from bytes to word
                 let word = byteorder::NativeEndian::read_uint(&word, word_size);
                 let word = word as ptrace::AddressType;
@@ -367,12 +372,12 @@ impl ProcessHandle {
                 ptrace::write(self.pid, addr, word)?;
             }
         }
-
         Ok(())
     }
 
     /// run process until it exits or times out
     pub fn finish(&self, timeout: Duration) -> Result<Pid, SolverError> {
+        debug!("Executing finish:");
         let start = Instant::now();
         let mut time_left = timeout;
 
@@ -418,6 +423,7 @@ impl ProcessHandle {
 
     /// reads process stdout into buf and returns number of bytes read
     pub fn read_stdout(&mut self, buf: &mut Vec<u8>) -> Result<usize, SolverError> {
+        debug!("Executing read_stdout: ");
         if self.proc.child.is_none() {
             return Err(SolverError::new(
                 Runner::RunnerError,
@@ -447,16 +453,19 @@ impl Process {
 
     /// set what stdin should be sent to process
     pub fn stdin_input(&mut self, stdin: Vec<u8>) {
+        debug!("Executing stdin_input:");
         self.stdin_input = stdin
     }
 
     /// set what memory input should be sent to process
     pub fn mem_input(&mut self, mem: Vec<MemInput>) {
+        debug!("Executing mem_input:");
         self.mem_input = mem
     }
 
     /// returns PID of child process
     pub fn child_id(&self) -> Result<u32, SolverError> {
+        debug!("Executing child_id:");
         match &self.child {
             Some(a) => Ok(a.id()),
             None => Err(SolverError::new(Runner::IoError, "no child id")),
@@ -465,6 +474,7 @@ impl Process {
 
     /// writes self.stdin_input to the process's stdin
     pub fn write_input(&mut self) -> Result<(), SolverError> {
+        debug!("Executing write_input:");
         self.write_stdin(&self.stdin_input.clone())
     }
 
@@ -482,6 +492,7 @@ impl Process {
 
     /// initialize process according to settings
     pub fn start(&mut self) -> Result<(), SolverError> {
+        debug!("Executing start:");
         if self.child.is_some() {
             return Err(SolverError::new(Runner::Unknown, "child already running"));
         }
@@ -513,6 +524,7 @@ impl Process {
 
     /// write buf to process stdin then close stdin
     pub fn write_stdin(&mut self, buf: &[u8]) -> Result<(), SolverError> {
+        debug!("Executing write_stdin:");
         if self.child.is_none() {
             return Err(SolverError::new(
                 Runner::RunnerError,
@@ -530,6 +542,7 @@ impl Process {
     ///
     /// helps if child process is hanging on a read from stdin
     pub fn close_stdin(&mut self) -> Result<(), SolverError> {
+        debug!("Executing close_stdin:");
         if self.child.is_none() {
             return Err(SolverError::new(
                 Runner::RunnerError,
@@ -547,11 +560,13 @@ impl Process {
 
     /// set wether or not the process should be run under ptrace
     pub fn with_ptrace(&mut self, ptrace: bool) {
+        debug!("Executing with_ptrace:");
         self.ptrace = ptrace;
     }
 
     /// spawn process
     pub fn spawn(self) -> ProcessHandle {
+        debug!("Executing spawn:");
         WAITER.spawn_process(self)
     }
 }

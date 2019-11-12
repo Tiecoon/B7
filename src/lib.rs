@@ -1,5 +1,6 @@
 #[macro_use]
 extern crate log;
+extern crate env_logger;
 
 pub mod b7tui;
 pub mod binary;
@@ -65,6 +66,7 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
 
     /// run b7 under given state and args
     pub fn run(&mut self) -> Result<B7Results, SolverError> {
+        debug!("Executing run:");
         let mut arg_brute = String::new();
         let mut stdin_brute = String::new();
         let mut mem_brute = Vec::new();
