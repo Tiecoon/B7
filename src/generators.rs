@@ -340,7 +340,7 @@ impl Update for StdinCharGenerator {
 
     //need to keep moving but not add to incorrect or correct
     fn failed(&mut self) {
-        if self.idx < self.padlen {
+        if self.idx < self.padlen - 1 {
             self.idx += 1;
             self.cur = self.min as u16;
         } else { 

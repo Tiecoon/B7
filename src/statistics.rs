@@ -27,7 +27,7 @@ pub fn find_outlier<I: Debug>(counts: &[(i64, (I, Input))]) -> Option<&((i64, (I
             max_idx = i;
         }
     }
-
+    info!("{:?}", max_dist);
     if max_dist < 0 {
         None 
     } else {
