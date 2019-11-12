@@ -486,7 +486,7 @@ impl Ui for Tui {
                                         }
                                     }
                                     1 => {
-                                        self.repeat = match buffer.parse::<u32>(){
+                                        self.timeout = match buffer.parse::<u64>(){
                                             Ok(x) => {x}
                                             _ => {
                                                 buffer = String::new();
