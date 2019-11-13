@@ -80,7 +80,7 @@ fn run_wyvern_perf() {
         false,
         true,
         Box::new(perf::PerfSolver),
-        Box::new(Env),
+        Box::new(Env::new()),
         vars,
         Duration::new(5, 0),
     );

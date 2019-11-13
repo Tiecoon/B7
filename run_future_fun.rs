@@ -44,7 +44,7 @@ fn run_future_fun_perf() {
         false,
         true,
         Box::new(perf::PerfSolver),
-        Box::new(Env),
+        Box::new(Env::new()),
         HashMap::new(),
         Duration::new(100, 0),
     );
