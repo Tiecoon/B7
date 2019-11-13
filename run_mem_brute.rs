@@ -47,8 +47,6 @@ fn mem_brute_helper(mem_inputs: &[MemInput], filename: &str) {
         ..Default::default()
     };
 
-    let mut term = Env::new();
-
     let res = B7Opts::new(
         path.to_string_lossy().into_owned(),
         input,
@@ -56,7 +54,7 @@ fn mem_brute_helper(mem_inputs: &[MemInput], filename: &str) {
         false,
         false,
         Box::new(perf::PerfSolver),
-        &mut term,
+        Box::new(Env),
         HashMap::new(),
         Duration::new(5, 0),
     )

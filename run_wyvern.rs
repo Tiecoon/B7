@@ -71,7 +71,6 @@ fn run_wyvern_perf() {
     path.push("wyvern");
     path.push("wyvern");
 
-    let mut term = Env::new();
     let vars = HashMap::new();
 
     let mut opts = B7Opts::new(
@@ -81,7 +80,7 @@ fn run_wyvern_perf() {
         false,
         true,
         Box::new(perf::PerfSolver),
-        &mut term,
+        Box::new(Env),
         vars,
         Duration::new(5, 0),
     );

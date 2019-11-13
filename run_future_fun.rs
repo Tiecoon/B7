@@ -34,8 +34,6 @@ fn run_future_fun_perf() {
         .join("future_fun")
         .join("future_fun");
 
-    let mut term = Env::new();
-
     let mut opts = B7Opts::new(
         path.to_string_lossy().into_owned(),
         Input {
@@ -46,7 +44,7 @@ fn run_future_fun_perf() {
         false,
         true,
         Box::new(perf::PerfSolver),
-        &mut term,
+        Box::new(Env),
         HashMap::new(),
         Duration::new(100, 0),
     );
