@@ -17,6 +17,7 @@ pub mod perf;
 pub mod process;
 pub mod statistics;
 
+use crate::b7tui::Ui;
 use crate::brute::{brute, InstCounter};
 use crate::errors::*;
 use crate::generators::*;
@@ -27,19 +28,19 @@ use std::time::Duration;
 pub const IS_X86: bool = cfg!(target_arch = "x86") || cfg!(target_arch = "x86_64");
 
 /// simpified structure to consolate all neccessary structs to run
-pub struct B7Opts<'a, B: b7tui::Ui> {
+pub struct B7Opts {
     path: String,
     init_input: Input,
     drop_ptrace: bool,
     argstate: bool,
     stdinstate: bool,
     solver: Box<dyn InstCounter>,
-    terminal: &'a mut B,
+    terminal: Box<dyn Ui>,
     timeout: Duration,
     vars: HashMap<String, String>,
 }
 
-impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
+impl B7Opts {
     pub fn new(
         path: String,
         init_input: Input,
@@ -48,10 +49,10 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
         argstate: bool,
         stdinstate: bool,
         solver: Box<dyn InstCounter>,
-        terminal: &'a mut B,
+        terminal: Box<dyn Ui>,
         vars: HashMap<String, String>,
         timeout: Duration,
-    ) -> B7Opts<'a, B> {
+    ) -> B7Opts {
         process::block_signal();
         B7Opts {
             path,
@@ -77,7 +78,7 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
                 &*self.solver,
                 self.vars.clone(),
                 self.timeout,
-                self.terminal,
+                &mut *self.terminal,
                 self.drop_ptrace,
             )?;
         }
@@ -89,7 +90,7 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
                 &*self.solver,
                 self.vars.clone(),
                 self.timeout,
-                self.terminal,
+                &mut *self.terminal,
                 self.drop_ptrace,
             )?;
         }
@@ -108,7 +109,7 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
                 &*self.solver,
                 self.vars.clone(),
                 self.timeout,
-                self.terminal,
+                &mut *self.terminal,
             )?;
         }
 
@@ -125,13 +126,13 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
 /// * `argc` - 0-5
 /// * `argvlength` - 0-20
 /// * `argvchars` - 0x20-0x7e (standard ascii char range)
-fn default_arg_brute<B: b7tui::Ui>(
+fn default_arg_brute(
     path: &str,
     init_input: &Input,
     solver: &dyn InstCounter,
     vars: HashMap<String, String>,
     timeout: Duration,
-    terminal: &mut B,
+    terminal: &mut dyn b7tui::Ui,
     drop_ptrace: bool,
 ) -> Result<Input, SolverError> {
     let mut solved = init_input.clone();
@@ -190,13 +191,13 @@ fn default_arg_brute<B: b7tui::Ui>(
 /// solves input ranges of
 /// * `stdinlen` - 0-51
 /// * `stdinchars` - 0x20-0x7e
-fn default_stdin_brute<B: b7tui::Ui>(
+fn default_stdin_brute(
     path: &str,
     init_input: &Input,
     solver: &dyn InstCounter,
     vars: HashMap<String, String>,
     timeout: Duration,
-    terminal: &mut B,
+    terminal: &mut dyn b7tui::Ui,
     drop_ptrace: bool,
 ) -> Result<Input, SolverError> {
     // solve stdin len if unspecified
@@ -240,13 +241,13 @@ fn default_stdin_brute<B: b7tui::Ui>(
 }
 
 /// Brute force memory regions and collect results
-fn default_mem_brute<B: b7tui::Ui>(
+fn default_mem_brute(
     path: &str,
     init_input: &Input,
     solver: &dyn InstCounter,
     vars: HashMap<String, String>,
     timeout: Duration,
-    terminal: &mut B,
+    terminal: &mut dyn b7tui::Ui,
 ) -> Result<Input, SolverError> {
     let original = init_input.clone();
     let mut solved = init_input.clone();

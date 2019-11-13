@@ -188,7 +188,7 @@ fn main() -> Result<(), SolverError> {
             argstate,
             stdinstate,
             solver,
-            &mut b7tui::Tui::new(Some(String::from(path))),
+            Box::new(b7tui::Tui::new(Some(String::from(path)))),
             vars,
             timeout,
         )
@@ -200,7 +200,7 @@ fn main() -> Result<(), SolverError> {
             argstate,
             stdinstate,
             solver,
-            &mut b7tui::Env::new(),
+            Box::new(b7tui::Env::new()),
             vars,
             timeout,
         )
