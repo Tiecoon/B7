@@ -24,46 +24,70 @@ use crate::generators::*;
 use std::collections::HashMap;
 use std::time::Duration;
 
+use derive_setters::Setters;
+
 /// Is B7 compiled for x86?
 pub const IS_X86: bool = cfg!(target_arch = "x86") || cfg!(target_arch = "x86_64");
 
-/// simpified structure to consolate all neccessary structs to run
+/// Simplified structure to consolidate all neccessary structs to run
+///
+/// # Example:
+///
+/// ```rust
+/// // Solve wyvern with B7
+/// B7Opts::new("wyvern")
+///    .stdinstate(true)
+///    .solver(Box::new(perf::PerfSolver))
+///    .terminal(Box::new(Env::new()))
+///    .vars(vars)
+///    .timeout(Duration::from_secs(5))
+///    .run();
+/// ```
+#[derive(Setters)]
 pub struct B7Opts {
+    /// Path to binary to solve
+    #[setters(skip)]
     path: String,
+
+    /// Initial input (default is `Input::new()`)
     init_input: Input,
+
+    /// Whether to drop the ptrace connection after the process starts (default
+    /// is `false`)
     drop_ptrace: bool,
+
+    /// Whether to brute force argv (default is `false`)
     argstate: bool,
+
+    /// Whether to brute force stdin (default is `false`)
     stdinstate: bool,
+
+    /// The instruction counting engine to use (default is `perf::PerfSolver`)
     solver: Box<dyn InstCounter>,
+
+    /// The UI to use (default is `b7tui::Env::new()`)
     terminal: Box<dyn Ui>,
+
+    /// Timeout for each execution
     timeout: Duration,
+
+    /// Misc variables
     vars: HashMap<String, String>,
 }
 
 impl B7Opts {
-    pub fn new(
-        path: String,
-        init_input: Input,
-        // TODO make states into an enum
-        drop_ptrace: bool,
-        argstate: bool,
-        stdinstate: bool,
-        solver: Box<dyn InstCounter>,
-        terminal: Box<dyn Ui>,
-        vars: HashMap<String, String>,
-        timeout: Duration,
-    ) -> B7Opts {
+    pub fn new<T: AsRef<str>>(path: T) -> B7Opts {
         process::block_signal();
         B7Opts {
-            path,
-            init_input,
-            drop_ptrace,
-            argstate,
-            stdinstate,
-            solver,
-            terminal,
-            vars,
-            timeout,
+            path: path.as_ref().to_string(),
+            init_input: Input::new(),
+            drop_ptrace: false,
+            argstate: false,
+            stdinstate: false,
+            solver: Box::new(perf::PerfSolver),
+            terminal: Box::new(b7tui::Env::new()),
+            vars: HashMap::new(),
+            timeout: Duration::from_secs(1),
         }
     }
 

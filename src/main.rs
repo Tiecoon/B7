@@ -171,8 +171,6 @@ fn main() -> Result<(), SolverError> {
     vars.insert(String::from("dynpath"), String::from(dynpath));
     vars.insert(String::from("stdininput"), String::from(stdin_input));
 
-    let terminal = String::from(matches.value_of("ui").unwrap_or("tui")).to_lowercase();
-
     let input = Input {
         stdinlen,
         argv: args,
@@ -180,24 +178,24 @@ fn main() -> Result<(), SolverError> {
         ..Default::default()
     };
 
-    let term = match &*terminal {
+    let terminal = String::from(matches.value_of("ui").unwrap_or("tui")).to_lowercase();
+
+    let terminal = match &*terminal {
         "tui" => Box::new(b7tui::Tui::new(Some(String::from(path)))) as Box<dyn b7tui::Ui>,
         "env" => Box::new(b7tui::Env::new()) as Box<dyn b7tui::Ui>,
         _ => panic!("unknown tui {}", terminal),
     };
 
-    let _results = B7Opts::new(
-        path.to_string(),
-        input,
-        drop_ptrace,
-        argstate,
-        stdinstate,
-        solver,
-        term,
-        vars,
-        timeout,
-    )
-    .run()?;
+    let _results = B7Opts::new(path)
+        .init_input(input)
+        .drop_ptrace(drop_ptrace)
+        .argstate(argstate)
+        .stdinstate(stdinstate)
+        .solver(solver)
+        .terminal(terminal)
+        .vars(vars)
+        .timeout(timeout)
+        .run()?;
 
     Ok(())
 }
