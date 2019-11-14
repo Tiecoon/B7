@@ -180,33 +180,24 @@ fn main() -> Result<(), SolverError> {
         ..Default::default()
     };
 
-    let _results = match &*terminal {
-        "tui" => B7Opts::new(
-            path.to_string(),
-            input,
-            drop_ptrace,
-            argstate,
-            stdinstate,
-            solver,
-            &mut b7tui::Tui::new(Some(String::from(path))),
-            vars,
-            timeout,
-        )
-        .run(),
-        "env" => B7Opts::new(
-            path.to_string(),
-            input,
-            drop_ptrace,
-            argstate,
-            stdinstate,
-            solver,
-            &mut b7tui::Env::new(),
-            vars,
-            timeout,
-        )
-        .run(),
+    let term = match &*terminal {
+        "tui" => Box::new(b7tui::Tui::new(Some(String::from(path)))) as Box<dyn b7tui::Ui>,
+        "env" => Box::new(b7tui::Env::new()) as Box<dyn b7tui::Ui>,
         _ => panic!("unknown tui {}", terminal),
-    }?;
+    };
+
+    let _results = B7Opts::new(
+        path.to_string(),
+        input,
+        drop_ptrace,
+        argstate,
+        stdinstate,
+        solver,
+        term,
+        vars,
+        timeout,
+    )
+    .run()?;
 
     Ok(())
 }

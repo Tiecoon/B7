@@ -1,3 +1,4 @@
+use crate::generators::GenItem;
 use crate::generators::Input;
 use log::LevelFilter;
 use std::fs::File;
@@ -24,13 +25,7 @@ enum Format {
 /// Trait that all Uis will implement to ensure genericness
 pub trait Ui {
     // handle a new ui check
-    fn update<
-        I: 'static + std::fmt::Display + Clone + std::fmt::Debug + std::marker::Send + std::cmp::Ord,
-    >(
-        &mut self,
-        results: Box<Vec<(i64, (I, Input))>>,
-        min: u64,
-    ) -> bool;
+    fn update(&mut self, results: Box<Vec<(i64, (GenItem, Input))>>, min: u64) -> bool;
     // allow gui to pause if user doesn't want to continue
     fn wait(&mut self) -> bool;
     // separate wait to signify all results are calculated
@@ -219,13 +214,7 @@ impl Default for Tui {
 // implement Tuis Ui trait
 impl Ui for Tui {
     /// draw bargraph for new input
-    fn update<
-        I: 'static + std::fmt::Display + Clone + std::fmt::Debug + std::marker::Send + std::cmp::Ord,
-    >(
-        &mut self,
-        mut results: Box<Vec<(i64, (I, Input))>>,
-        min: u64,
-    ) -> bool {
+    fn update(&mut self, mut results: Box<Vec<(i64, (GenItem, Input))>>, min: u64) -> bool {
         // convertcachefor barchart
         results.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
 
@@ -391,13 +380,7 @@ impl Env {
 
 // default do nothing just let the prints handle it
 impl Ui for Env {
-    fn update<
-        I: 'static + std::fmt::Display + Clone + std::fmt::Debug + std::marker::Send + std::cmp::Ord,
-    >(
-        &mut self,
-        mut _results: Box<Vec<(i64, (I, Input))>>,
-        _min: u64,
-    ) -> bool {
+    fn update(&mut self, mut _results: Box<Vec<(i64, (GenItem, Input))>>, _min: u64) -> bool {
         true
     }
     fn wait(&mut self) -> bool {
