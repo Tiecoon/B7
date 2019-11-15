@@ -69,6 +69,7 @@ impl B7Opts {
 
     /// run b7 under given state and args
     pub fn run(&mut self) -> Result<Input, SolverError> {
+        //self.terminal.wait();
         let mut solved = self.init_input.clone();
 
         if self.argstate {
@@ -135,6 +136,7 @@ fn default_arg_brute(
     terminal: &mut dyn b7tui::Ui,
     drop_ptrace: bool,
 ) -> Result<Input, SolverError> {
+    terminal.set_timeout(timeout);
     let mut solved = init_input.clone();
     // Solve for argc
     let mut argcgen = ArgcGenerator::new(0, 5);

@@ -58,6 +58,8 @@ pub trait Ui {
     fn wait(&mut self) -> bool;
     // separate wait to signify all results are calculated
     fn done(&mut self) -> bool;
+    //timout setter
+    fn set_timeout(&mut self, timeout: Duration);
 }
 
 /// struct for Tui-rs implementation
@@ -332,6 +334,9 @@ impl Default for Tui {
 
 // implement Tuis Ui trait
 impl Ui for Tui {
+    fn set_timeout(&mut self, timeout:Duration){
+        self.timeout = timeout.as_secs();
+    }
     /// draw bargraph for new input
     fn update(&mut self, mut results: Box<Vec<(i64, (GenItem, Input))>>, min: u64) -> bool {
         // convertcachefor barchart
@@ -579,6 +584,9 @@ impl Env {
 impl Ui for Env {
     fn update(&mut self, mut _results: Box<Vec<(i64, (GenItem, Input))>>, _min: u64) -> bool {
         true
+    }
+    fn set_timeout(&mut self,_timeout: Duration){
+        ();
     }
     fn wait(&mut self) -> bool {
         true
