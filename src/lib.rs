@@ -31,7 +31,17 @@ use derive_setters::Setters;
 /// Is B7 compiled for x86?
 pub const IS_X86: bool = cfg!(target_arch = "x86") || cfg!(target_arch = "x86_64");
 
-/// simpified structure to consolate all neccessary structs to run
+/// Options to pass to B7
+///
+/// Example:
+///
+/// ```rust
+/// let mut res = B7Opts::new("wyvern")
+///     .solve_stdin(true)
+///     .timeout(Duration::from_secs(5))
+///     .run()
+///     .unwrap();
+/// ```
 #[derive(Setters)]
 pub struct B7Opts {
     /// Path to binary
