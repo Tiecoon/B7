@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use crate::b7tui;
 use crate::errors::*;
-use crate::generators::{Generate, Input};
+use crate::generators::{GenItem, Generate, Input};
 use crate::statistics;
 
 #[derive(Clone, Debug)]
@@ -78,17 +78,13 @@ pub trait InstCounter: Send + Sync + 'static {
 ///    Ok(())
 /// }
 /// ```
-pub fn brute<
-    G: Generate<I> + Display,
-    I: 'static + std::fmt::Display + Clone + Debug + Send + Ord,
-    B: b7tui::Ui,
->(
+pub fn brute<G: Generate + Display>(
     path: &str,
     repeat: u32,
     gen: &mut G,
     counter: &dyn InstCounter,
     solved: Input,
-    terminal: &mut B,
+    terminal: &mut dyn b7tui::Ui,
     timeout: Duration,
     vars: HashMap<String, String>,
     drop_ptrace: bool,
@@ -111,7 +107,8 @@ pub fn brute<
         for inp_pair in gen.by_ref() {
             data.push((inp_pair.0, solved.clone().combine(inp_pair.1)));
         }
-        let mut results: Box<Vec<(i64, (I, Input))>> = Box::new(Vec::with_capacity(data.len()));
+        let mut results: Box<Vec<(i64, (GenItem, Input))>> =
+            Box::new(Vec::with_capacity(data.len()));
         let counter = Arc::new(counter);
 
         pool.scoped(|scope| {
@@ -172,7 +169,7 @@ pub fn brute<
             return Err(SolverError::new(Runner::Unknown, "No valid results found"));
         }
         let good_idx = statistics::find_outlier(results.as_slice());
-        if !gen.update(&(good_idx.1).0) {
+        if !gen.update((good_idx.1).0) {
             break Ok((good_idx.1).1.clone());
         }
     }

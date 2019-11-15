@@ -19,14 +19,13 @@ cargo install --path .
 
 ## Requirements
 
-* Necessary
+* Optional (atleast one required)
 	* Dynamorio
 		* https://github.com/DynamoRIO/dynamorio/wiki/How-To-Build
 		* currently requires both a c and c++ compiler and multilib/32 bit counterparts
-* Optional
 	* perf
 		* linux-perf-x.xx for your kernel version
-		* sysctl kernel.perf_event_paranoid < 3
+		* sysctl kernel.perf_event_paranoid (# < 3)
 
 ## Testing
 
