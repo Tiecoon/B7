@@ -60,7 +60,7 @@ impl InstCounter for DynamorioSolver {
         libinscount.push("bin");
         libinscount.push("libinscount.so");
 
-        let mut proccess = Process::new(&drrun.to_str().unwrap())?;
+        let mut proccess = Process::new(&drrun)?;
         proccess.arg("-c");
         proccess.arg(libinscount);
         proccess.arg("--");
