@@ -1,8 +1,5 @@
-use b7::b7tui::Env;
 use b7::generators::Input;
-use b7::perf;
 use b7::B7Opts;
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -34,22 +31,16 @@ fn run_future_fun_perf() {
         .join("bins")
         .join("future_fun");
 
-    let mut opts = B7Opts::new(
-        path.to_string_lossy().into_owned(),
-        Input {
+    let res = B7Opts::new(path)
+        .init_input(Input {
             stdinlen: FLAG.len() as u32,
             ..Default::default()
-        },
-        true,
-        false,
-        true,
-        Box::new(perf::PerfSolver),
-        Box::new(Env::new()),
-        HashMap::new(),
-        Duration::new(100, 0),
-    );
-
-    let res = opts.run().unwrap();
+        })
+        .drop_ptrace(true)
+        .solve_stdin(true)
+        .timeout(Duration::from_secs(100))
+        .run()
+        .unwrap();
 
     let stdin = String::from_utf8_lossy(res.stdin.as_slice());
     assert_eq!(&stdin, FLAG);
