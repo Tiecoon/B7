@@ -1,9 +1,6 @@
-use b7::b7tui::Env;
 use b7::generators::Input;
 use b7::generators::MemInput;
-use b7::perf;
 use b7::B7Opts;
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
