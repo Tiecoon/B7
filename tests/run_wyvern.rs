@@ -1,10 +1,6 @@
-use b7::b7tui::Env;
 #[cfg(feature = "dynamorio")]
 use b7::dynamorio;
-use b7::generators::Input;
-use b7::perf;
 use b7::B7Opts;
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -37,25 +33,20 @@ fn run_wyvern_dynamorio() {
     path.push("bins");
     path.push("wyvern");
 
-    let mut term = Env::new();
     let mut vars = HashMap::new();
     vars.insert(
         "dynpath".to_string(),
         dynpath.to_string_lossy().into_owned(),
     );
 
-    let mut opts = B7Opts::new(
-        path.to_string_lossy().into_owned(),
-        Input::new(),
-        false,
-        true,
-        Box::new(dynamorio::DynamorioSolver),
-        &mut term,
-        vars,
-        Duration::new(5, 0),
-    );
+    let res = B7Opts::new(path)
+        .solve_stdin(true)
+        .solver(Box::new(dynamorio::DynamorioSolver))
+        .vars(vars)
+        .timeout(Duration::from_secs(5))
+        .run()
+        .unwrap();
 
-    let res = opts.run().unwrap();
     let mut stdin = res.stdin_brute;
 
     // Last character is currently non-deterministic
@@ -71,21 +62,11 @@ fn run_wyvern_perf() {
     path.push("bins");
     path.push("wyvern");
 
-    let vars = HashMap::new();
-
-    let mut opts = B7Opts::new(
-        path.to_string_lossy().into_owned(),
-        Input::new(),
-        false,
-        false,
-        true,
-        Box::new(perf::PerfSolver),
-        Box::new(Env::new()),
-        vars,
-        Duration::new(5, 0),
-    );
-
-    let mut res = opts.run().unwrap();
+    let mut res = B7Opts::new(path)
+        .solve_stdin(true)
+        .timeout(Duration::from_secs(5))
+        .run()
+        .unwrap();
 
     res.stdin.pop();
     let stdin = String::from_utf8_lossy(res.stdin.as_slice());

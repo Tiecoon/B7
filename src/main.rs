@@ -156,13 +156,12 @@ fn main() -> Result<(), SolverError> {
         "dynamorio" => Box::new(dynamorio::DynamorioSolver) as Box<dyn InstCounter>,
         _ => panic!("unknown solver"),
     };
-    let timeout = Duration::new(
+    let timeout = Duration::from_secs(
         matches
             .value_of("timeout")
             .unwrap_or("5")
             .parse()
             .expect("Failed to parse duration!"),
-        0,
     );
 
     let stdin_input = matches.value_of("start").unwrap_or("");
@@ -171,33 +170,28 @@ fn main() -> Result<(), SolverError> {
     vars.insert(String::from("dynpath"), String::from(dynpath));
     vars.insert(String::from("stdininput"), String::from(stdin_input));
 
-    let terminal = String::from(matches.value_of("ui").unwrap_or("tui")).to_lowercase();
-
-    let input = Input {
-        stdinlen,
-        argv: args,
-        mem: mem_inputs_from_args(&matches)?,
-        ..Default::default()
-    };
-
-    let term = match &*terminal {
+    let ui = String::from(matches.value_of("ui").unwrap_or("tui")).to_lowercase();
+    let ui = match &*ui {
         "tui" => Box::new(b7tui::Tui::new(Some(String::from(path)))) as Box<dyn b7tui::Ui>,
         "env" => Box::new(b7tui::Env::new()) as Box<dyn b7tui::Ui>,
-        _ => panic!("unknown tui {}", terminal),
+        _ => panic!("unknown UI {}", ui),
     };
 
-    let _results = B7Opts::new(
-        path.to_string(),
-        input,
-        drop_ptrace,
-        argstate,
-        stdinstate,
-        solver,
-        term,
-        vars,
-        timeout,
-    )
-    .run()?;
+    let _results = B7Opts::new(path)
+        .init_input(Input {
+            stdinlen,
+            argv: args,
+            mem: mem_inputs_from_args(&matches)?,
+            ..Default::default()
+        })
+        .drop_ptrace(drop_ptrace)
+        .solve_argv(argstate)
+        .solve_stdin(stdinstate)
+        .solver(solver)
+        .ui(ui)
+        .vars(vars)
+        .timeout(timeout)
+        .run()?;
 
     Ok(())
 }

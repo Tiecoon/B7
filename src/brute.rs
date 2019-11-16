@@ -3,6 +3,8 @@ use scoped_pool::Pool;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::marker::Send;
+use std::path::Path;
+use std::path::PathBuf;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::time::Duration;
@@ -15,7 +17,7 @@ use crate::statistics;
 #[derive(Clone, Debug)]
 /// holds information that is universal to InstCounters
 pub struct InstCountData {
-    pub path: String,
+    pub path: PathBuf,
     pub inp: Input,
     pub vars: HashMap<String, String>,
     pub timeout: Duration,
@@ -78,8 +80,8 @@ pub trait InstCounter: Send + Sync + 'static {
 ///    Ok(())
 /// }
 /// ```
-pub fn brute<G: Generate + Display>(
-    path: &str,
+pub fn brute<P: AsRef<Path>, G: Generate + Display>(
+    path: P,
     repeat: u32,
     gen: &mut G,
     counter: &dyn InstCounter,
@@ -89,6 +91,8 @@ pub fn brute<G: Generate + Display>(
     vars: HashMap<String, String>,
     drop_ptrace: bool,
 ) -> Result<Input, SolverError> {
+    let path = path.as_ref();
+
     let n_workers = num_cpus::get();
 
     let pool = Pool::new(n_workers);
@@ -115,7 +119,7 @@ pub fn brute<G: Generate + Display>(
             for inp_pair in data {
                 num_jobs += 1;
                 let tx = tx.clone();
-                let test = String::from(path);
+                let test = path.to_path_buf();
                 // give it to a thread to handle
                 let vars = vars.clone();
                 let counter = counter.clone();

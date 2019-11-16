@@ -3,19 +3,22 @@ use goblin::elf::header::ET_DYN;
 use goblin::elf::header::ET_EXEC;
 use goblin::elf::Elf;
 
+use std::path::Path;
+use std::path::PathBuf;
+
 use crate::errors::Runner::ArgError;
 use crate::errors::SolverError;
 use crate::errors::SolverResult;
 
 #[derive(Debug)]
 pub struct Binary {
-    path: String,
+    path: PathBuf,
     elf_header: ElfHeader,
 }
 
 /// holds the path to the binary and its ELF header
 impl Binary {
-    pub fn new(path: &str) -> SolverResult<Binary> {
+    pub fn new(path: &Path) -> SolverResult<Binary> {
         let elf_header = {
             let bytes = std::fs::read(path)?;
             let elf = Elf::parse(&bytes)?;
@@ -23,7 +26,7 @@ impl Binary {
         };
 
         Ok(Binary {
-            path: path.to_string(),
+            path: path.to_path_buf(),
             elf_header,
         })
     }
