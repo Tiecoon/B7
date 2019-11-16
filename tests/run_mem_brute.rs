@@ -1,9 +1,6 @@
-use b7::b7tui::Env;
 use b7::generators::Input;
 use b7::generators::MemInput;
-use b7::perf;
 use b7::B7Opts;
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -43,24 +40,14 @@ fn mem_brute_helper(mem_inputs: &[MemInput], filename: &str) {
         })
         .collect::<Vec<MemInput>>();
 
-    let input = Input {
-        mem,
-        ..Default::default()
-    };
-
-    let res = B7Opts::new(
-        path.to_string_lossy().into_owned(),
-        input,
-        false,
-        false,
-        false,
-        Box::new(perf::PerfSolver),
-        Box::new(Env::new()),
-        HashMap::new(),
-        Duration::new(5, 0),
-    )
-    .run()
-    .unwrap();
+    let res = B7Opts::new(path)
+        .init_input(Input {
+            mem,
+            ..Default::default()
+        })
+        .timeout(Duration::from_secs(5))
+        .run()
+        .unwrap();
 
     assert_eq!(res.mem, mem_inputs);
 }

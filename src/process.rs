@@ -14,6 +14,7 @@ use std::convert::Into;
 use std::ffi::OsStr;
 use std::io::{Error, Read, Write};
 use std::os::unix::process::CommandExt;
+use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
@@ -649,7 +650,7 @@ impl PtraceMode {
 
 // Handle running a process
 impl Process {
-    pub fn new(path: &str) -> SolverResult<Process> {
+    pub fn new(path: &Path) -> SolverResult<Process> {
         Ok(Process {
             binary: Binary::new(path)?,
             cmd: Command::new(path),
