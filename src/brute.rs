@@ -80,8 +80,8 @@ pub trait InstCounter: Send + Sync + 'static {
 ///    Ok(())
 /// }
 /// ```
-pub fn brute<G: Generate + Display>(
-    path: &Path,
+pub fn brute<P: AsRef<Path>, G: Generate + Display>(
+    path: P,
     repeat: u32,
     gen: &mut G,
     counter: &dyn InstCounter,
@@ -91,6 +91,8 @@ pub fn brute<G: Generate + Display>(
     vars: HashMap<String, String>,
     drop_ptrace: bool,
 ) -> Result<Input, SolverError> {
+    let path = path.as_ref();
+
     let n_workers = num_cpus::get();
 
     let pool = Pool::new(n_workers);

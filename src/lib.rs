@@ -36,7 +36,9 @@ pub const IS_X86: bool = cfg!(target_arch = "x86") || cfg!(target_arch = "x86_64
 /// Example:
 ///
 /// ```rust
-/// let mut res = B7Opts::new("wyvern")
+/// # use b7::B7Opts;
+/// # use std::time::Duration;
+/// let res = B7Opts::new("tests/bins/wyvern")
 ///     .solve_stdin(true)
 ///     .timeout(Duration::from_secs(5))
 ///     .run()
