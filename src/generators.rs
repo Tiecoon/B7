@@ -261,6 +261,7 @@ pub struct StdinCharGenerator {
     suffix: StringType,
     idx: u32,
     cur: u16,
+    runs: u8,
     incorrect: Vec<Option<u8>>,
     icount: u32,
     min: u16,
@@ -271,7 +272,7 @@ pub struct StdinCharGenerator {
 impl std::fmt::Display for StdinCharGenerator {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { 
         let tmp = &self.incorrect;
-        let v = tmp.iter().map(|&x| match x { Some(x) => x, None => 32 as u8}).collect::<Vec<_>>();
+        let v = tmp.iter().map(|&x| match x { Some(x) => x, None => self.padchr}).collect::<Vec<_>>();
         write!(f, "{}", String::from_utf8_lossy(v.as_slice()))
     }
 }
@@ -285,10 +286,11 @@ impl StdinCharGenerator {
             suffix: vec![],
             idx: 0,
             cur: min,
+            runs: 3,
             // Vector of options of input.stdinlen none rerun some dont run
             incorrect: vec![None; input.stdinlen as usize],
             //holds the amount of incorrect chars
-            icount: input.stdinlen,
+            icount: input.stdinlen - 1,
             min,
             max,
         }
@@ -303,8 +305,9 @@ impl StdinCharGenerator {
             suffix: vec![],
             idx: start.len() as u32,
             cur: min,
+            runs: 3,
             incorrect: vec![None; input.stdinlen as usize],
-            icount: input.stdinlen,
+            icount: input.stdinlen - 1,
             min,
             max,
         }
@@ -338,6 +341,7 @@ impl Iterator for StdinCharGenerator {
         let tmp = &self.incorrect;
         let v = tmp.iter().map(|&x| match x { Some(x) => x, None => self.padchr}).collect::<Vec<_>>();
         inp.extend_from_slice(v.as_slice());
+        //remind iterator what bytes we are looking at
         inp[self.idx as usize] = chr;
         let mut res = Input::new();
         res.stdin = inp;
@@ -357,33 +361,58 @@ impl Update for StdinCharGenerator {
     type Id = u8;
 
     fn update(&mut self, chosen: &u8) -> bool {
-        self.incorrect[self.idx as usize] = Some(*chosen);
-        self.idx += 1;
-        self.icount -= 1;
+        if self.idx != self.padlen - 1 {
+            self.incorrect[self.idx as usize] = Some(*chosen);
+            self.icount -= 1;
+        }
+        self.idx += 1;        
         self.cur = self.min as u16;
         self.on_update();
-        self.idx < self.padlen
+        //resets and solves for the error
+        if self.runs < 3 && self.idx < self.padlen {       
+            let mut x = self.idx;
+            while x < self.padlen {
+                self.incorrect[x as usize] = None;
+                x += 1;
+                self.icount += 1; 
+            }
+            self.icount -= 1;
+            self.runs = 3;
+        }
+        if self.idx >= self.padlen && self.runs != 0 && self.icount > 0 {
+            self.idx = 0;
+            self.runs -= 1;
+            true
+        } else if self.idx < self.padlen && self.runs != 0 && self.icount > 0 {
+            true
+        } else {
+            false
+        }
     }
 
-    //need to keep moving but not add to incorrect or correct
+    //need to keep moving but not add to incorrect
     fn failed(&mut self) {
         if self.idx < self.padlen - 1 {
             self.idx += 1;
             self.cur = self.min as u16;
+            self.on_update();
         } else { 
             self.cur = self.min as u16;
             self.idx = 0;
+            self.runs -= 1;
+            self.on_update();
         }
     }
 
     //allow us to move the generator forward if we have already solved this input
+    //or if the input fails
     fn skip(&mut self) -> i8 {
         if self.incorrect[self.idx as usize] == None {
             return 0;
         } else if self.idx == self.padlen && self.icount > 0 {
             self.idx = 0;
             return 1;
-        } else if self.icount > 0 {
+        } else if self.icount > 0 && self.runs > 0 {
             self.idx += 1;
             return 1;
         }

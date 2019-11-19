@@ -103,7 +103,7 @@ pub fn brute<
         
         if gen.skip() == 1 {
             continue;
-        }
+        } 
 
         // Number of threads to spawn
 
