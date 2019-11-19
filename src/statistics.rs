@@ -1,7 +1,7 @@
 use crate::generators::Input;
 use std::fmt::Debug;
-extern crate log;
 extern crate env_logger;
+extern crate log;
 
 /// returns average of slice
 fn get_average(input: &[i64]) -> i64 {
@@ -17,7 +17,7 @@ fn get_average(input: &[i64]) -> i64 {
 
 /// find the largest outlier in given slice
 pub fn find_outlier<I: Debug>(counts: &[(i64, (I, Input))]) -> &((i64, (I, Input))) {
-    debug!{"Executing find_outlier:"};
+    debug! {"Executing find_outlier:"};
     let second: Vec<i64> = counts.iter().map(|i| i.0).collect();
     let avg: i64 = get_average(&second[..]);
     // and then find the most distant point

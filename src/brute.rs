@@ -77,7 +77,6 @@ pub trait InstCounter: Send + Sync + 'static {
 /// }
 /// ```
 pub fn brute<
-    
     G: Generate<I> + Display,
     I: 'static + std::fmt::Display + Clone + Debug + Send + Ord,
     B: b7tui::Ui,
