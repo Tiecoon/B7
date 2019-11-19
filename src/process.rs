@@ -117,7 +117,7 @@ impl ProcessWaiter {
     }
 
     fn start_thread(&mut self) {
-        debug!("Executing start_thread");
+        debug!("Executing start_thread:");
         if self.started {
             panic!("Already started waiter thread!");
         }
@@ -320,7 +320,7 @@ pub struct ProcessHandle {
 impl ProcessHandle {
     /// Get the process's base address from /proc/<pid>/maps
     fn get_base_addr(&self) -> SolverResult<usize> {
-        debug!("Executing get_base_addr");
+        debug!("Executing get_base_addr:");
         let proc = procfs::Process::new(self.pid.as_raw())?;
         let maps = proc.maps()?;
         let exe_path = proc.exe()?;
@@ -344,7 +344,7 @@ impl ProcessHandle {
     /// Write each memory input range to the process
     /// NOTE: This assumes `self.proc.ptrace` is `true`
     fn write_mem_input(&self) -> Result<(), SolverError> {
-        debug!("Executing write_mem_input");
+        debug!("Executing write_mem_input:");
         let word_size = std::mem::size_of::<usize>();
         let is_pie = self.proc.binary.is_pie()?;
         for mem in &self.proc.mem_input {
