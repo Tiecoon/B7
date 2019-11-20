@@ -3,22 +3,25 @@ use scoped_pool::Pool;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::marker::Send;
+use std::path::Path;
+use std::path::PathBuf;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::time::Duration;
 
 use crate::b7tui;
 use crate::errors::*;
-use crate::generators::{Generate, Input};
+use crate::generators::{GenItem, Generate, Input};
 use crate::statistics;
 
 #[derive(Clone, Debug)]
 /// holds information that is universal to InstCounters
 pub struct InstCountData {
-    pub path: String,
+    pub path: PathBuf,
     pub inp: Input,
     pub vars: HashMap<String, String>,
     pub timeout: Duration,
+    pub drop_ptrace: bool,
 }
 
 pub trait InstCounter: Send + Sync + 'static {
@@ -68,6 +71,7 @@ pub trait InstCounter: Send + Sync + 'static {
 ///        &mut b7tui::Env,
 ///        Duration::new(5,0),
 ///        HashMap::new(),
+///        false,
 ///    )?;
 ///
 ///    // prints the number of argc it found
@@ -76,20 +80,19 @@ pub trait InstCounter: Send + Sync + 'static {
 ///    Ok(())
 /// }
 /// ```
-pub fn brute<
-    G: Generate<I> + Display,
-    I: 'static + std::fmt::Display + Clone + Debug + Send + Ord,
-    B: b7tui::Ui,
->(
-    path: &str,
+pub fn brute<P: AsRef<Path>, G: Generate + Display>(
+    path: P,
     repeat: u32,
     gen: &mut G,
     counter: &dyn InstCounter,
     solved: Input,
-    terminal: &mut B,
+    terminal: &mut dyn b7tui::Ui,
     timeout: Duration,
     vars: HashMap<String, String>,
+    drop_ptrace: bool,
 ) -> Result<Input, SolverError> {
+    let path = path.as_ref();
+
     let n_workers = num_cpus::get();
 
     let pool = Pool::new(n_workers);
@@ -108,14 +111,15 @@ pub fn brute<
         for inp_pair in gen.by_ref() {
             data.push((inp_pair.0, solved.clone().combine(inp_pair.1)));
         }
-        let mut results: Box<Vec<(i64, (I, Input))>> = Box::new(Vec::with_capacity(data.len()));
+        let mut results: Box<Vec<(i64, (GenItem, Input))>> =
+            Box::new(Vec::with_capacity(data.len()));
         let counter = Arc::new(counter);
 
         pool.scoped(|scope| {
             for inp_pair in data {
                 num_jobs += 1;
                 let tx = tx.clone();
-                let test = String::from(path);
+                let test = path.to_path_buf();
                 // give it to a thread to handle
                 let vars = vars.clone();
                 let counter = counter.clone();
@@ -128,6 +132,7 @@ pub fn brute<
                         inp,
                         vars,
                         timeout,
+                        drop_ptrace,
                     };
                     let mut inst_count = counter.get_inst_count(&data);
                     trace!("inst_count: {:?}", inst_count);
@@ -169,7 +174,7 @@ pub fn brute<
             return Err(SolverError::new(Runner::Unknown, "No valid results found"));
         }
         let good_idx = statistics::find_outlier(results.as_slice());
-        if !gen.update(&(good_idx.1).0) {
+        if !gen.update((good_idx.1).0) {
             break Ok((good_idx.1).1.clone());
         }
     }

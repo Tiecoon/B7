@@ -1,3 +1,7 @@
+//! Features
+//! * dynamorio
+//!     * will compile dynamorio in build_* and the code to allow its use
+
 #[macro_use]
 extern crate log;
 extern crate env_logger;
@@ -6,6 +10,7 @@ pub mod b7tui;
 pub mod binary;
 pub mod bindings;
 pub mod brute;
+#[cfg(feature = "dynamorio")]
 pub mod dynamorio;
 pub mod errors;
 pub mod generators;
@@ -13,105 +18,131 @@ pub mod perf;
 pub mod process;
 pub mod statistics;
 
+use crate::b7tui::Ui;
 use crate::brute::{brute, InstCounter};
 use crate::errors::*;
 use crate::generators::*;
 use std::collections::HashMap;
+use std::path::Path;
+use std::path::PathBuf;
 use std::time::Duration;
 
-/// simpified structure to consolate all neccessary structs to run
-pub struct B7Opts<'a, B: b7tui::Ui> {
-    path: String,
+use derive_setters::Setters;
+
+/// Is B7 compiled for x86?
+pub const IS_X86: bool = cfg!(target_arch = "x86") || cfg!(target_arch = "x86_64");
+
+/// Options to pass to B7
+///
+/// Example:
+///
+/// ```rust
+/// # use b7::B7Opts;
+/// # use std::time::Duration;
+/// let res = B7Opts::new("tests/bins/wyvern")
+///     .solve_stdin(true)
+///     .timeout(Duration::from_secs(5))
+///     .run()
+///     .unwrap();
+/// ```
+#[derive(Setters)]
+pub struct B7Opts {
+    /// Path to binary
+    #[setters(skip)]
+    path: PathBuf,
+
+    /// Initial input to pass to binary (default: `Input::new()`)
     init_input: Input,
-    argstate: bool,
-    stdinstate: bool,
+
+    /// Whether to drop ptrace connection (default: `false`)
+    drop_ptrace: bool,
+
+    /// Whether to brute force argv (default: `false`)
+    solve_argv: bool,
+
+    /// Whether to brute force stdin (default: `false`)
+    solve_stdin: bool,
+
+    /// Which solver to use (default: `Box::new(b7::perf::PerfSolver)`)
     solver: Box<dyn InstCounter>,
-    terminal: &'a mut B,
+
+    /// Which UI to use (default: `Box::new(b7::b7tui::Env::new()`)
+    ui: Box<dyn Ui>,
+
+    /// Timeout for each run (default: `Duration::from_secs(1)`)
     timeout: Duration,
+
+    /// Misc variables (default: `HashMap::new()`)
     vars: HashMap<String, String>,
 }
 
-// TODO make into generators
-/// human readable result
-pub struct B7Results {
-    pub arg_brute: String,
-    pub stdin_brute: String,
-    pub mem_brute: Vec<MemInput>,
-}
-
-impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
-    pub fn new(
-        path: String,
-        init_input: Input,
-        // TODO make states into an enum
-        argstate: bool,
-        stdinstate: bool,
-        solver: Box<dyn InstCounter>,
-        terminal: &'a mut B,
-        vars: HashMap<String, String>,
-        timeout: Duration,
-    ) -> B7Opts<'a, B> {
+impl B7Opts {
+    pub fn new<T: AsRef<Path>>(path: T) -> B7Opts {
         process::block_signal();
         B7Opts {
-            path,
-            init_input,
-            argstate,
-            stdinstate,
-            solver,
-            terminal,
-            vars,
-            timeout,
+            path: path.as_ref().to_path_buf(),
+            init_input: Input::new(),
+            drop_ptrace: false,
+            solve_argv: false,
+            solve_stdin: false,
+            solver: Box::new(perf::PerfSolver),
+            ui: Box::new(b7tui::Env::new()),
+            vars: HashMap::new(),
+            timeout: Duration::from_secs(1),
         }
     }
 
     /// run b7 under given state and args
-    pub fn run(&mut self) -> Result<B7Results, SolverError> {
-        debug!("Executing run:");
-        let mut arg_brute = String::new();
-        let mut stdin_brute = String::new();
-        let mut mem_brute = Vec::new();
+    pub fn run(&mut self) -> Result<Input, SolverError> {
+        debug!("Executing run: {:?}", self.init_input);
+        let mut solved = self.init_input.clone();
 
-        if self.argstate {
-            arg_brute = default_arg_brute(
+        if self.solve_argv {
+            solved = default_arg_brute(
                 &self.path,
-                &self.init_input,
+                &solved,
                 &*self.solver,
                 self.vars.clone(),
                 self.timeout,
-                self.terminal,
+                &mut *self.ui,
+                self.drop_ptrace,
             )?;
         }
 
-        if self.stdinstate {
-            stdin_brute = default_stdin_brute(
+        if self.solve_stdin {
+            solved = default_stdin_brute(
                 &self.path,
-                &self.init_input,
+                &solved,
                 &*self.solver,
                 self.vars.clone(),
                 self.timeout,
-                self.terminal,
+                &mut *self.ui,
+                self.drop_ptrace,
             )?;
         }
 
         if !self.init_input.mem.is_empty() {
-            mem_brute = default_mem_brute(
+            if self.drop_ptrace {
+                return Err(SolverError::new(
+                    Runner::ArgError,
+                    "ptrace dropping and mem input are mutually exclusive",
+                ));
+            }
+
+            solved = default_mem_brute(
                 &self.path,
-                &self.init_input,
+                &solved,
                 &*self.solver,
                 self.vars.clone(),
                 self.timeout,
-                self.terminal,
+                &mut *self.ui,
             )?;
         }
 
-        // let terminal decide if it should wait for user
-        self.terminal.done();
+        // let UI decide if it should wait for user
+        self.ui.done();
 
-        Ok(B7Results {
-            arg_brute,
-            stdin_brute,
-            mem_brute,
-        })
+        Ok(solved)
     }
 }
 
@@ -121,60 +152,64 @@ impl<'a, B: b7tui::Ui> B7Opts<'a, B> {
 /// * `argc` - 0-5
 /// * `argvlength` - 0-20
 /// * `argvchars` - 0x20-0x7e (standard ascii char range)
-fn default_arg_brute<B: b7tui::Ui>(
-    path: &str,
+fn default_arg_brute(
+    path: &Path,
     init_input: &Input,
     solver: &dyn InstCounter,
     vars: HashMap<String, String>,
     timeout: Duration,
-    terminal: &mut B,
-) -> Result<String, SolverError> {
+    terminal: &mut dyn b7tui::Ui,
+    drop_ptrace: bool,
+) -> Result<Input, SolverError> {
+    let mut solved = init_input.clone();
     // Solve for argc
     let mut argcgen = ArgcGenerator::new(0, 5);
-    brute(
+    solved = brute(
         path,
         1,
         &mut argcgen,
         solver,
-        init_input.clone(),
+        solved,
         terminal,
         timeout,
         vars.clone(),
+        drop_ptrace,
     )?;
-    let argc = argcgen.get_length();
 
     // check if there is something to be solved
-    if argc > 0 {
+    if init_input.argc > 0 {
         // solve argv length
-        let mut argvlengen = ArgvLenGenerator::new(argc, 0, 20);
-        brute(
+        let mut argvlengen = ArgvLenGenerator::new(init_input.argc, 0, 20);
+        solved = brute(
             path,
             5,
             &mut argvlengen,
             solver,
-            init_input.clone(),
+            solved,
             terminal,
             timeout,
             vars.clone(),
+            drop_ptrace,
         )?;
-        let argvlens = argvlengen.get_lengths();
 
         // solve argv values
-        let mut argvgen = ArgvGenerator::new(argc, argvlens, 0x20, 0x7e);
-        brute(
+        let mut argvgen =
+            ArgvGenerator::new(init_input.argc, init_input.argvlens.as_slice(), 0x20, 0x7e);
+        let solved = brute(
             path,
             5,
             &mut argvgen,
             solver,
-            init_input.clone(),
+            solved,
             terminal,
             timeout,
             vars.clone(),
+            drop_ptrace,
         )?;
 
-        return Ok(argvgen.to_string());
+        return Ok(solved);
     }
-    Ok(String::new()) //TODO should be an error
+    Ok(solved)
 }
 
 /// solves "default" stdin case
@@ -182,81 +217,80 @@ fn default_arg_brute<B: b7tui::Ui>(
 /// solves input ranges of
 /// * `stdinlen` - 0-51
 /// * `stdinchars` - 0x20-0x7e
-fn default_stdin_brute<B: b7tui::Ui>(
-    path: &str,
+fn default_stdin_brute(
+    path: &Path,
     init_input: &Input,
     solver: &dyn InstCounter,
     vars: HashMap<String, String>,
     timeout: Duration,
-    terminal: &mut B,
-) -> Result<String, SolverError> {
-    // solve stdin len
-    let mut res = Input::new();
-    let mut lgen = StdinLenGenerator::new(0, 51);
-    brute(
-        path,
-        1,
-        &mut lgen,
-        solver,
-        init_input.clone(),
-        terminal,
-        timeout,
-        vars.clone(),
-    )?;
-    res.stdinlen = lgen.get_length();
-    // solve strin if there is stuff to solve
-    if res.stdinlen > 0 {
+    terminal: &mut dyn b7tui::Ui,
+    drop_ptrace: bool,
+) -> Result<Input, SolverError> {
+    // solve stdin len if unspecified
+    let mut solved = init_input.clone();
+    if solved.stdinlen == 0 {
+        solved = brute(
+            path,
+            1,
+            &mut StdinLenGenerator::new(0, 51),
+            solver,
+            solved,
+            terminal,
+            timeout,
+            vars.clone(),
+            drop_ptrace,
+        )?;
+    }
+    // solve stdin if there is stuff to solve
+    if solved.stdinlen > 0 {
         // TODO: We should have a good way of configuring the range
         let empty = String::new();
         let stdin_input = vars.get("start").unwrap_or(&empty);
         let mut gen = if stdin_input == "" {
-            StdinCharGenerator::new(res, 0x20, 0x7e)
+            StdinCharGenerator::new(solved.clone(), 0x20, 0x7e)
         } else {
-            StdinCharGenerator::new_start(res, 0x20, 0x7e, stdin_input.as_bytes())
+            StdinCharGenerator::new_start(solved.clone(), 0x20, 0x7e, stdin_input.as_bytes())
         };
-        brute(
+        return Ok(brute(
             path,
             1,
             &mut gen,
             solver,
-            init_input.clone(),
+            solved.clone(),
             terminal,
             timeout,
             vars.clone(),
-        )?;
-
-        return Ok(gen.to_string());
+            drop_ptrace,
+        )?);
     }
-    Ok(String::new()) //TODO should be an error
+    Ok(solved)
 }
 
 /// Brute force memory regions and collect results
-fn default_mem_brute<B: b7tui::Ui>(
-    path: &str,
+fn default_mem_brute(
+    path: &Path,
     init_input: &Input,
     solver: &dyn InstCounter,
     vars: HashMap<String, String>,
     timeout: Duration,
-    terminal: &mut B,
-) -> Result<Vec<MemInput>, SolverError> {
-    init_input
-        .mem
-        .iter()
-        .map(|init_mem| {
-            let mut gen = MemGenerator::new(init_mem.clone());
+    terminal: &mut dyn b7tui::Ui,
+) -> Result<Input, SolverError> {
+    let original = init_input.clone();
+    let mut solved = init_input.clone();
+    for input in original.mem {
+        let mut gen = MemGenerator::new(input.clone());
 
-            brute(
-                path,
-                1,
-                &mut gen,
-                solver,
-                init_input.clone(),
-                terminal,
-                timeout,
-                vars.clone(),
-            )?;
-
-            Ok(gen.get_mem_input())
-        })
-        .collect::<Result<Vec<MemInput>, SolverError>>()
+        solved = brute(
+            path,
+            1,
+            &mut gen,
+            solver,
+            solved.clone(),
+            terminal,
+            timeout,
+            vars.clone(),
+            false,
+        )?;
+    }
+    Ok(solved)
 }

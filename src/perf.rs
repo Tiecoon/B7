@@ -2,6 +2,7 @@ use crate::bindings::*;
 use crate::brute::*;
 use crate::errors::*;
 use crate::process::Process;
+use crate::process::PtraceMode;
 use libc::{c_int, c_void, ioctl, pid_t, syscall};
 use std::ffi::OsStr;
 use std::fs::File;
@@ -97,7 +98,14 @@ impl InstCounter for PerfSolver {
         }
         process.stdin_input(data.inp.stdin.clone());
         process.mem_input(data.inp.mem.clone());
-        process.with_ptrace(true);
+
+        let ptrace_mode = if data.drop_ptrace {
+            PtraceMode::Drop
+        } else {
+            PtraceMode::Always
+        };
+
+        process.with_ptrace_mode(ptrace_mode);
 
         let handle = process.spawn();
         let fd = get_perf_fd(handle.pid().as_raw())?;

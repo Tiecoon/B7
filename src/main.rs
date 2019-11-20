@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate log;
 extern crate env_logger;
 
@@ -10,7 +9,6 @@ use b7::*;
 
 use clap::{App, Arg};
 use std::collections::HashMap;
-use std::io::prelude::*;
 use std::os::unix::ffi::OsStrExt;
 use std::process::exit;
 use std::time::Duration;
@@ -77,6 +75,12 @@ fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
                 .help("toggle running stdin checks"),
         )
         .arg(
+            Arg::with_name("stdin-len")
+                .long("stdin-len")
+                .help("specify stdin length")
+                .takes_value(true),
+        )
+        .arg(
             Arg::with_name("dynpath")
                 .long("dynpath")
                 .help("Path to DynamoRio build folder")
@@ -101,6 +105,16 @@ fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
                 )
                 .takes_value(true)
                 .multiple(true),
+        )
+        .arg(
+            Arg::with_name("drop-ptrace")
+                .long("drop-ptrace")
+                .conflicts_with("mem-brute")
+                .help(
+                    "detach from ptrace after the binary starts (use this if the \
+                     binary is movfuscated, has frequently-triggered signal \
+                     handlers, or uses ptrace anti-debugging)",
+                ),
         )
         .get_matches()
 }
@@ -132,22 +146,28 @@ fn main() -> Result<(), SolverError> {
         None => Vec::new(),
     };
 
+    let drop_ptrace = matches.is_present("drop-ptrace");
     let argstate = matches.occurrences_of("argstate") < 1;
     let stdinstate = matches.occurrences_of("stdinstate") < 1;
+    let stdinlen = matches
+        .value_of("stdin-len")
+        .unwrap_or("0")
+        .parse::<u32>()
+        .expect("invalid stdin length");
 
     let solvername = matches.value_of("solver").unwrap_or("perf");
     let solver = match solvername {
         "perf" => Box::new(perf::PerfSolver) as Box<dyn InstCounter>,
+        #[cfg(feature = "dynamorio")]
         "dynamorio" => Box::new(dynamorio::DynamorioSolver) as Box<dyn InstCounter>,
         _ => panic!("unknown solver"),
     };
-    let timeout = Duration::new(
+    let timeout = Duration::from_secs(
         matches
             .value_of("timeout")
             .unwrap_or("5")
             .parse()
             .expect("Failed to parse duration!"),
-        0,
     );
 
     let stdin_input = matches.value_of("start").unwrap_or("");
@@ -156,53 +176,28 @@ fn main() -> Result<(), SolverError> {
     vars.insert(String::from("dynpath"), String::from(dynpath));
     vars.insert(String::from("stdininput"), String::from(stdin_input));
 
-    let terminal = String::from(matches.value_of("ui").unwrap_or("tui")).to_lowercase();
-
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .open(format!("{}.cache", path))?;
-
-    let input = Input {
-        argv: args,
-        mem: mem_inputs_from_args(&matches)?,
-        ..Default::default()
+    let ui = String::from(matches.value_of("ui").unwrap_or("tui")).to_lowercase();
+    let ui = match &*ui {
+        "tui" => Box::new(b7tui::Tui::new(Some(String::from(path)))) as Box<dyn b7tui::Ui>,
+        "env" => Box::new(b7tui::Env::new()) as Box<dyn b7tui::Ui>,
+        _ => panic!("unknown UI {}", ui),
     };
 
-    let results = match &*terminal {
-        "tui" => B7Opts::new(
-            path.to_string(),
-            input,
-            argstate,
-            stdinstate,
-            solver,
-            &mut b7tui::Tui::new(Some(String::from(path))),
-            vars,
-            timeout,
-        )
-        .run(),
-        "env" => B7Opts::new(
-            path.to_string(),
-            input,
-            argstate,
-            stdinstate,
-            solver,
-            &mut b7tui::Env::new(),
-            vars,
-            timeout,
-        )
-        .run(),
-        _ => panic!("unknown tui {}", terminal),
-    }?;
+    let _results = B7Opts::new(path)
+        .init_input(Input {
+            stdinlen,
+            argv: args,
+            mem: mem_inputs_from_args(&matches)?,
+            ..Default::default()
+        })
+        .drop_ptrace(drop_ptrace)
+        .solve_argv(argstate)
+        .solve_stdin(stdinstate)
+        .solver(solver)
+        .ui(ui)
+        .vars(vars)
+        .timeout(timeout)
+        .run()?;
 
-    if !results.arg_brute.is_empty() {
-        info!("Writing argv to cache");
-        write!(file, "argv: {}", results.arg_brute)?;
-    };
-
-    if !results.stdin_brute.is_empty() {
-        info!("Writing stdin to cache");
-        write!(file, "stdin: {}", results.stdin_brute)?;
-    };
     Ok(())
 }
