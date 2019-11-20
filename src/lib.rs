@@ -4,6 +4,7 @@
 
 #[macro_use]
 extern crate log;
+extern crate env_logger;
 
 pub mod b7tui;
 pub mod binary;
@@ -93,6 +94,7 @@ impl B7Opts {
 
     /// run b7 under given state and args
     pub fn run(&mut self) -> Result<Input, SolverError> {
+        debug!("Executing run: {:?}", self.init_input);
         let mut solved = self.init_input.clone();
 
         if self.solve_argv {
