@@ -100,10 +100,12 @@ pub fn brute<
     // Loop until generator says we are done
     loop {
         //if the char is already solved skip that char and move on
-        
+        //or if we have run 3 times then we exit
         if gen.skip() == 1 {
             continue;
-        } 
+        } else if gen.skip() == 2 {
+            break Ok(Input::new());
+        }
 
         // Number of threads to spawn
 

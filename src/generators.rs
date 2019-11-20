@@ -290,7 +290,7 @@ impl StdinCharGenerator {
             // Vector of options of input.stdinlen none rerun some dont run
             incorrect: vec![None; input.stdinlen as usize],
             //holds the amount of incorrect chars
-            icount: input.stdinlen - 1,
+            icount: input.stdinlen,
             min,
             max,
         }
@@ -307,7 +307,7 @@ impl StdinCharGenerator {
             cur: min,
             runs: 3,
             incorrect: vec![None; input.stdinlen as usize],
-            icount: input.stdinlen - 1,
+            icount: input.stdinlen,
             min,
             max,
         }
@@ -361,10 +361,8 @@ impl Update for StdinCharGenerator {
     type Id = u8;
 
     fn update(&mut self, chosen: &u8) -> bool {
-        if self.idx != self.padlen - 1 {
-            self.incorrect[self.idx as usize] = Some(*chosen);
-            self.icount -= 1;
-        }
+        self.incorrect[self.idx as usize] = Some(*chosen);
+        self.icount -= 1;
         self.idx += 1;        
         self.cur = self.min as u16;
         self.on_update();
@@ -376,9 +374,9 @@ impl Update for StdinCharGenerator {
                 x += 1;
                 self.icount += 1; 
             }
-            self.icount -= 1;
             self.runs = 3;
         }
+        //decides if we keeping going or exit out of the generator
         if self.idx >= self.padlen && self.runs != 0 && self.icount > 0 {
             self.idx = 0;
             self.runs -= 1;
@@ -407,16 +405,27 @@ impl Update for StdinCharGenerator {
     //allow us to move the generator forward if we have already solved this input
     //or if the input fails
     fn skip(&mut self) -> i8 {
-        if self.incorrect[self.idx as usize] == None {
-            return 0;
-        } else if self.idx == self.padlen && self.icount > 0 {
-            self.idx = 0;
-            return 1;
-        } else if self.icount > 0 && self.runs > 0 {
-            self.idx += 1;
-            return 1;
-        }
-        return 2;
+        if self.idx < self.padlen {
+            if self.incorrect[self.idx as usize] == None {
+                return 0;
+            } else if self.idx == self.padlen && self.icount > 0 {
+                self.idx = 0;
+                return 1;
+            } else if self.icount > 0 && self.runs > 0 {
+                self.idx += 1;
+                return 1;
+            }
+            return 2;
+        } else {
+            if self.runs > 0 {
+                self.runs -= 1;
+                self.idx = 0;
+                return 1;
+            } else {
+                return 2;
+            }
+        } 
+
     }
 }
 
