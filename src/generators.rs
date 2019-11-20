@@ -30,6 +30,7 @@ impl MemInput {
     /// addr=XXX,size=YYY,init=ZZZ
     /// ```
     pub fn parse_from_arg(arg: &str) -> SolverResult<Self> {
+        debug!("Executing parse_from_arg:");
         // Parse comma separated key-value list into a `HashMap`
         let opts = arg
             .split(',')
@@ -86,6 +87,7 @@ impl MemInput {
 
 impl std::fmt::Display for MemInput {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        debug!("Executing fmt:");
         write!(
             f,
             "{:#x}[{}] = {}",
@@ -123,6 +125,7 @@ impl Input {
     /// println!("{:?}",new);
     /// ```
     pub fn combine(self, tmp: Input) -> Input {
+        debug!("Executing combine:");
         let mut res = self.clone();
         if tmp.argv.len() != 0 {
             res.argv = tmp.argv;

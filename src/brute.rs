@@ -125,6 +125,7 @@ pub fn brute<P: AsRef<Path>, G: Generate + Display>(
                 let counter = counter.clone();
 
                 scope.execute(move || {
+                    // print out inp variable at the trace level
                     let inp = (inp_pair.1).clone();
                     let data = InstCountData {
                         path: test,
