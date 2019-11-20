@@ -1,5 +1,5 @@
-extern crate log;
 extern crate env_logger;
+extern crate log;
 
 use b7::brute::InstCounter;
 use b7::errors::*;
@@ -8,6 +8,7 @@ use b7::generators::MemInput;
 use b7::*;
 
 use clap::{App, Arg};
+use log::debug;
 use std::collections::HashMap;
 use std::os::unix::ffi::OsStrExt;
 use std::process::exit;
