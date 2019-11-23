@@ -376,11 +376,10 @@ impl ProcessHandle {
         let exe_path = proc.exe()?;
         let base_map = maps
             .iter()
-            .filter(|map| match map.pathname {
+            .find(|map| match map.pathname {
                 procfs::MMapPath::Path(ref path) => path == &exe_path,
                 _ => false,
             })
-            .next()
             .ok_or_else(|| {
                 SolverError::new(
                     ProcfsError,

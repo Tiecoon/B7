@@ -127,7 +127,7 @@ impl Input {
     pub fn combine(self, tmp: Input) -> Input {
         debug!("Executing combine:");
         let mut res = self.clone();
-        if tmp.argv.len() != 0 {
+        if !tmp.argv.is_empty() {
             res.argv = tmp.argv;
         }
         if tmp.argc != 0 {
@@ -136,10 +136,10 @@ impl Input {
         if tmp.stdinlen != 0 {
             res.stdinlen = tmp.stdinlen;
         }
-        if tmp.stdin.len() != 0 {
+        if !tmp.stdin.is_empty() {
             res.stdin = tmp.stdin;
         }
-        if tmp.mem.len() != 0 {
+        if !tmp.mem.is_empty() {
             res.mem = tmp.mem;
         }
 
