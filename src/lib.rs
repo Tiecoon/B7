@@ -121,7 +121,7 @@ impl B7Opts {
             )?;
         }
 
-        if !self.init_input.mem.is_empty() {
+        if self.init_input.mem.is_some() {
             if self.drop_ptrace {
                 return Err(SolverError::new(
                     Runner::ArgError,
@@ -177,37 +177,40 @@ fn default_arg_brute(
     )?;
 
     // check if there is something to be solved
-    if init_input.argc > 0 {
-        // solve argv length
-        let mut argvlengen = ArgvLenGenerator::new(init_input.argc, 0, 20);
-        solved = brute(
-            path,
-            5,
-            &mut argvlengen,
-            solver,
-            solved,
-            terminal,
-            timeout,
-            vars.clone(),
-            drop_ptrace,
-        )?;
+    if let Some(argc) = init_input.argc {
+        if argc > 0 {
+            // solve argv length
+            let mut argvlengen = ArgvLenGenerator::new(argc, 0, 20);
+            solved = brute(
+                path,
+                5,
+                &mut argvlengen,
+                solver,
+                solved,
+                terminal,
+                timeout,
+                vars.clone(),
+                drop_ptrace,
+            )?;
 
-        // solve argv values
-        let mut argvgen =
-            ArgvGenerator::new(init_input.argc, init_input.argvlens.as_slice(), 0x20, 0x7e);
-        let solved = brute(
-            path,
-            5,
-            &mut argvgen,
-            solver,
-            solved,
-            terminal,
-            timeout,
-            vars.clone(),
-            drop_ptrace,
-        )?;
+            // solve argv values
+            if let Some(argvlens) = init_input.argvlens.clone() {
+                let mut argvgen = ArgvGenerator::new(argc, argvlens.as_slice(), 0x20, 0x7e);
+                solved = brute(
+                    path,
+                    5,
+                    &mut argvgen,
+                    solver,
+                    solved,
+                    terminal,
+                    timeout,
+                    vars.clone(),
+                    drop_ptrace,
+                )?;
+            }
 
-        return Ok(solved);
+            return Ok(solved);
+        }
     }
     Ok(solved)
 }
@@ -228,7 +231,7 @@ fn default_stdin_brute(
 ) -> Result<Input, SolverError> {
     // solve stdin len if unspecified
     let mut solved = init_input.clone();
-    if solved.stdinlen == 0 {
+    if solved.stdinlen.is_none() {
         solved = brute(
             path,
             1,
@@ -242,7 +245,7 @@ fn default_stdin_brute(
         )?;
     }
     // solve stdin if there is stuff to solve
-    if solved.stdinlen > 0 {
+    if solved.stdinlen.is_some() {
         // TODO: We should have a good way of configuring the range
         let empty = String::new();
         let stdin_input = vars.get("start").unwrap_or(&empty);
@@ -276,8 +279,13 @@ fn default_mem_brute(
     terminal: &mut dyn b7tui::Ui,
 ) -> Result<Input, SolverError> {
     let original = init_input.clone();
+    let mem = match original.mem {
+        Some(i) => i,
+        None => return Err(SolverError::new(Runner::NoneError, "No memory to run")),
+    };
+
     let mut solved = init_input.clone();
-    for input in original.mem {
+    for input in mem {
         let mut gen = MemGenerator::new(input.clone());
 
         solved = brute(

@@ -93,11 +93,17 @@ impl InstCounter for PerfSolver {
     fn get_inst_count(&self, data: &InstCountData) -> Result<i64, SolverError> {
         debug!("Executing get_inst_count:");
         let mut process = Process::new(&data.path)?;
-        for arg in data.inp.argv.iter() {
-            process.arg(OsStr::from_bytes(arg));
+        if let Some(argv) = data.inp.argv.clone() {
+            for arg in argv {
+                process.arg(OsStr::from_bytes(arg.as_slice()));
+            }
         }
-        process.stdin_input(data.inp.stdin.clone());
-        process.mem_input(data.inp.mem.clone());
+        if let Some(stdin) = data.inp.stdin.clone() {
+            process.stdin_input(stdin);
+        }
+        if let Some(mem) = data.inp.mem.clone() {
+            process.mem_input(mem);
+        }
 
         let ptrace_mode = if data.drop_ptrace {
             PtraceMode::Drop
