@@ -19,7 +19,7 @@ dynamorio-build:
     RUST_BACKTRACE=1 cargo build --features "dynamorio"
 
 format:
-  stage: test
+  stage: format
   script:
     cargo fmt --all -- --check
 
