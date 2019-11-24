@@ -47,11 +47,15 @@ fn run_wyvern_dynamorio() {
         .run()
         .unwrap();
 
-    let mut stdin = res.stdin_brute;
-
-    // Last character is currently non-deterministic
-    stdin.pop();
-    assert_eq!(&stdin, "dr4g0n_or_p4tric1an_it5_LLVM");
+    match res.stdin {
+        Some(mut stdin) => {
+            stdin.pop();
+            let stdin = String::from_utf8_lossy(stdin.as_slice());
+            // Last character is currently non-deterministic
+            assert_eq!(&stdin, "dr4g0n_or_p4tric1an_it5_LLVM");
+        }
+        None => panic!("no stdin found"),
+    }
 }
 
 #[test]
