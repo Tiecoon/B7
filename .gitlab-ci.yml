@@ -35,7 +35,7 @@ dynamorio-test:
   script:
     - rustc --version
     - cargo --version
-    - cargo test --features "dynamorio" -- --test-threads=1
+    - cargo test --features "dynamorio" dynamorio -- --test-threads=1
 
 pages:
   stage: deploy
