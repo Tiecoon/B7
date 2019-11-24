@@ -67,10 +67,14 @@ impl InstCounter for DynamorioSolver {
         proccess.arg(libinscount);
         proccess.arg("--");
         proccess.arg(&data.path);
-        for arg in data.inp.argv.iter() {
-            proccess.arg(OsStr::from_bytes(arg));
+        if let Some(argv) = data.inp.argv {
+            for arg in argv.iter() {
+                proccess.arg(OsStr::from_bytes(arg));
+            }
         }
-        proccess.stdin_input(data.inp.stdin.clone());
+        if let Some(stdin) = data.inp.stdin {
+            proccess.stdin_input(stdin.clone());
+        }
 
         let mut handle = proccess.spawn();
         handle.finish(data.timeout)?;
