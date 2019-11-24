@@ -17,13 +17,12 @@ use std::time::Duration;
 use is_executable::IsExecutable;
 
 /// Parse memory inputs from args
-fn mem_inputs_from_args(matches: &clap::ArgMatches) -> SolverResult<Vec<MemInput>> {
+fn mem_inputs_from_args(matches: &clap::ArgMatches) -> SolverResult<Option<Vec<MemInput>>> {
     debug!("Executing mem_inputs_from_args:");
-    matches
-        .values_of("mem-brute")
-        .unwrap_or_default()
-        .map(MemInput::parse_from_arg)
-        .collect()
+    match matches.values_of("mem-brute") {
+        Some(x) => x.map(MemInput::parse_from_arg).collect(),
+        None => Ok(None),
+    }
 }
 
 /// parses program arguements
@@ -142,18 +141,17 @@ fn main() -> Result<(), SolverError> {
     }
 
     let args = match matches.values_of_os("args") {
-        Some(args) => args.map(|arg| arg.as_bytes().to_vec()).collect(),
-        None => Vec::new(),
+        Some(args) => Some(args.map(|arg| arg.as_bytes().to_vec()).collect()),
+        None => None,
     };
 
     let drop_ptrace = matches.is_present("drop-ptrace");
     let argstate = matches.occurrences_of("argstate") < 1;
     let stdinstate = matches.occurrences_of("stdinstate") < 1;
-    let stdinlen = matches
-        .value_of("stdin-len")
-        .unwrap_or("0")
-        .parse::<u32>()
-        .expect("invalid stdin length");
+    let stdinlen = match matches.value_of("stdin-len") {
+        Some(x) => Some(x.parse::<u32>().expect("invalid stdin length")),
+        None => None,
+    };
 
     let solvername = matches.value_of("solver").unwrap_or("perf");
     let solver = match solvername {

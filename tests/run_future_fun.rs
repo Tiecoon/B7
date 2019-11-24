@@ -33,7 +33,7 @@ fn run_future_fun_perf() {
 
     let res = B7Opts::new(path)
         .init_input(Input {
-            stdinlen: FLAG.len() as u32,
+            stdinlen: Some(FLAG.len() as u32),
             ..Default::default()
         })
         .drop_ptrace(true)
@@ -41,7 +41,11 @@ fn run_future_fun_perf() {
         .timeout(Duration::from_secs(100))
         .run()
         .unwrap();
+    println!("{:?}", res);
 
-    let stdin = String::from_utf8_lossy(res.stdin.as_slice());
+    let stdin = match res.stdin {
+        Some(x) => String::from_utf8(x).unwrap(),
+        None => panic!("no stdin found"),
+    };
     assert_eq!(&stdin, FLAG);
 }

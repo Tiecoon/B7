@@ -26,6 +26,7 @@ fn on_init() {
 #[cfg(feature = "dynamorio")]
 #[test]
 fn run_wyvern_dynamorio() {
+    use std::collections::HashMap;
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let dynpath = path.clone();
 
@@ -47,11 +48,15 @@ fn run_wyvern_dynamorio() {
         .run()
         .unwrap();
 
-    let mut stdin = res.stdin_brute;
-
-    // Last character is currently non-deterministic
-    stdin.pop();
-    assert_eq!(&stdin, "dr4g0n_or_p4tric1an_it5_LLVM");
+    match res.stdin {
+        Some(mut stdin) => {
+            stdin.pop();
+            let stdin = String::from_utf8_lossy(stdin.as_slice());
+            // Last character is currently non-deterministic
+            assert_eq!(&stdin, "dr4g0n_or_p4tric1an_it5_LLVM");
+        }
+        None => panic!("no stdin found"),
+    }
 }
 
 #[test]
@@ -62,14 +67,21 @@ fn run_wyvern_perf() {
     path.push("bins");
     path.push("wyvern");
 
-    let mut res = B7Opts::new(path)
+    let res = B7Opts::new(path)
         .solve_stdin(true)
         .timeout(Duration::from_secs(5))
         .run()
         .unwrap();
 
-    res.stdin.pop();
-    let stdin = String::from_utf8_lossy(res.stdin.as_slice());
-    // Last character is currently non-deterministic
-    assert_eq!(&stdin, "dr4g0n_or_p4tric1an_it5_LLVM");
+    println!("{:?}", res);
+
+    match res.stdin {
+        Some(mut stdin) => {
+            stdin.pop();
+            let stdin = String::from_utf8_lossy(stdin.as_slice());
+            // Last character is currently non-deterministic
+            assert_eq!(&stdin, "dr4g0n_or_p4tric1an_it5_LLVM");
+        }
+        None => panic!("no stdin found"),
+    }
 }
