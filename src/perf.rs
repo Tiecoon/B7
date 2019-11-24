@@ -94,8 +94,8 @@ impl InstCounter for PerfSolver {
         debug!("Executing get_inst_count:");
         let mut process = Process::new(&data.path)?;
         if let Some(argv) = data.inp.argv.clone() {
-            for arg in argv.iter() {
-                process.arg(OsStr::from_bytes(arg));
+            for arg in argv {
+                process.arg(OsStr::from_bytes(arg.as_slice()));
             }
         }
         if let Some(stdin) = data.inp.stdin.clone() {
