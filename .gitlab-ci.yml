@@ -23,12 +23,19 @@ format:
   script:
     cargo fmt --all -- --check
 
-test:
+default-test:
   stage: test
   script:
     - rustc --version
     - cargo --version
     - cargo test --verbose -- --test-threads=1
+
+dynamorio-test:
+  stage: test
+  script:
+    - rustc --version
+    - cargo --version
+    - cargo test --features "dynamorio" -- --test-threads=1
 
 pages:
   stage: deploy
