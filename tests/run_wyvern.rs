@@ -26,6 +26,7 @@ fn on_init() {
 #[cfg(feature = "dynamorio")]
 #[test]
 fn run_wyvern_dynamorio() {
+    use std::collections::HashMap;
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let dynpath = path.clone();
 
