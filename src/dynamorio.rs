@@ -73,7 +73,7 @@ impl InstCounter for DynamorioSolver {
             }
         }
         if let Some(stdin) = &data.inp.stdin {
-            poccess.stdin_input(stdin.clone());
+            proccess.stdin_input(stdin.clone());
         }
 
         let mut handle = proccess.spawn();
