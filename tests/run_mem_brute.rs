@@ -42,14 +42,17 @@ fn mem_brute_helper(mem_inputs: &[MemInput], filename: &str) {
 
     let res = B7Opts::new(path)
         .init_input(Input {
-            mem,
+            mem: Some(mem),
             ..Default::default()
         })
         .timeout(Duration::from_secs(5))
         .run()
         .unwrap();
 
-    assert_eq!(res.mem, mem_inputs);
+    match res.mem {
+        Some(mem) => assert_eq!(mem, mem_inputs),
+        None => panic!("no results found"),
+    }
 }
 
 #[test]
