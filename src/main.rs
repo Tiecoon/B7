@@ -129,7 +129,6 @@ fn print_usage(matches: &clap::ArgMatches) -> ! {
 
 fn main() -> Result<(), SolverError> {
     debug!("Executing main:");
-    env_logger::init();
     // handle command line arguements
     let matches = handle_cli_args();
 
