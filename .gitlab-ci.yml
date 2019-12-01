@@ -1,5 +1,5 @@
 default:
-  image: rust:debian
+  image: rust:buster
 
 stages:
   - format
