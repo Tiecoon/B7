@@ -54,7 +54,11 @@ fn main() {
 
         run_cmake(
             Command::new("cmake")
-                .args(&["../../dynamorio", "-DDISABLE_WARNINGS=yes"])
+                .args(&[
+                    "../../dynamorio",
+                    "-DDISABLE_WARNINGS=yes",
+                    "-DBUILD_DOCS=no",
+                ])
                 .current_dir(&out_dir_64),
         );
 
@@ -66,6 +70,7 @@ fn main() {
                     "../../dynamorio",
                     "-DDISABLE_WARNINGS=yes",
                     "-DCMAKE_DISABLE_FIND_PACKAGE_Qt5Widgets=TRUE",
+                    "-DBUILD_DOCS=no",
                 ])
                 .env("CXXFLAGS", "-m32")
                 .env("CFLAGS", "-m32")
