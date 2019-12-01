@@ -1,5 +1,5 @@
 default:
-  image: rust:buster
+  image: registry.gitlab.com/b7-re/b7/ci:latest
 
 stages:
   - format
@@ -24,7 +24,6 @@ dynamorio-build:
 format:
   stage: format
   script:
-    - rustup component add rustfmt
     - cargo fmt --all -- --check
 
 default-test:
