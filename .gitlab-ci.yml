@@ -24,8 +24,8 @@ dynamorio-build:
 format:
   stage: format
   script:
-    rustup component add rustfmt
-    cargo fmt --all -- --check
+    - rustup component add rustfmt
+    - cargo fmt --all -- --check
 
 default-test:
   tags:
