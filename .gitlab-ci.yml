@@ -1,5 +1,5 @@
 default:
-  image: rust:alpine
+  image: rust:debian
 
 stages:
   - format
