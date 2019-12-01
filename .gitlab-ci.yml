@@ -24,6 +24,8 @@ format:
     cargo fmt --all -- --check
 
 default-test:
+  tags:
+    - perf
   stage: test
   script:
     - rustc --version
