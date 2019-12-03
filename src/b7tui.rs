@@ -470,6 +470,9 @@ impl Ui for Tui {
                                             buffer.push(x);
                                         }
                                     }
+                                    Ok(Key::Backspace) =>{
+                                        buffer.pop();
+                                    }
                                     _ => {
                                         
                                     }
