@@ -23,6 +23,7 @@ impl DynamorioSolver {
     /// Reads the ELFCLASS of the ELF binary at the specified
     /// TODO: Support other binary formats (PE, Macho-O, etc)
     fn get_arch(&self, path: &Path) -> Result<Arch, SolverError> {
+        debug!("Executing get_arch:");
         let mut f = File::open(path.canonicalize()?)?;
         let mut buf = Vec::new();
         f.read_to_end(&mut buf)?;
@@ -40,6 +41,7 @@ impl InstCounter for DynamorioSolver {
     /// Handles basic proc spawning and running under dynamorio
     /// only works on 64 bit for now
     fn get_inst_count(&self, data: &InstCountData) -> Result<i64, SolverError> {
+        debug!("Executing get_inst_count:");
         let dynpath = PathBuf::from(data.vars.get("dynpath").unwrap());
 
         let (build_dir, bin_dir) = match self.get_arch(&PathBuf::from(&data.path))? {
@@ -60,15 +62,19 @@ impl InstCounter for DynamorioSolver {
         libinscount.push("bin");
         libinscount.push("libinscount.so");
 
-        let mut proccess = Process::new(&drrun.to_str().unwrap())?;
+        let mut proccess = Process::new(&drrun)?;
         proccess.arg("-c");
         proccess.arg(libinscount);
         proccess.arg("--");
         proccess.arg(&data.path);
-        for arg in data.inp.argv.iter() {
-            proccess.arg(OsStr::from_bytes(arg));
+        if let Some(argv) = &data.inp.argv {
+            for arg in argv {
+                proccess.arg(OsStr::from_bytes(arg));
+            }
         }
-        proccess.stdin_input(data.inp.stdin.clone());
+        if let Some(stdin) = &data.inp.stdin {
+            proccess.stdin_input(stdin.clone());
+        }
 
         let mut handle = proccess.spawn();
         handle.finish(data.timeout)?;

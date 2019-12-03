@@ -152,7 +152,7 @@ impl Tui {
                 }
                 drop(file);
             }
-            None => return,
+            None => {}
         }
     }
     pub fn redraw(&mut self) -> bool {

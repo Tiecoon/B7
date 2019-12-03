@@ -29,7 +29,8 @@ impl MemInput {
     /// ``` text
     /// addr=XXX,size=YYY,init=ZZZ
     /// ```
-    pub fn parse_from_arg(arg: &str) -> SolverResult<Self> {
+    pub fn parse_from_arg(arg: &str) -> SolverResult<Option<Self>> {
+        debug!("Executing parse_from_arg:");
         // Parse comma separated key-value list into a `HashMap`
         let opts = arg
             .split(',')
@@ -75,17 +76,18 @@ impl MemInput {
             return Err(SolverError::new(ArgError, "Breakpoints only work on x86"));
         }
 
-        Ok(Self {
+        Ok(Some(Self {
             bytes,
             addr,
             size,
             breakpoint,
-        })
+        }))
     }
 }
 
 impl std::fmt::Display for MemInput {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        debug!("Executing fmt:");
         write!(
             f,
             "{:#x}[{}] = {}",
@@ -99,12 +101,12 @@ impl std::fmt::Display for MemInput {
 #[derive(Debug, Clone, Default)]
 /// Holds the various input the runner is expected to use
 pub struct Input {
-    pub argc: u32,
-    pub argvlens: Vec<u32>,
-    pub argv: ArgumentType,
-    pub stdinlen: u32,
-    pub stdin: StringType,
-    pub mem: Vec<MemInput>,
+    pub argc: Option<u32>,
+    pub argvlens: Option<Vec<u32>>,
+    pub argv: Option<ArgumentType>,
+    pub stdinlen: Option<u32>,
+    pub stdin: Option<StringType>,
+    pub mem: Option<Vec<MemInput>>,
 }
 
 impl Input {
@@ -117,26 +119,27 @@ impl Input {
     /// use crate::b7::generators::Input;
     /// let mut one = Input::new();
     /// let mut two = Input::new();
-    /// one.stdin = vec!['A' as u8,'b' as u8];
-    /// two.argc = 2;
+    /// one.stdin = Some(vec!['A' as u8,'b' as u8]);
+    /// two.argc = Some(2);
     /// let new = one.combine(two);
     /// println!("{:?}",new);
     /// ```
     pub fn combine(self, tmp: Input) -> Input {
+        debug!("Executing combine:");
         let mut res = self.clone();
-        if tmp.argv.len() != 0 {
+        if tmp.argv.is_some() {
             res.argv = tmp.argv;
         }
-        if tmp.argc != 0 {
+        if tmp.argc.is_some() {
             res.argc = res.argc;
         }
-        if tmp.stdinlen != 0 {
+        if tmp.stdinlen.is_some() {
             res.stdinlen = tmp.stdinlen;
         }
-        if tmp.stdin.len() != 0 {
+        if tmp.stdin.is_some() {
             res.stdin = tmp.stdin;
         }
-        if tmp.mem.len() != 0 {
+        if tmp.mem.is_some() {
             res.mem = tmp.mem;
         }
 
@@ -217,8 +220,8 @@ impl Iterator for StdinLenGenerator {
         let sz = self.len;
         self.len += 1;
         let mut res = Input::new();
-        res.stdinlen = sz as u32;
-        res.stdin = vec![0x41; sz as usize];
+        res.stdinlen = Some(sz as u32);
+        res.stdin = Some(vec![0x41; sz as usize]);
         Some((sz, res))
     }
 }
@@ -241,7 +244,7 @@ impl Update for StdinLenGenerator {
 
 #[derive(Debug)]
 pub struct StdinCharGenerator {
-    padlen: u32,
+    padlen: Option<u32>,
     padchr: u8,
     prefix: StringType,
     suffix: StringType,
@@ -311,7 +314,8 @@ impl Iterator for StdinCharGenerator {
 
     fn next(&mut self) -> Option<Self::Item> {
         // check if we have anymore to solve
-        if self.idx >= self.padlen || self.cur > 255 || self.cur > self.max {
+        let padlen = self.padlen?;
+        if self.idx >= padlen || self.cur > 255 || self.cur > self.max {
             return None;
         }
         let chr = self.cur as u8;
@@ -322,14 +326,14 @@ impl Iterator for StdinCharGenerator {
         inp.push(chr);
         inp.extend_from_slice(&self.suffix);
         // add padding to reach the required length
-        while inp.len() > self.padlen as usize {
+        while inp.len() > padlen as usize {
             inp.pop();
         }
-        while inp.len() < self.padlen as usize {
+        while inp.len() < padlen as usize {
             inp.push(self.padchr);
         }
         let mut res = Input::new();
-        res.stdin = inp;
+        res.stdin = Some(inp);
         Some((chr as GenItem, res))
     }
 }
@@ -348,7 +352,10 @@ impl Update for StdinCharGenerator {
         self.idx += 1;
         self.cur = self.min as u16;
         self.on_update();
-        self.idx < self.padlen
+        if let Some(i) = self.padlen {
+            return self.idx < i;
+        }
+        false
     }
 }
 
@@ -393,8 +400,8 @@ impl Iterator for ArgcGenerator {
         let sz = self.len;
         self.len += 1;
         let mut res = Input::new();
-        res.argv = vec![vec![]; sz as usize];
-        res.argc = sz;
+        res.argv = Some(vec![vec![]; sz as usize]);
+        res.argc = Some(sz);
         Some((sz, res))
     }
 }
@@ -470,7 +477,7 @@ impl Iterator for ArgvLenGenerator {
             }
         }
         let mut res = Input::new();
-        res.argv = argv;
+        res.argv = Some(argv);
         Some((sz, res))
     }
 }
@@ -584,7 +591,7 @@ impl Iterator for ArgvGenerator {
             }
         }
         let mut res = Input::new();
-        res.argv = argv;
+        res.argv = Some(argv);
         Some((chr as GenItem, res))
     }
 }
@@ -675,7 +682,7 @@ impl Iterator for MemGenerator {
         let mem = vec![mem];
 
         let input = Input {
-            mem,
+            mem: Some(mem),
             ..Default::default()
         };
 
