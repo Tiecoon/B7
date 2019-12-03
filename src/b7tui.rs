@@ -336,11 +336,11 @@ impl Default for Tui {
 
 // implement Tuis Ui trait
 impl Ui for Tui {
-    fn set_timeout(&mut self, timeout:Duration){
+    fn set_timeout(&mut self, timeout: Duration) {
         self.timeout = timeout.as_secs();
     }
-    fn get_timeout(&mut self) -> Duration{
-        return Duration::new(self.timeout,0);
+    fn get_timeout(&mut self) -> Duration {
+        return Duration::new(self.timeout, 0);
     }
     /// draw bargraph for new input
     fn update(&mut self, mut results: Box<Vec<(i64, (GenItem, Input))>>, min: u64) -> bool {
@@ -397,7 +397,7 @@ impl Ui for Tui {
                         }
                     }
                     Ok(Key::Up) => {
-                        if self.app.tabs.index == 1{
+                        if self.app.tabs.index == 1 {
                             match self.selected {
                                 Some(x) => {
                                     if x > 0 {
@@ -410,10 +410,9 @@ impl Ui for Tui {
                             }
                             self.redraw();
                         }
-                        
                     }
                     Ok(Key::Down) => {
-                        if self.app.tabs.index == 1{
+                        if self.app.tabs.index == 1 {
                             match self.selected {
                                 Some(x) => {
                                     if x < self.options.len() - 1 {
@@ -447,53 +446,46 @@ impl Ui for Tui {
                         }
                     }
                     Ok(Key::Char('\n')) => {
-                        if self.app.tabs.index == 1{
+                        if self.app.tabs.index == 1 {
                             let mut buffer = String::new();
                             let selection = self.selected;
-                            let mut option_index:i32 = -1;
+                            let mut option_index: i32 = -1;
                             match selection {
                                 Some(x) => {
                                     option_index = x as i32;
                                 }
-                                None => {
-
-                                }
-
+                                None => {}
                             }
-                            for input in io::stdin().keys(){
-                                match input{
-                                    Ok(Key::Char('\n')) => {
-                                        break
-                                    }
-                                    Ok(Key::Char(x)) =>{
-                                        if x.is_digit(10){
+                            for input in io::stdin().keys() {
+                                match input {
+                                    Ok(Key::Char('\n')) => break,
+                                    Ok(Key::Char(x)) => {
+                                        if x.is_digit(10) {
                                             buffer.push(x);
                                         }
                                     }
-                                    Ok(Key::Backspace) =>{
+                                    Ok(Key::Backspace) => {
                                         buffer.pop();
                                     }
-                                    _ => {
-                                        
-                                    }
+                                    _ => {}
                                 }
                                 match option_index {
                                     0 => {
-                                        self.repeat = match buffer.parse::<u32>(){
-                                            Ok(x) => {x}
+                                        self.repeat = match buffer.parse::<u32>() {
+                                            Ok(x) => x,
                                             _ => {
                                                 buffer = String::new();
                                                 0
-                                            } 
+                                            }
                                         }
                                     }
                                     1 => {
-                                        self.timeout = match buffer.parse::<u64>(){
-                                            Ok(x) => {x}
+                                        self.timeout = match buffer.parse::<u64>() {
+                                            Ok(x) => x,
                                             _ => {
                                                 buffer = String::new();
                                                 0
-                                            } 
+                                            }
                                         }
                                     }
                                     _ => {}
@@ -576,7 +568,7 @@ impl Ui for Tui {
 
 #[derive(Default)]
 pub struct Env {
-    timeout: Duration
+    timeout: Duration,
 }
 
 impl Env {
@@ -586,8 +578,8 @@ impl Env {
         let _ = env_logger::Builder::from_env(env)
             .default_format_timestamp(false)
             .try_init();
-        let timeout = Duration::new(5,0);
-        Env {timeout}
+        let timeout = Duration::new(5, 0);
+        Env { timeout }
     }
 }
 
@@ -596,10 +588,10 @@ impl Ui for Env {
     fn update(&mut self, mut _results: Box<Vec<(i64, (GenItem, Input))>>, _min: u64) -> bool {
         true
     }
-    fn set_timeout(&mut self,_timeout: Duration){
+    fn set_timeout(&mut self, _timeout: Duration) {
         self.timeout = _timeout;
     }
-    fn get_timeout(&mut self) -> Duration{
+    fn get_timeout(&mut self) -> Duration {
         return self.timeout;
     }
     fn wait(&mut self) -> bool {
