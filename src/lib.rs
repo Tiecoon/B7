@@ -147,7 +147,6 @@ fn default_arg_brute(
         solver,
         solved,
         terminal,
-        timeout,
         vars.clone(),
         drop_ptrace,
     )?;
@@ -163,7 +162,6 @@ fn default_arg_brute(
             solver,
             solved,
             terminal,
-            timeout,
             vars.clone(),
             drop_ptrace,
         )?;
@@ -178,7 +176,6 @@ fn default_arg_brute(
             solver,
             solved,
             terminal,
-            timeout,
             vars.clone(),
             drop_ptrace,
         )?;
@@ -212,7 +209,6 @@ fn default_stdin_brute(
             solver,
             solved,
             terminal,
-            timeout,
             vars.clone(),
             drop_ptrace,
         )?;
@@ -234,7 +230,6 @@ fn default_stdin_brute(
             solver,
             solved.clone(),
             terminal,
-            timeout,
             vars.clone(),
             drop_ptrace,
         )?);
@@ -263,7 +258,6 @@ fn default_mem_brute(
             solver,
             solved.clone(),
             terminal,
-            timeout,
             vars.clone(),
             false,
         )?;

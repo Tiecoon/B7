@@ -60,6 +60,8 @@ pub trait Ui {
     fn done(&mut self) -> bool;
     //timout setter
     fn set_timeout(&mut self, timeout: Duration);
+    //timeout getter
+    fn get_timeout(&mut self) -> Duration;
 }
 
 /// struct for Tui-rs implementation
@@ -337,6 +339,9 @@ impl Ui for Tui {
     fn set_timeout(&mut self, timeout:Duration){
         self.timeout = timeout.as_secs();
     }
+    fn get_timeout(&mut self) -> Duration{
+        return Duration::new(self.timeout,0);
+    }
     /// draw bargraph for new input
     fn update(&mut self, mut results: Box<Vec<(i64, (GenItem, Input))>>, min: u64) -> bool {
         // convertcachefor barchart
@@ -567,7 +572,9 @@ impl Ui for Tui {
 }
 
 #[derive(Default)]
-pub struct Env;
+pub struct Env {
+    timeout: Duration
+}
 
 impl Env {
     // initialize the logging
@@ -576,7 +583,8 @@ impl Env {
         let _ = env_logger::Builder::from_env(env)
             .default_format_timestamp(false)
             .try_init();
-        Env {}
+        let timeout = Duration::new(5,0);
+        Env {timeout}
     }
 }
 
@@ -586,7 +594,10 @@ impl Ui for Env {
         true
     }
     fn set_timeout(&mut self,_timeout: Duration){
-        ();
+        self.timeout = _timeout;
+    }
+    fn get_timeout(&mut self) -> Duration{
+        return self.timeout;
     }
     fn wait(&mut self) -> bool {
         true

@@ -85,7 +85,6 @@ pub fn brute<G: Generate + Display>(
     counter: &dyn InstCounter,
     solved: Input,
     terminal: &mut dyn b7tui::Ui,
-    timeout: Duration,
     vars: HashMap<String, String>,
     drop_ptrace: bool,
 ) -> Result<Input, SolverError> {
@@ -119,6 +118,8 @@ pub fn brute<G: Generate + Display>(
                 // give it to a thread to handle
                 let vars = vars.clone();
                 let counter = counter.clone();
+
+                let timeout = terminal.get_timeout();
 
                 scope.execute(move || {
                     let inp = (inp_pair.1).clone();
