@@ -272,7 +272,7 @@ pub struct StdinCharGenerator {
 impl std::fmt::Display for StdinCharGenerator {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { 
         let tmp = &self.incorrect;
-        let v = tmp.iter().map(|&x| match x { Some(x) => x, None => self.padchr}).collect::<Vec<_>>();
+        let v = tmp.iter().map(|&x| match x { Some(x) => x, None => 0}).collect::<Vec<_>>();
         write!(f, "{}", String::from_utf8_lossy(v.as_slice()))
     }
 }
@@ -378,6 +378,7 @@ impl Update for StdinCharGenerator {
         }
         //decides if we keeping going or exit out of the generator
         if self.idx >= self.padlen && self.runs != 0 && self.icount > 0 {
+            warn!("Reset");
             self.idx = 0;
             self.runs -= 1;
             true
