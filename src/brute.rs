@@ -68,8 +68,7 @@ pub trait InstCounter: Send + Sync + 'static {
 ///        &mut task,
 ///        &perf::PerfSolver,
 ///        Input::new(),
-///        &mut b7tui::Env,
-///        Duration::new(5,0),
+///        &mut b7tui::Env::new(),
 ///        HashMap::new(),
 ///        false,
 ///    )?;
