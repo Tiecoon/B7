@@ -161,6 +161,7 @@ fn default_arg_brute(
     terminal: &mut dyn b7tui::Ui,
     drop_ptrace: bool,
 ) -> Result<Input, SolverError> {
+    terminal.set_timeout(timeout);
     let mut solved = init_input.clone();
     // Solve for argc
     let mut argcgen = ArgcGenerator::new(0, 5);
@@ -171,7 +172,6 @@ fn default_arg_brute(
         solver,
         solved,
         terminal,
-        timeout,
         vars.clone(),
         drop_ptrace,
     )?;
@@ -188,7 +188,6 @@ fn default_arg_brute(
                 solver,
                 solved,
                 terminal,
-                timeout,
                 vars.clone(),
                 drop_ptrace,
             )?;
@@ -203,7 +202,6 @@ fn default_arg_brute(
                     solver,
                     solved,
                     terminal,
-                    timeout,
                     vars.clone(),
                     drop_ptrace,
                 )?;
@@ -229,6 +227,7 @@ fn default_stdin_brute(
     terminal: &mut dyn b7tui::Ui,
     drop_ptrace: bool,
 ) -> Result<Input, SolverError> {
+    terminal.set_timeout(timeout);
     // solve stdin len if unspecified
     let mut solved = init_input.clone();
     if solved.stdinlen.is_none() {
@@ -239,7 +238,6 @@ fn default_stdin_brute(
             solver,
             solved,
             terminal,
-            timeout,
             vars.clone(),
             drop_ptrace,
         )?;
@@ -261,7 +259,6 @@ fn default_stdin_brute(
             solver,
             solved.clone(),
             terminal,
-            timeout,
             vars.clone(),
             drop_ptrace,
         )?);
@@ -278,6 +275,7 @@ fn default_mem_brute(
     timeout: Duration,
     terminal: &mut dyn b7tui::Ui,
 ) -> Result<Input, SolverError> {
+    terminal.set_timeout(timeout);
     let original = init_input.clone();
     let mem = match original.mem {
         Some(i) => i,
@@ -295,7 +293,6 @@ fn default_mem_brute(
             solver,
             solved.clone(),
             terminal,
-            timeout,
             vars.clone(),
             false,
         )?;

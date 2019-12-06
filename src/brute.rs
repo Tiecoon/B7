@@ -68,8 +68,7 @@ pub trait InstCounter: Send + Sync + 'static {
 ///        &mut task,
 ///        &perf::PerfSolver,
 ///        Input::new(),
-///        &mut b7tui::Env,
-///        Duration::new(5,0),
+///        &mut b7tui::Env::new(),
 ///        HashMap::new(),
 ///        false,
 ///    )?;
@@ -87,7 +86,6 @@ pub fn brute<P: AsRef<Path>, G: Generate + Display>(
     counter: &dyn InstCounter,
     solved: Input,
     terminal: &mut dyn b7tui::Ui,
-    timeout: Duration,
     vars: HashMap<String, String>,
     drop_ptrace: bool,
 ) -> Result<Input, SolverError> {
@@ -123,6 +121,8 @@ pub fn brute<P: AsRef<Path>, G: Generate + Display>(
                 // give it to a thread to handle
                 let vars = vars.clone();
                 let counter = counter.clone();
+
+                let timeout = terminal.get_timeout();
 
                 scope.execute(move || {
                     // print out inp variable at the trace level
