@@ -30,6 +30,7 @@ pub enum Runner {
     NixError,
     ProcfsError,
     Timeout,
+    NoneError,
     Unknown,
 }
 

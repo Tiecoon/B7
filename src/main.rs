@@ -1,3 +1,4 @@
+extern crate env_logger;
 extern crate log;
 
 use b7::brute::InstCounter;
@@ -7,6 +8,7 @@ use b7::generators::MemInput;
 use b7::*;
 
 use clap::{App, Arg};
+use log::debug;
 use std::collections::HashMap;
 use std::os::unix::ffi::OsStrExt;
 use std::process::exit;
@@ -15,16 +17,17 @@ use std::time::Duration;
 use is_executable::IsExecutable;
 
 /// Parse memory inputs from args
-fn mem_inputs_from_args(matches: &clap::ArgMatches) -> SolverResult<Vec<MemInput>> {
-    matches
-        .values_of("mem-brute")
-        .unwrap_or_default()
-        .map(MemInput::parse_from_arg)
-        .collect()
+fn mem_inputs_from_args(matches: &clap::ArgMatches) -> SolverResult<Option<Vec<MemInput>>> {
+    debug!("Executing mem_inputs_from_args:");
+    match matches.values_of("mem-brute") {
+        Some(x) => x.map(MemInput::parse_from_arg).collect(),
+        None => Ok(None),
+    }
 }
 
 /// parses program arguements
 fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
+    debug!("Executing handle_cli_args:");
     App::new("B7")
         .version("0.1.0")
         .arg(
@@ -118,11 +121,13 @@ fn handle_cli_args<'a>() -> clap::ArgMatches<'a> {
 
 /// output the help menu based on input
 fn print_usage(matches: &clap::ArgMatches) -> ! {
+    debug!("Executing print_usage:");
     println!("{}", matches.usage());
     exit(-1);
 }
 
 fn main() -> Result<(), SolverError> {
+    debug!("Executing main:");
     // handle command line arguements
     let matches = handle_cli_args();
 
@@ -136,18 +141,17 @@ fn main() -> Result<(), SolverError> {
     }
 
     let args = match matches.values_of_os("args") {
-        Some(args) => args.map(|arg| arg.as_bytes().to_vec()).collect(),
-        None => Vec::new(),
+        Some(args) => Some(args.map(|arg| arg.as_bytes().to_vec()).collect()),
+        None => None,
     };
 
     let drop_ptrace = matches.is_present("drop-ptrace");
     let argstate = matches.occurrences_of("argstate") < 1;
     let stdinstate = matches.occurrences_of("stdinstate") < 1;
-    let stdinlen = matches
-        .value_of("stdin-len")
-        .unwrap_or("0")
-        .parse::<u32>()
-        .expect("invalid stdin length");
+    let stdinlen = match matches.value_of("stdin-len") {
+        Some(x) => Some(x.parse::<u32>().expect("invalid stdin length")),
+        None => None,
+    };
 
     let solvername = matches.value_of("solver").unwrap_or("perf");
     let solver = match solvername {
@@ -156,13 +160,12 @@ fn main() -> Result<(), SolverError> {
         "dynamorio" => Box::new(dynamorio::DynamorioSolver) as Box<dyn InstCounter>,
         _ => panic!("unknown solver"),
     };
-    let timeout = Duration::new(
+    let timeout = Duration::from_secs(
         matches
             .value_of("timeout")
             .unwrap_or("5")
             .parse()
             .expect("Failed to parse duration!"),
-        0,
     );
 
     let stdin_input = matches.value_of("start").unwrap_or("");
@@ -171,42 +174,28 @@ fn main() -> Result<(), SolverError> {
     vars.insert(String::from("dynpath"), String::from(dynpath));
     vars.insert(String::from("stdininput"), String::from(stdin_input));
 
-    let terminal = String::from(matches.value_of("ui").unwrap_or("tui")).to_lowercase();
-
-    let input = Input {
-        stdinlen,
-        argv: args,
-        mem: mem_inputs_from_args(&matches)?,
-        ..Default::default()
+    let ui = String::from(matches.value_of("ui").unwrap_or("tui")).to_lowercase();
+    let ui = match &*ui {
+        "tui" => Box::new(b7tui::Tui::new(Some(String::from(path)))) as Box<dyn b7tui::Ui>,
+        "env" => Box::new(b7tui::Env::new()) as Box<dyn b7tui::Ui>,
+        _ => panic!("unknown UI {}", ui),
     };
 
-    let _results = match &*terminal {
-        "tui" => B7Opts::new(
-            path.to_string(),
-            input,
-            drop_ptrace,
-            argstate,
-            stdinstate,
-            solver,
-            &mut b7tui::Tui::new(Some(String::from(path))),
-            vars,
-            timeout,
-        )
-        .run(),
-        "env" => B7Opts::new(
-            path.to_string(),
-            input,
-            drop_ptrace,
-            argstate,
-            stdinstate,
-            solver,
-            &mut b7tui::Env::new(),
-            vars,
-            timeout,
-        )
-        .run(),
-        _ => panic!("unknown tui {}", terminal),
-    }?;
+    let _results = B7Opts::new(path)
+        .init_input(Input {
+            stdinlen,
+            argv: args,
+            mem: mem_inputs_from_args(&matches)?,
+            ..Default::default()
+        })
+        .drop_ptrace(drop_ptrace)
+        .solve_argv(argstate)
+        .solve_stdin(stdinstate)
+        .solver(solver)
+        .ui(ui)
+        .vars(vars)
+        .timeout(timeout)
+        .run()?;
 
     Ok(())
 }
