@@ -125,16 +125,10 @@ impl ProcessWaiter {
         ProcessWaiter::spawn_waiting_thread(self.inner.clone());
     }
 
-    // Block SIGCHLD for the calling thread
-    // Records the initialization for the thread
-    pub fn init_for_thread(&self) {
-        debug!("Executing init_for_thread:");
-        block_signal();
-    }
 
     /// Spawns a process, returing a ProcessHandle which can be
     /// used to interact with the spawned process.
-    pub fn spawn_process(&self, mut process: Process) -> ProcessHandle {
+    fn spawn_process(&self, mut process: Process) -> ProcessHandle {
         debug!("Executing spawn process:");
         let recv;
         process.start().expect("Failed to spawn process!");
@@ -464,7 +458,7 @@ impl Process {
     }
 
     /// returns PID of child process
-    pub fn child_id(&self) -> Result<u32, SolverError> {
+    fn child_id(&self) -> Result<u32, SolverError> {
         debug!("Executing child_id:");
         match &self.child {
             Some(a) => Ok(a.id()),
@@ -473,7 +467,7 @@ impl Process {
     }
 
     /// writes self.stdin_input to the process's stdin
-    pub fn write_input(&mut self) -> Result<(), SolverError> {
+    fn write_input(&mut self) -> Result<(), SolverError> {
         debug!("Executing write_input:");
         self.write_stdin(&self.stdin_input.clone())
     }
@@ -523,7 +517,7 @@ impl Process {
     }
 
     /// write buf to process stdin then close stdin
-    pub fn write_stdin(&mut self, buf: &[u8]) -> Result<(), SolverError> {
+    fn write_stdin(&mut self, buf: &[u8]) -> Result<(), SolverError> {
         debug!("Executing write_stdin:");
         if self.child.is_none() {
             return Err(SolverError::new(
@@ -541,7 +535,7 @@ impl Process {
     /// close process stdin
     ///
     /// helps if child process is hanging on a read from stdin
-    pub fn close_stdin(&mut self) -> Result<(), SolverError> {
+    fn close_stdin(&mut self) -> Result<(), SolverError> {
         debug!("Executing close_stdin:");
         if self.child.is_none() {
             return Err(SolverError::new(

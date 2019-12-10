@@ -267,17 +267,17 @@ impl StdinCharGenerator {
     }
 
     // Decide which character to use for padding
-    pub fn set_padchr(&mut self, padchr: u8) {
+    fn set_padchr(&mut self, padchr: u8) {
         self.padchr = padchr;
     }
-    pub fn set_prefix(&mut self, prefix: StringType) {
+    fn set_prefix(&mut self, prefix: StringType) {
         self.prefix = prefix;
     }
-    pub fn set_suffix(&mut self, suffix: StringType) {
+    fn set_suffix(&mut self, suffix: StringType) {
         self.suffix = suffix;
     }
 
-    pub fn get_input(&self) -> &StringType {
+    fn get_input(&self) -> &StringType {
         &self.correct
     }
 }

@@ -14,7 +14,7 @@ use tui::style::{Color, Modifier, Style};
 use tui::widgets::{BarChart, Block, Borders, SelectableList, Widget};
 use tui::Terminal;
 use tui_logger::*;
-
+//Everett
 enum Format {
     Hex,
     String,
@@ -38,7 +38,7 @@ pub trait Ui {
 }
 
 /// struct for Tui-rs implementation
-pub struct Tui {
+struct Tui {
     // TODO probably can be shortened with generics
     terminal: tui::Terminal<
         tui::backend::TermionBackend<
@@ -90,10 +90,10 @@ impl Tui {
             selected: None,
         }
     }
-    pub fn set_path(&mut self, path: String) {
+    fn set_path(&mut self, path: String) {
         self.path = Some(path.to_string());
     }
-    pub fn load_cache(&mut self) {
+    fn load_cache(&mut self) {
         // Parse out the cache file
         match self.path {
             Some(ref path) => {
@@ -113,7 +113,7 @@ impl Tui {
             None => return,
         }
     }
-    pub fn redraw(&mut self) -> bool {
+    fn redraw(&mut self) -> bool {
         // resize terminal if needed
         let size = self.terminal.size().unwrap();
         if self.size != size {
