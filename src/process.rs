@@ -304,7 +304,7 @@ impl ProcessWaiter {
                             let sender: &Sender<WaitData> =
                                 &proc_chans.entry(pid).or_insert_with(ChanPair::new).sender;
 
-                            sender.send(data).expect("Failed to send WaitData!");
+                            let _ = sender.send(data);
                         }
                     }
                 }
