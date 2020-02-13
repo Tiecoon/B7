@@ -144,15 +144,22 @@ impl ProcessWaiter {
         debug!("Executing spawn process:");
         let recv;
         process.start().expect("Failed to spawn process!");
-        process.write_input().unwrap();
-        process.close_stdin().unwrap();
+        process
+            .write_input()
+            .expect("Failed writing input to process");
+        process.close_stdin().expect("Failed closing process stdin");
 
-        let pid = Pid::from_raw(process.child_id().unwrap() as i32);
+        let pid =
+            Pid::from_raw(process.child_id().expect("Failed getting process child id") as i32);
 
         {
             // Critical section - create channel pair if it does
             // not exist, and take the receiver end
-            let proc_chans = &mut self.inner.lock().unwrap().proc_chans;
+            let proc_chans = &mut self
+                .inner
+                .lock()
+                .expect("Failed getting process waiter lock")
+                .proc_chans;
 
             recv = proc_chans
                 .entry(pid)
